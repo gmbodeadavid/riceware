@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --spacing: 0.25rem;
+  --container-page: 75rem;
+
+  /* Vertical rhythm: every section uses py-section, every section title uses text-title.
+     Both scale fluidly from phone to desktop, so spacing is tuned here, not per section. */
+  --spacing-section: clamp(3rem, 6vw, 4.5rem);
+  --text-title: clamp(1.75rem, 1.2rem + 2.2vw, 2.25rem);
+  --text-title--line-height: 1.15;
+
+  --text-xs: 12px;
+  --text-xs--line-height: calc(1 / 0.75);
+  --text-sm: 14px;
+  --text-sm--line-height: calc(1.25 / 0.875);
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --radius-sm: 4px;
+
+  --color-ground: #f4f1e4;
+  --color-surface: #fffdf6;
+  --color-ink: #1c2a20;
+  --color-ink-muted: #5a6456;
+  --color-line: #ddd6bf;
+  --color-grain: #eae0ba;
+  --color-paddy: #2f6b43;
+  --color-paddy-mid: #2a5934;
+  --color-paddy-deep: #1f4d30;
+  --color-paddy-soft: #71a57d;
+  --color-paddy-pale: #93c7a0;
+  --color-on-paddy: #fffdf6;
+  --color-husk: #f2c12e;
+  --color-husk-deep: #d3a61f;
+  --color-husk-text: #7f610a;
+  --color-husk-soft: #f8ecc2;
+  --color-danger: #b3401f;
+  --color-bran: #8a6a36;
+
+  /* --font-bricolage / --font-plex-* are set on <html> by next/font (see layout.tsx). */
+  --font-body: var(--font-plex-sans), sans-serif;
+  --font-display: var(--font-bricolage), sans-serif;
+  --font-mono-brand: var(--font-plex-mono), monospace;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+
+  body {
+    font-family: var(--font-body);
+    background-color: var(--color-ground);
+    color: var(--color-ink);
+  }
+}
