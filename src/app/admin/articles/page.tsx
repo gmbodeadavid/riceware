@@ -1,44 +1,38 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import StatusBadge from '@/components/admin/StatusBadge';
+import type { BlogPostStatus } from '@/lib/ricewareModels';
 
 type Article = {
   id: string;
   slug: string;
   title: string;
   excerpt?: string;
-  status: string;
-  featuredImageId?: string;
+  status: BlogPostStatus;
   publishedAt?: string;
-  createdAt: string;
   updatedAt: string;
-  categories: { id: string; name: string; slug: string }[];
-  tags: { id: string; name: string; slug: string }[];
-  author: { id: string; name: string; slug: string };
-  featuredImage?: { url: string } | null;
+  scheduledAt?: string;
+  categoryNames: string[];
+  authorName: string;
+  isPublic: boolean;
 };
 
 export default function ArticlesListPage() {
   const router = useRouter();
   const [articles, setArticles] = useState<Article[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    fetchArticles();
-  }, []);
-
   const fetchArticles = async () => {
+    setLoading(true);
+    setError('');
     try {
-      const token = localStorage.getItem('admin_token');
-      const res = await fetch('/api/admin/articles', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch('/api/admin/articles');
 
       if (res.status === 401) {
-        localStorage.removeItem('admin_token');
         router.push('/admin/login');
         return;
       }
@@ -46,7 +40,7 @@ export default function ArticlesListPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setArticles(data);
-    } catch (err) {
+    } catch {
       setError('Erreur lors du chargement des articles');
     } finally {
       setLoading(false);
@@ -57,10 +51,8 @@ export default function ArticlesListPage() {
     if (!confirm('Supprimer cet article ?')) return;
 
     try {
-      const token = localStorage.getItem('admin_token');
       const res = await fetch(`/api/admin/articles/${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (!res.ok) throw new Error('Erreur suppression');
@@ -78,21 +70,6 @@ export default function ArticlesListPage() {
       hour: '2-digit',
       minute: '2-digit',
     });
-  };
-
-  const statusBadge = (status: string) => {
-    const styles: Record<string, string> = {
-      published: 'bg-green-100 text-green-800',
-      draft: 'bg-gray-100 text-gray-800',
-      review: 'bg-yellow-100 text-yellow-800',
-      scheduled: 'bg-blue-100 text-blue-800',
-      archived: 'bg-red-100 text-red-800',
-    };
-    return (
-      <span className={`px-2 py-0.5 text-xs rounded ${styles[status] || styles.draft}`}>
-        {status}
-      </span>
-    );
   };
 
   if (loading) {
@@ -113,6 +90,17 @@ export default function ArticlesListPage() {
         >
           Nouvel article
         </Link>
+      </div>
+
+      <div className="mb-4">
+        <button
+          type="button"
+          onClick={() => void fetchArticles()}
+          disabled={loading}
+          className="rounded border border-line px-4 py-2 text-sm font-semibold text-ink transition hover:bg-husk-soft disabled:opacity-60"
+        >
+          {loading ? 'Chargement...' : articles.length ? 'Rafraîchir la liste' : 'Charger les articles'}
+        </button>
       </div>
 
       {error && (
@@ -154,9 +142,9 @@ export default function ArticlesListPage() {
                     )}
                   </td>
                   <td className="py-4 pr-4 text-sm text-ink-muted">
-                    {article.categories[0]?.name || '—'}
+                    {article.categoryNames[0] || '—'}
                   </td>
-                  <td className="py-4 pr-4">{statusBadge(article.status)}</td>
+                  <td className="py-4 pr-4"><StatusBadge status={article.status} /></td>
                   <td className="py-4 pr-4 text-sm text-ink-muted">
                     {formatDate(article.updatedAt)}
                   </td>

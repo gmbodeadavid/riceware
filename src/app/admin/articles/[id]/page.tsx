@@ -3,34 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ArticleEditor from '@/components/ArticleEditor';
-
-type Article = {
-  id: string;
-  slug: string;
-  title: string;
-  excerpt?: string;
-  status: string;
-  featuredImageId?: string;
-  publishedAt?: string;
-  createdAt: string;
-  updatedAt: string;
-  categories: { id: string; name: string; slug: string }[];
-  tags: { id: string; name: string; slug: string }[];
-  author: { id: string; name: string; slug: string };
-  featuredImage?: { url: string } | null;
-  content: any[];
-  seoTitle?: string;
-  seoDescription?: string;
-  seoKeywords?: string[];
-  scheduledAt?: string;
-  allowComments?: boolean;
-};
+import type { ArticleEditorData, ArticleFormValues } from '@/lib/blog/types';
 
 export default function EditArticlePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get('id');
-  const [article, setArticle] = useState<Article | null>(null);
+  const [article, setArticle] = useState<ArticleEditorData | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -43,13 +22,9 @@ export default function EditArticlePage() {
 
     const fetchArticle = async () => {
       try {
-        const token = localStorage.getItem('admin_token');
-        const res = await fetch(`/api/admin/articles/${id}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await fetch(`/api/admin/articles/${id}`);
 
         if (res.status === 401) {
-          localStorage.removeItem('admin_token');
           router.push('/admin/login');
           return;
         }
@@ -62,7 +37,7 @@ export default function EditArticlePage() {
 
         setArticle(data);
       } catch {
-        setError('Erreur lors du chargement de l'article');
+        setError("Erreur lors du chargement de l'article");
       } finally {
         setLoading(false);
       }
@@ -71,38 +46,21 @@ export default function EditArticlePage() {
     fetchArticle();
   }, [id, router]);
 
-  const handleSubmit = async (data: {
-    title: string;
-    excerpt?: string;
-    content: any[];
-    status: string;
-    featuredImageId?: string;
-    authorId: string;
-    categoryIds: string[];
-    tagIds: string[];
-    seoTitle?: string;
-    seoDescription?: string;
-    seoKeywords?: string[];
-    scheduledAt?: string;
-    allowComments?: boolean;
-  }) => {
+  const handleSubmit = async (data: ArticleFormValues) => {
     if (!id) return;
     setIsSubmitting(true);
     setError('');
 
     try {
-      const token = localStorage.getItem('admin_token');
       const res = await fetch(`/api/admin/articles/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(data),
       });
 
       if (res.status === 401) {
-        localStorage.removeItem('admin_token');
         router.push('/admin/login');
         return;
       }
@@ -140,7 +98,7 @@ export default function EditArticlePage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="font-display text-2xl font-bold text-ink">Modifier l'article</h1>
+        <h1 className="font-display text-2xl font-bold text-ink">Modifier l&apos;article</h1>
       </div>
 
       {error && (
@@ -155,15 +113,15 @@ export default function EditArticlePage() {
           excerpt: article.excerpt,
           content: article.content,
           status: article.status,
-          featuredImageId: article.featuredImageId,
-          authorId: article.author.id,
-          categoryIds: article.categories.map((c) => c.id),
-          tagIds: article.tags.map((t) => t.id),
+          scheduledAt: article.scheduledAt,
+          featuredImage: article.featuredImage,
+          authorId: article.authorId,
+          categoryIds: article.categoryIds,
+          tagIds: article.tagIds,
           seoTitle: article.seoTitle,
           seoDescription: article.seoDescription,
-          seoKeywords: article.seoKeywords,
-          scheduledAt: article.scheduledAt,
-          allowComments: article.allowComments,
+          slug: article.slug,
+          isFeatured: article.isFeatured,
         }}
         onSubmit={handleSubmit}
         isSubmitting={isSubmitting}

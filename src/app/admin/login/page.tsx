@@ -29,7 +29,6 @@ export default function LoginPage() {
         return;
       }
 
-      localStorage.setItem('admin_token', data.jeton);
       router.push('/admin/articles');
     } catch {
       setError('Erreur de connexion au serveur');

@@ -3,8 +3,8 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Footer from '@/components/Footer';
 import RiceWareNav from '@/components/RiceWareNav';
-import { getBlogPostBySlug, incrementViewCount } from '@/lib/actions/blog';
-import { AnyBlogBlock } from '@/lib/ricewareModels';
+import { getPublicPost, incrementPostViews } from '@/lib/data/blog';
+import type { AnyBlogBlock } from '@/lib/ricewareModels';
 
 export async function generateMetadata({
   params,
@@ -12,7 +12,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const post = await getBlogPostBySlug(slug);
+  const post = await getPublicPost(slug);
 
   if (!post) {
     return { title: 'Article non trouvé | RiceWare CI' };
@@ -30,14 +30,13 @@ export default async function BlogPostDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const post = await getBlogPostBySlug(slug);
+  const post = await getPublicPost(slug);
 
-  if (!post || post.status !== 'published') {
+  if (!post) {
     notFound();
   }
 
-  // Increment view count
-  await incrementViewCount(slug);
+  await incrementPostViews(slug);
 
   return (
     <div className="min-h-screen w-full bg-ground font-body text-ink flex flex-col">

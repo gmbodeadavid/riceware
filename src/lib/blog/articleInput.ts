@@ -152,7 +152,10 @@ export function parseArticleInput(body: unknown, now = new Date()): ArticleInput
     excerpt: optionalText(body.excerpt, ARTICLE_LIMITS.excerpt),
     status,
     scheduledAt: status === 'scheduled' ? scheduledAt : null,
-    featuredImageId: optionalText(body.featuredImageId, 64),
+    featuredImageId: optionalText(
+      body.featuredImageId ?? (isRecord(body.featuredImage) ? body.featuredImage.id : null),
+      64,
+    ),
     authorId,
     categoryIds,
     tagIds,

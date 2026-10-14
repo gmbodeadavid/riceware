@@ -1,5 +1,7 @@
 'use server';
 
+import fs from 'node:fs';
+import path from 'node:path';
 import {
   EntityId,
   IsoDateTime,
@@ -7,28 +9,21 @@ import {
   OrderStatus,
   PaymentStatus,
   Customer,
-  Address,
   OrderLine,
-  PaymentAttempt,
-  Shipment,
   MoneyAmount,
   SalesChannel,
   generateOrderNumber,
-  createMoney,
   getOrderSubtotal,
   getOrderTotal,
 } from '@/lib/ricewareModels';
 
 const ORDERS_KEY = 'riceware:ecommerce:orders';
 const CUSTOMERS_KEY = 'riceware:ecommerce:customers';
-const ADDRESSES_KEY = 'riceware:ecommerce:addresses';
-const PAYMENT_ATTEMPTS_KEY = 'riceware:ecommerce:payment_attempts';
-const SHIPMENTS_KEY = 'riceware:ecommerce:shipments';
 
 function readStorage<T>(key: string, fallback: T): T {
   if (typeof window !== 'undefined') return fallback;
   try {
-    const data = require('fs').readFileSync(require('path').join(process.cwd(), 'data', `${key}.json`), 'utf-8');
+    const data = fs.readFileSync(path.join(process.cwd(), 'data', `${key}.json`), 'utf-8');
     return JSON.parse(data);
   } catch {
     return fallback;
@@ -37,8 +32,6 @@ function readStorage<T>(key: string, fallback: T): T {
 
 function writeStorage<T>(key: string, value: T): void {
   if (typeof window !== 'undefined') return;
-  const fs = require('fs');
-  const path = require('path');
   const dir = path.join(process.cwd(), 'data');
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, `${key}.json`), JSON.stringify(value, null, 2));

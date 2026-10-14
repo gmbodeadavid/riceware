@@ -3,18 +3,17 @@ import Image from 'next/image';
 import Link from 'next/link';
 import Footer from '@/components/Footer';
 import RiceWareNav from '@/components/RiceWareNav';
+import { listPublicPosts } from '@/lib/data/blog';
 
 export const metadata: Metadata = {
   title: 'Blog | RiceWare CI',
   description: 'Les actualités et retours d’expérience de RiceWare CI.',
 };
 
-import { getBlogPosts } from '@/lib/actions/blog';
-
 export default async function BlogPage() {
-  const { posts } = await getBlogPosts({ status: 'published' });
-  const featuredPost = posts[0];
-  const otherPosts = posts.slice(1);
+  const posts = await listPublicPosts();
+  const featuredPost = posts.find((post) => post.isFeatured) ?? posts[0];
+  const otherPosts = posts.filter((post) => post.id !== featuredPost?.id);
 
   return (
     <div className="min-h-screen w-full bg-ground font-body text-ink flex flex-col">
@@ -65,7 +64,7 @@ export default async function BlogPage() {
 
                 <div className="relative order-1 min-h-[240px] bg-surface sm:min-h-[320px] md:order-2 md:min-h-[380px]">
                   <Image
-                    src="/rice-hero.png"
+                    src={featuredPost.coverImage?.url ?? '/rice-hero.png'}
                     alt={featuredPost.title}
                     fill
                     sizes="(max-width: 768px) 100vw, 50vw"
