@@ -40,13 +40,13 @@ function textToBlocks(value: string): AnyBlogBlock[] {
     .split(/\n{2,}/)
     .map((part) => part.trim())
     .filter(Boolean)
-    .map((text, index) => {
+    .map((text, index): AnyBlogBlock => {
       if (text === '---') {
         return {
           id: crypto.randomUUID(),
           type: 'divider' as const,
           order: index,
-          content: {},
+          content: { style: 'solid' },
         };
       }
 
