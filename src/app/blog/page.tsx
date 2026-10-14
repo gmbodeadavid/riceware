@@ -1,9 +1,12 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
+import { connection } from 'next/server';
 import Footer from '@/components/Footer';
 import RiceWareNav from '@/components/RiceWareNav';
 import { listPublicPosts } from '@/lib/data/blog';
+
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'Blog | RiceWare CI',
@@ -11,6 +14,7 @@ export const metadata: Metadata = {
 };
 
 export default async function BlogPage() {
+  await connection();
   const posts = await listPublicPosts();
   const featuredPost = posts.find((post) => post.isFeatured) ?? posts[0];
   const otherPosts = posts.filter((post) => post.id !== featuredPost?.id);

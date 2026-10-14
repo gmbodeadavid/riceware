@@ -1,10 +1,13 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { connection } from 'next/server';
 import Link from 'next/link';
 import Footer from '@/components/Footer';
 import RiceWareNav from '@/components/RiceWareNav';
 import { getPublicPost, incrementPostViews } from '@/lib/data/blog';
 import type { AnyBlogBlock } from '@/lib/ricewareModels';
+
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({
   params,
@@ -29,6 +32,7 @@ export default async function BlogPostDetailPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
+  await connection();
   const { slug } = await params;
   const post = await getPublicPost(slug);
 

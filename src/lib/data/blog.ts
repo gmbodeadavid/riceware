@@ -319,35 +319,47 @@ function toPublicSummary(row: PublicPostRow): PublicArticleSummary {
 }
 
 export async function listPublicPosts(): Promise<PublicArticleSummary[]> {
-  const rows = await prisma.blogPost.findMany({
-    where: publicPostWhere(new Date()),
-    include: publicPostInclude,
-    orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }],
-  });
-  return rows.map(toPublicSummary);
+  try {
+    const rows = await prisma.blogPost.findMany({
+      where: publicPostWhere(new Date()),
+      include: publicPostInclude,
+      orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }],
+    });
+    return rows.map(toPublicSummary);
+  } catch (error) {
+    console.error('Chargement des articles publics impossible :', error);
+    return [];
+  }
 }
 
 export async function getPublicPost(slug: string): Promise<PublicArticle | null> {
-  const row = await prisma.blogPost.findFirst({
-    where: { AND: [{ slug }, publicPostWhere(new Date())] },
-    include: { ...publicPostInclude, tags: true },
-  });
-  if (!row) return null;
+  try {
+    const row = await prisma.blogPost.findFirst({
+      where: { AND: [{ slug }, publicPostWhere(new Date())] },
+      include: { ...publicPostInclude, tags: true },
+    });
+    if (!row) return null;
 
-  const post = mapPost(row);
-  return {
-    ...toPublicSummary(row),
-    content: post.content,
-    media: await loadMediaMap(post.content),
-    seoTitle: post.seoTitle,
-    seoDescription: post.seoDescription,
-  };
+    const post = mapPost(row);
+    return {
+      ...toPublicSummary(row),
+      content: post.content,
+      media: await loadMediaMap(post.content),
+      seoTitle: post.seoTitle,
+      seoDescription: post.seoDescription,
+    };
+  } catch (error) {
+    console.error(`Chargement de l’article public "${slug}" impossible :`, error);
+    return null;
+  }
 }
 
 export async function incrementPostViews(slug: string): Promise<void> {
   await prisma.blogPost.updateMany({
     where: { AND: [{ slug }, publicPostWhere(new Date())] },
     data: { viewCount: { increment: 1 } },
+  }).catch((error) => {
+    console.error(`Incrément de vue impossible pour "${slug}" :`, error);
   });
 }
 
