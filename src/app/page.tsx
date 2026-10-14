@@ -5,7 +5,9 @@ import WhyHuskSection from '@/components/WhyHuskSection';
 import ProductSection from '@/components/ProductSection';
 import ProcessSection from '@/components/ProcessSection';
 import ImpactSection from '@/components/ImpactSection';
-import TeamFinanceSection from '@/components/TeamFinanceSection';
+import TeamSection from '@/components/TeamSection';
+import TestimonialsSection from '@/components/TestimonialsSection';
+import FaqSection from '@/components/FaqSection';
 import Footer from '@/components/Footer';
 
 export default function Home() {
@@ -19,7 +21,9 @@ export default function Home() {
         <ProductSection />
         <ProcessSection />
         <ImpactSection />
-        <TeamFinanceSection />
+        <TeamSection />
+        <TestimonialsSection />
+        <FaqSection />
       </main>
       <Footer />
     </div>

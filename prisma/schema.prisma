@@ -1,0 +1,212 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id            String        @id
+  slug          String        @unique
+  name          String
+  category      String
+  headline      String        @default("")
+  summary       String
+  format        String
+  material      String
+  image         String
+  imagesByColor Json
+  status        String
+  currentPrice  String
+  oldPrice      String
+  accent        String
+  sortOrder     Int           @default(0)
+  packs         ProductPack[]
+}
+
+model ProductPack {
+  id        String  @id
+  productId String
+  packKey   String
+  label     String
+  quantity  Int
+  price     String
+  note      String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, packKey])
+}
+
+model BlogAuthor {
+  id          String     @id @default(cuid())
+  name        String
+  slug        String     @unique
+  bio         String?
+  avatarUrl   String?
+  socialLinks Json?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  posts       BlogPost[]
+}
+
+model BlogCategory {
+  id          String     @id @default(cuid())
+  slug        String     @unique
+  name        String
+  description String?
+  color       String?
+  parentId    String?
+  sortOrder   Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  posts       BlogPost[] @relation("BlogCategoryToBlogPost")
+}
+
+model BlogTag {
+  id          String     @id @default(cuid())
+  slug        String     @unique
+  name        String
+  description String?
+  color       String?
+  usageCount  Int        @default(0)
+  createdAt   DateTime   @default(now())
+  posts       BlogPost[] @relation("BlogPostToBlogTag")
+}
+
+model BlogMedia {
+  id              String     @id @default(cuid())
+  filename        String
+  originalName    String
+  mimeType        String
+  sizeBytes       Int
+  width           Int?
+  height          Int?
+  durationSeconds Int?
+  url             String
+  thumbnailUrl    String?
+  altText         String?
+  caption         String?
+  type            String
+  uploadedBy      String     @default("admin")
+  createdAt       DateTime   @default(now())
+  featuredOn      BlogPost[]
+}
+
+model BlogPost {
+  id                 String         @id @default(cuid())
+  slug               String         @unique
+  title              String
+  excerpt            String?
+  content            Json
+  status             String
+  featuredImageId    String?
+  authorId           String
+  seoTitle           String?
+  seoDescription     String?
+  seoKeywords        Json?
+  scheduledAt        DateTime?
+  publishedAt        DateTime?
+  publishedBy        String?
+  readingTimeMinutes Int            @default(1)
+  viewCount          Int            @default(0)
+  likeCount          Int            @default(0)
+  commentCount       Int            @default(0)
+  isFeatured         Boolean        @default(false)
+  allowComments      Boolean        @default(true)
+  version            Int            @default(1)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  author             BlogAuthor     @relation(fields: [authorId], references: [id])
+  featuredImage      BlogMedia?     @relation(fields: [featuredImageId], references: [id])
+  categories         BlogCategory[] @relation("BlogCategoryToBlogPost")
+  tags               BlogTag[]      @relation("BlogPostToBlogTag")
+
+  // Traductions
+  titreEn            String?
+  titreKo            String?
+  extraitEn          String?
+  extraitKo          String?
+  contenuHtmlEn      String?
+  contenuHtmlKo      String?
+}
+
+model BlogSettings {
+  id                    String  @id @default("default")
+  postsPerPage          Int     @default(10)
+  allowComments         Boolean @default(true)
+  commentModeration     Boolean @default(true)
+  autoCloseCommentsDays Int     @default(30)
+  defaultAuthorId       String  @default("")
+  defaultCategoryId     String  @default("")
+  rssEnabled            Boolean @default(true)
+  rssItemsCount         Int     @default(20)
+  jsonLdEnabled         Boolean @default(true)
+  socialShareEnabled    Boolean @default(true)
+  readingTimeEnabled    Boolean @default(true)
+  relatedPostsEnabled   Boolean @default(true)
+  relatedPostsCount     Int     @default(3)
+}
+
+model Customer {
+  id        String    @id @default(cuid())
+  fullName  String
+  phone     String
+  email     String?
+  notes     String?
+  createdAt DateTime  @default(now())
+  addresses Address[]
+  orders    Order[]
+}
+
+model Address {
+  id                   String   @id @default(cuid())
+  customerId           String
+  city                 String
+  district             String?
+  details              String?
+  deliveryInstructions String?
+  customer             Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  orders               Order[]
+}
+
+model Order {
+  id                     String      @id @default(cuid())
+  orderNumber            String      @unique
+  customerId             String
+  deliveryAddressId      String
+  channel                String
+  status                 String
+  paymentStatus          String
+  paymentPlan            String?
+  deliveryOption         String?
+  preferredPaymentMethod String?
+  subtotalAmount         Int         @default(0)
+  deliveryFeeAmount      Int         @default(0)
+  totalAmount            Int         @default(0)
+  currency               String      @default("XOF")
+  notes                  String?
+  createdAt              DateTime    @default(now())
+  confirmedAt            DateTime?
+  preparedAt             DateTime?
+  deliveredAt            DateTime?
+  cancelledAt            DateTime?
+  deliveryAddress        Address     @relation(fields: [deliveryAddressId], references: [id])
+  customer               Customer    @relation(fields: [customerId], references: [id])
+  lines                  OrderLine[]
+}
+
+model OrderLine {
+  id                  String  @id @default(cuid())
+  orderId             String
+  productId           String?
+  productPackId       String?
+  packNameSnapshot    String
+  packContentSnapshot Json
+  quantity            Int
+  unitPriceAmount     Int
+  lineTotalAmount     Int
+  packQuantity        Int     @default(1)
+  order               Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}

@@ -1,45 +1,42 @@
+import Image from 'next/image';
+import Link from 'next/link';
 import SectionLabel from './SectionLabel';
-import ProductCarousel from './ProductCarousel';
-
-const PROOFS = [
-  'Résistance mécanique',
-  'Résistance à l’eau',
-  'Résistance à la chaleur',
-  'Contact alimentaire',
-  'Biodégradabilité / compostabilité',
-];
+import { PRODUCTS } from '@/lib/boutique';
 
 export default function ProductSection() {
   return (
-    <section id="produit" className="bg-ground py-section">
+    <section id="produit" className="bg-surface py-section">
       <div className="max-w-page mx-auto px-5 sm:px-8">
-        <SectionLabel>LE PRODUIT</SectionLabel>
-        <h2 className="font-display text-title font-bold text-ink mb-8">
-          Une recette ouverte.
-        </h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6 items-stretch">
-
-          <ProductCarousel />
-
-          {/* Evidence register: its rows share the height left by the carousel next to it. */}
-          <div className="bg-surface border border-line rounded-[10px] p-5 sm:px-6 flex flex-col">
-            <div className="flex flex-wrap justify-between items-start gap-x-4 gap-y-1 mb-2">
-              <h3 className="font-display text-base font-semibold text-ink m-0">Registre des preuves</h3>
-              <span className="text-xs font-mono-brand text-ink-muted italic">“Aucune allégation sans preuve.”</span>
-            </div>
-            <div className="flex flex-col flex-1">
-
-              {PROOFS.map((item, i) => (
-                <div key={item} className={`flex-1 flex justify-between items-center gap-4 py-2 ${i !== 0 ? 'border-t border-line' : ''}`}>
-                  <span className="text-sm text-ink font-medium">{item}</span>
-                  <span className="font-mono-brand bg-grain text-ink-muted text-[11px] font-medium px-2 py-0.5 rounded tracking-[0.06em] uppercase whitespace-nowrap">À tester</span>
-                </div>
-              ))}
-
-            </div>
+        <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <SectionLabel>NOTRE GAMME</SectionLabel>
+            <h2 className="font-display text-title font-bold text-ink m-0">Nos produits</h2>
           </div>
+          <Link href="/boutique" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-paddy px-5 py-2.5 text-sm font-semibold text-on-paddy transition-colors hover:bg-paddy-deep focus-visible:outline-2 focus-visible:outline-paddy focus-visible:outline-offset-2">
+            Voir toute la gamme
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
+          </Link>
+        </div>
 
+        <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-3 xl:grid-cols-5">
+          {PRODUCTS.map((product) => (
+            <Link
+              key={product.id}
+              href={`/boutique/${product.slug}`}
+              aria-label={product.name}
+              className="group relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl border border-line bg-ground shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-paddy-soft hover:shadow-md"
+            >
+              <Image
+                src={product.image}
+                alt={product.name}
+                fill
+                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                className="object-contain p-4 transition-transform duration-300 group-hover:scale-105 sm:p-6"
+              />
+            </Link>
+          ))}
         </div>
       </div>
     </section>

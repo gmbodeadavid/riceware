@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F4F1E4">
+<title>Process de fabrication RiceWare CI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F4F1E4;
+    --ink: #1C2A20;
+    --paper: #FFFDF6;
+    --line: #DDD6BF;
+    --green: #2E7D5B;
+    --amber: #D3A61F;
+    --teal: #008080;
+    --violet: #6A5ACD;
+    --grey: #808080;
+    --husk: #D9B77A;
+    --ease: cubic-bezier(.2,.8,.2,1);
+  }
+  * { box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: var(--bg); color: var(--ink); font-family: 'IBM Plex Sans', sans-serif; -webkit-font-smoothing: antialiased; }
+  button { font: inherit; }
+  #canvas-container, #hotspots-container { position: fixed; inset: 0; }
+  #canvas-container canvas { display: block; width: 100%; height: 100%; outline: none; touch-action: none; }
+  #hotspots-container { z-index: 5; pointer-events: none; overflow: hidden; }
+  #ui-wrapper { position: fixed; inset: 0; z-index: 10; padding: 22px 24px max(18px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; justify-content: space-between; pointer-events: none; }
+  #ui-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+  #header { display: flex; flex-direction: column; gap: 4px; }
+  h1 { margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 24px; font-weight: 700; line-height: 1.1; }
+  h2 { margin: 0; font-size: 14px; font-weight: 400; color: rgba(28,42,32,.72); }
+  #controls-desktop { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; pointer-events: auto; }
+  #controls-mobile { display: none; pointer-events: auto; width: 100%; justify-content: center; gap: 7px; padding: 9px; border: 1px solid rgba(221,214,191,.9); border-radius: 14px; background: rgba(255,253,246,.96); box-shadow: 0 4px 18px rgba(28,42,32,.08); }
+  #ui-bottom { display: flex; align-items: flex-end; justify-content: center; gap: 28px; }
+  #progress-container { display: flex; min-width: min(600px, 48vw); flex-direction: column; align-items: center; gap: 9px; pointer-events: auto; }
+  #progress-bar { display: flex; width: 100%; height: 7px; gap: 3px; }
+  .step-seg { position: relative; flex: 1; min-width: 0; border: 0; border-radius: 3px; padding: 0; background: rgba(28,42,32,.16); cursor: pointer; transition: transform .2s var(--ease), opacity .2s; }
+  .step-seg:hover { transform: scaleY(1.7); }
+  .step-seg.active { background: var(--step-color); }
+  .step-seg.visited { background: color-mix(in srgb, var(--step-color), transparent 42%); }
+  #step-label-container { display: flex; min-height: 30px; align-items: center; justify-content: center; gap: 10px; }
+  #step-badge { display: flex; width: 28px; height: 28px; flex: 0 0 28px; align-items: center; justify-content: center; border-radius: 50%; color: #fff; font-size: 13px; font-weight: 700; transition: background .25s; }
+  #step-label { font-size: 17px; font-weight: 600; }
+  .ui-button { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; gap: 6px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--ink); box-shadow: 0 2px 6px rgba(28,42,32,.06); cursor: pointer; font-size: 12px; font-weight: 600; transition: transform .2s var(--ease), background .2s, color .2s, border-color .2s; }
+  .ui-button:hover { transform: translateY(-1px); background: #F8F6EF; }
+  .ui-button:active { transform: translateY(0); }
+  .ui-button[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: var(--paper); }
+  .ui-button svg { width: 16px; height: 16px; flex: 0 0 16px; }
+  .ui-button.icon-only { width: 42px; min-width: 42px; min-height: 42px; padding: 0; }
+  .ui-button:focus-visible, .step-seg:focus-visible, .hotspot:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
+  #hint { position: fixed; bottom: 78px; left: 50%; z-index: 8; transform: translateX(-50%); pointer-events: none; color: rgba(28,42,32,.72); font-size: 12px; text-align: center; transition: opacity .5s; white-space: nowrap; }
+  #hint.faded { opacity: 0; }
+  .hotspot { position: absolute; z-index: 6; width: 22px; height: 22px; padding: 0; transform: translate(-50%,-50%); border: 0; background: transparent; cursor: pointer; pointer-events: auto; }
+  .hotspot-ring { position: absolute; inset: 0; border: 2px solid var(--amber); border-radius: 50%; background: rgba(255,253,246,.88); animation: hotspot-pulse 1.9s infinite; }
+  .hotspot-dot { position: absolute; inset: 7px; border-radius: 50%; background: var(--amber); }
+  @keyframes hotspot-pulse { 0% { transform: scale(.85); opacity: .9; } 100% { transform: scale(1.45); opacity: 0; } }
+  #loader { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: var(--bg); transition: opacity .55s var(--ease), visibility .55s; }
+  #loader.hidden { visibility: hidden; opacity: 0; }
+  .loader-brand { font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 700; }
+  .loader-brand b { color: var(--green); }
+  .loader-bar-bg { width: 170px; height: 4px; overflow: hidden; border-radius: 3px; background: var(--line); }
+  #loader-bar { width: 0; height: 100%; background: var(--amber); transition: width .16s linear; }
+  .loader-lbl { font-size: 12px; color: rgba(28,42,32,.68); }
+  #webgl-error { position: fixed; inset: 0; z-index: 200; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 32px; background: var(--bg); text-align: center; }
+  #webgl-error svg { width: 42px; height: 42px; color: var(--amber); }
+  #webgl-error strong { font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; }
+  #webgl-error p { max-width: 420px; margin: 0; color: rgba(28,42,32,.72); font-size: 14px; line-height: 1.55; }
+  @media (max-width: 900px) {
+    #ui-wrapper { padding: 15px 14px max(12px, env(safe-area-inset-bottom)); }
+    #ui-top { flex-direction: column; align-items: flex-start; gap: 8px; }
+    #header { max-width: 75vw; }
+    h1 { font-size: 20px; }
+    h2 { font-size: 12px; }
+    #controls-desktop { display: none; }
+    #controls-mobile { display: flex; }
+    #ui-bottom { width: 100%; flex-direction: column-reverse; align-items: center; gap: 9px; }
+    #progress-container { width: 100%; min-width: 0; gap: 6px; }
+    #step-label { font-size: 15px; }
+    #step-badge { width: 25px; height: 25px; flex-basis: 25px; }
+    #hint { bottom: 150px; max-width: 92vw; white-space: normal; font-size: 11px; }
+    .ui-button.icon-only { width: 44px; min-width: 44px; min-height: 44px; }
+  }
+  @media (max-width: 360px) {
+    #ui-top { gap: 5px; }
+    h1 { font-size: 18px; }
+    #controls-mobile { gap: 5px; padding: 7px; }
+    .ui-button.icon-only { width: 42px; min-width: 42px; min-height: 42px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
+  }
+</style>
+</head>
+<body>
+<div id="canvas-container" aria-hidden="true"></div>
+<div id="hotspots-container" aria-label="Étapes du procédé"></div>
+
+<div id="loader" role="status" aria-live="polite">
+  <div class="loader-brand">RiceWare CI</div>
+  <div class="loader-bar-bg"><div id="loader-bar"></div></div>
+  <div class="loader-lbl">Chargement des textures…</div>
+</div>
+
+<div id="webgl-error" role="alert">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v6m0 4h.01" stroke-linecap="round"/></svg>
+  <strong>WebGL indisponible.</strong>
+  <p>Cette animation pédagogique 3D ne peut pas s’afficher sur ce navigateur.</p>
+</div>
+
+<div id="ui-wrapper">
+  <div id="ui-top">
+    <header id="header">
+      <h1>Process de fabrication RiceWare CI</h1>
+      <h2>De la rizerie au stockage produit fini</h2>
+    </header>
+    <div id="controls-desktop" role="group" aria-label="Commandes du procédé">
+      <button id="btn-prev-dt" class="ui-button" type="button" aria-label="Étape précédente" title="Étape précédente">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>Précédent
+      </button>
+      <button id="btn-next-dt" class="ui-button" type="button" aria-label="Étape suivante" title="Étape suivante">
+        Suivant<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+      </button>
+      <button id="btn-auto-dt" class="ui-button" type="button" aria-label="Activer la lecture automatique" aria-pressed="false">
+        <svg class="icon-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="m8 5 11 7-11 7z"/></svg>Lecture auto
+      </button>
+      <button id="btn-free-dt" class="ui-button" type="button" aria-label="Activer la vue libre" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v3m0 12v3M3 12h3m12 0h3M5.64 5.64l2.12 2.12m8.48 8.48 2.12 2.12m0-12.72-2.12 2.12m-8.48 8.48-2.12 2.12"/><circle cx="12" cy="12" r="4"/></svg>Vue libre
+      </button>
+      <button id="btn-reset-dt" class="ui-button" type="button" aria-label="Réinitialiser la vue" title="Réinitialiser (R)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.64-6.36L3 8"/><path d="M3 3v5h5"/></svg>Vue d’ensemble
+      </button>
+    </div>
+  </div>
+
+  <div id="ui-bottom">
+    <div id="controls-mobile" role="group" aria-label="Commandes du procédé">
+      <button id="btn-prev-mb" class="ui-button icon-only" type="button" aria-label="Étape précédente" title="Étape précédente"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
+      <button id="btn-auto-mb" class="ui-button icon-only" type="button" aria-label="Activer la lecture automatique" aria-pressed="false" title="Lecture auto"><svg class="icon-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="m8 5 11 7-11 7z"/></svg></button>
+      <button id="btn-next-mb" class="ui-button icon-only" type="button" aria-label="Étape suivante" title="Étape suivante"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
+      <button id="btn-free-mb" class="ui-button icon-only" type="button" aria-label="Activer la vue libre" aria-pressed="false" title="Vue libre"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg></button>
+      <button id="btn-reset-mb" class="ui-button icon-only" type="button" aria-label="Réinitialiser la vue" title="Vue d’ensemble (R)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.64-6.36L3 8"/><path d="M3 3v5h5"/></svg></button>
+    </div>
+    <div id="progress-container">
+      <div id="progress-bar" role="group" aria-label="Progression du procédé"></div>
+      <div id="step-label-container" aria-live="polite">
+        <div id="step-badge">—</div>
+        <div id="step-label">Vue d’ensemble</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="hint">Glisser pour orbiter · Molette pour zoomer · ← → pour naviguer</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { mergeGeometries, toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
+
+const PALETTE = {
+  bg: 0xF4F1E4, ink: 0x1C2A20, paper: 0xFFFDF6, line: 0xDDD6BF,
+  green: 0x2E7D5B, amber: 0xD3A61F, teal: 0x008080, violet: 0x6A5ACD, grey: 0x808080,
+  husk: 0xD9B77A, powder: 0xE8DCC0, panel: 0xEFE6D2, steel: 0xB0B5B8,
+  concrete: 0xE0E0E0, wood: 0xA5764F, binder: 0xFFFDF6
+};
+const CSS_COLOR = { green: '#2E7D5B', amber: '#D3A61F', teal: '#008080', violet: '#6A5ACD', grey: '#808080' };
+const STEPS = [
+  { name: 'Rizerie', color: 'green' },
+  { name: 'Réception', color: 'green' },
+  { name: 'Nettoyage', color: 'green' },
+  { name: 'Broyage', color: 'green' },
+  { name: 'Tamisage', color: 'green' },
+  { name: 'Stockage poudre', color: 'green' },
+  { name: 'Préparation liant', color: 'amber' },
+  { name: 'Mélange coques + liant', color: 'teal' },
+  { name: 'Formation matelas', color: 'teal' },
+  { name: 'Pré-pressage à froid', color: 'teal' },
+  { name: 'Pressage à chaud', color: 'teal' },
+  { name: 'Refroidissement', color: 'teal' },
+  { name: 'Démoulage', color: 'teal' },
+  { name: 'Séchage', color: 'violet' },
+  { name: 'Finition (ébavurage, ponçage)', color: 'violet' },
+  { name: 'Contrôle qualité', color: 'violet' },
+  { name: 'Emballage', color: 'grey' },
+  { name: 'Stockage produits finis', color: 'grey' }
+];
+const Easing = {
+  linear: t => t,
+  outCubic: t => 1 - Math.pow(1 - t, 3),
+  inOutCubic: t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+};
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $ = id => document.getElementById(id);
+const activeTweens = new Set();
+let renderer, scene, camera, controls, roomEnv, spotlight;
+let currentStep = -1, autoPlay = false, freeView = false, introRunning = false;
+let lastAutoStep = 0, hintTimer = 0, lastPointerActivity = performance.now();
+let pageVisible = true, inViewport = true, loopRunning = false;
+let stations = [], hotspots = [], progressButtons = [];
+let sceneRoot, floorShadowTexture;
+
+function tween({ duration, ease = Easing.inOutCubic, update, done, delay = 0 }) {
+  const item = { start: performance.now() + delay, duration: reducedMotion ? 0 : duration, ease, update, done };
+  activeTweens.add(item);
+  return item;
+}
+function runTweens(now) {
+  for (const item of activeTweens) {
+    if (now < item.start) continue;
+    const raw = item.duration === 0 ? 1 : Math.min((now - item.start) / item.duration, 1);
+    item.update(item.ease(raw));
+    if (raw >= 1) { item.done?.(); activeTweens.delete(item); }
+  }
+}
+function mulberry32(seed) {
+  return function random() {
+    let t = seed += 0x6D2B79F5;
+    t = Math.imul(t ^ t >>> 15, t | 1);
+    t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function hexCss(value) { return `#${value.toString(16).padStart(6, '0')}`; }
+
+// Recettes procédurales : la carte de relief sert aussi à dériver une normale douce.
+function proceduralMaps(base, seed, recipe) {
+  const size = 256;
+  const colorCanvas = document.createElement('canvas');
+  colorCanvas.width = colorCanvas.height = size;
+  const context = colorCanvas.getContext('2d', { willReadFrequently: true });
+  context.fillStyle = hexCss(base);
+  context.fillRect(0, 0, size, size);
+  const random = mulberry32(seed);
+  const count = recipe === 'steel' ? 1300 : recipe === 'wood' ? 1100 : 2400;
+  for (let i = 0; i < count; i++) {
+    const alpha = 0.025 + random() * 0.09;
+    if (recipe === 'wood' || recipe === 'husk') {
+      context.strokeStyle = random() > .5 ? `rgba(95,65,35,${alpha})` : `rgba(255,246,219,${alpha})`;
+      context.lineWidth = .4 + random() * 1.4;
+      const x = random() * size, y = random() * size;
+      context.beginPath();
+      context.moveTo(x, y);
+      context.lineTo(x + (recipe === 'steel' ? 20 : 3 + random() * 18), y + (random() - .5) * 3);
+      context.stroke();
+    } else {
+      context.fillStyle = random() > .5 ? `rgba(45,42,34,${alpha})` : `rgba(255,255,255,${alpha})`;
+      context.beginPath();
+      context.arc(random() * size, random() * size, .4 + random() * (recipe === 'steel' ? 1.2 : 2.1), 0, Math.PI * 2);
+      context.fill();
+    }
+  }
+  const pixels = context.getImageData(0, 0, size, size);
+  const normalCanvas = document.createElement('canvas');
+  normalCanvas.width = normalCanvas.height = size;
+  const normalContext = normalCanvas.getContext('2d');
+  const normalImage = normalContext.createImageData(size, size);
+  const luminance = (x, y) => {
+    const i = (Math.max(0, Math.min(size - 1, y)) * size + Math.max(0, Math.min(size - 1, x))) * 4;
+    return (pixels.data[i] * .299 + pixels.data[i + 1] * .587 + pixels.data[i + 2] * .114) / 255;
+  };
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    const dx = (luminance(x + 1, y) - luminance(x - 1, y)) * 2.2;
+    const dy = (luminance(x, y + 1) - luminance(x, y - 1)) * 2.2;
+    const n = new THREE.Vector3(-dx, -dy, 1).normalize();
+    const i = (y * size + x) * 4;
+    normalImage.data[i] = (n.x * .5 + .5) * 255;
+    normalImage.data[i + 1] = (n.y * .5 + .5) * 255;
+    normalImage.data[i + 2] = (n.z * .5 + .5) * 255;
+    normalImage.data[i + 3] = 255;
+  }
+  normalContext.putImageData(normalImage, 0, 0);
+  const color = new THREE.CanvasTexture(colorCanvas);
+  const normal = new THREE.CanvasTexture(normalCanvas);
+  for (const texture of [color, normal]) {
+    texture.colorSpace = texture === color ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(recipe === 'steel' ? 2 : 1.35, recipe === 'steel' ? .6 : 1.35);
+    texture.anisotropy = 4;
+  }
+  return { color, normal };
+}
+function makeMaterial(color, seed, recipe, options = {}) {
+  const maps = proceduralMaps(color, seed, recipe);
+  return new THREE.MeshStandardMaterial({
+    color: 0xffffff, map: maps.color, normalMap: maps.normal, normalScale: new THREE.Vector2(.34, .34),
+    roughness: recipe === 'steel' ? .42 : .86, metalness: recipe === 'steel' ? .72 : 0, ...options
+  });
+}
+function makeShadowTexture() {
+  const canvas = document.createElement('canvas'); canvas.width = canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  const gradient = ctx.createRadialGradient(64, 64, 5, 64, 64, 62);
+  gradient.addColorStop(0, 'rgba(28,42,32,0.22)');
+  gradient.addColorStop(.45, 'rgba(28,42,32,0.09)');
+  gradient.addColorStop(1, 'rgba(28,42,32,0)');
+  ctx.fillStyle = gradient; ctx.fillRect(0, 0, 128, 128);
+  return new THREE.CanvasTexture(canvas);
+}
+let MAT = {};
+function addMesh(parent, geometry, material, position = [0, 0, 0], rotation = [0, 0, 0], options = {}) {
+  const mesh = new THREE.Mesh(geometry, material.clone());
+  mesh.position.set(...position); mesh.rotation.set(...rotation);
+  mesh.castShadow = options.castShadow !== false; mesh.receiveShadow = options.receiveShadow !== false;
+  if (options.name) mesh.name = options.name;
+  parent.add(mesh);
+  return mesh;
+}
+function box(parent, w, h, d, material, pos = [0, 0, 0], rot = [0, 0, 0], name = '') {
+  let geometry = new THREE.BoxGeometry(w, h, d);
+  geometry = toCreasedNormals(geometry, THREE.MathUtils.degToRad(38));
+  return addMesh(parent, geometry, material, pos, rot, { name });
+}
+function cylinder(parent, rt, rb, h, material, pos = [0, 0, 0], segments = 16, name = '') {
+  return addMesh(parent, new THREE.CylinderGeometry(rt, rb, h, segments), material, pos, [0, 0, 0], { name });
+}
+function sphere(parent, r, material, pos = [0, 0, 0], scale = [1, 1, 1]) {
+  const mesh = addMesh(parent, new THREE.IcosahedronGeometry(r, 1), material, pos);
+  mesh.scale.set(...scale);
+  return mesh;
+}
+function rodBetween(parent, a, b, radius, material, segments = 8) {
+  const start = new THREE.Vector3(...a), end = new THREE.Vector3(...b);
+  const direction = new THREE.Vector3().subVectors(end, start);
+  const mesh = cylinder(parent, radius, radius, direction.length(), material, start.clone().add(end).multiplyScalar(.5).toArray(), segments);
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
+  return mesh;
+}
+function addOperator(parent, x = 1.25, z = .6) {
+  const g = new THREE.Group(); g.position.set(x, .22, z); parent.add(g);
+  cylinder(g, .2, .23, .75, MAT.steel, [0, .48, 0], 8);
+  cylinder(g, .15, .15, .25, MAT.steel, [0, 1, 0], 8);
+  cylinder(g, .22, .22, .13, MAT.amber, [0, 1.2, 0], 8);
+  box(g, .24, .09, .22, MAT.paper, [0, .98, .13]);
+  rodBetween(g, [-.14, .72, 0], [-.28, .48, .16], .055, MAT.steel);
+  rodBetween(g, [.14, .72, 0], [.27, .5, .14], .055, MAT.steel);
+  rodBetween(g, [-.1, .15, 0], [-.12, 0, .04], .065, MAT.steel);
+  rodBetween(g, [.1, .15, 0], [.12, 0, .04], .065, MAT.steel);
+  return g;
+}
+function makeHuskPile(parent, center, count = 18) {
+  const random = mulberry32(370 + count);
+  const group = new THREE.Group(); group.position.set(...center); parent.add(group);
+  for (let i = 0; i < count; i++) {
+    const angle = random() * Math.PI * 2, radius = Math.sqrt(random()) * .72;
+    const flake = addMesh(group, new THREE.IcosahedronGeometry(.12 + random() * .1, 0), MAT.husk,
+      [Math.cos(angle) * radius, random() * .2, Math.sin(angle) * radius],
+      [random() * 2, random() * 2, random() * 2]);
+    flake.scale.set(.7 + random() * .5, .45, 1.8 + random());
+  }
+  return group;
+}
+function makeFlowPoints(parent, count, color, spread = 1) {
+  const random = mulberry32(count * 47 + color);
+  const positions = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    positions[i * 3] = (random() - .5) * spread;
+    positions[i * 3 + 1] = random() * 1.2;
+    positions[i * 3 + 2] = (random() - .5) * spread;
+  }
+  const geometry = new THREE.BufferGeometry(); geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const points = new THREE.Points(geometry, new THREE.PointsMaterial({ color, size: .065, transparent: true, opacity: .82, sizeAttenuation: true }));
+  parent.add(points);
+  return points;
+}
+function addPlatform(group, index) {
+  const shadow = new THREE.Mesh(new THREE.PlaneGeometry(5.3, 5.3), new THREE.MeshBasicMaterial({ map: floorShadowTexture, transparent: true, depthWrite: false }));
+  shadow.rotation.x = -Math.PI / 2; shadow.position.y = .015; group.add(shadow);
+  const platform = cylinder(group, 2.18, 2.18, .24, MAT.concrete, [0, .13, 0], 6, `station_platform_${index + 1}`);
+  platform.rotation.y = Math.PI / 6;
+  const rim = addMesh(group, new THREE.CylinderGeometry(2.2, 2.2, .08, 6, 1, true), MAT.husk, [0, .25, 0]);
+  rim.rotation.y = Math.PI / 6;
+}
+
+// Profil revolu du modèle d’assiette déjà utilisé dans le catalogue RiceWare.
+function plateProfile() {
+  const R_WELL = 85, R_RIM = 100, R_OUT = 115, H_TOTAL = 20, THICKNESS = 2.5;
+  const RIM_SLOPE = THREE.MathUtils.degToRad(8), H_FOOT = 2, R_FOOT = 70;
+  const V = (x, y) => new THREE.Vector2(x, y);
+  const t8 = V(Math.cos(RIM_SLOPE), Math.sin(RIM_SLOPE));
+  const rEnd = R_OUT - THICKNESS / 2;
+  const yRimEnd = H_TOTAL;
+  const yRimStart = H_TOTAL - (rEnd - R_RIM) * Math.tan(RIM_SLOPE);
+  const yWell = H_FOOT + THICKNESS;
+  const top = [];
+  for (let i = 0; i <= 24; i++) top.push(V((R_WELL * i) / 24, yWell));
+  const b0 = V(R_WELL, yWell), b1 = V(R_WELL + 6, yWell), b3 = V(R_RIM, yRimStart);
+  const b2 = b3.clone().sub(t8.clone().multiplyScalar(6));
+  for (let i = 1; i <= 56; i++) {
+    const t = i / 56, u = 1 - t;
+    top.push(V(u*u*u*b0.x + 3*u*u*t*b1.x + 3*u*t*t*b2.x + t*t*t*b3.x,
+      u*u*u*b0.y + 3*u*u*t*b1.y + 3*u*t*t*b2.y + t*t*t*b3.y));
+  }
+  for (let i = 1; i <= 24; i++) top.push(b3.clone().lerp(V(rEnd, yRimEnd), i / 24));
+  const normals = top.map((_, i) => {
+    const a = top[Math.max(i - 1, 0)], b = top[Math.min(i + 1, top.length - 1)];
+    const tangent = b.clone().sub(a).normalize();
+    return V(-tangent.y, tangent.x);
+  });
+  const points = [...top], pEnd = top[top.length - 1], nEnd = normals[normals.length - 1];
+  const tEnd = V(nEnd.y, -nEnd.x), center = pEnd.clone().sub(nEnd.clone().multiplyScalar(THICKNESS / 2));
+  for (let k = 1; k < 20; k++) {
+    const theta = Math.PI * k / 20;
+    points.push(center.clone().add(nEnd.clone().multiplyScalar(Math.cos(theta) * THICKNESS / 2)).add(tEnd.clone().multiplyScalar(Math.sin(theta) * THICKNESS / 2)));
+  }
+  for (let i = top.length - 1; i >= 25; i--) points.push(top[i].clone().sub(normals[i].clone().multiplyScalar(THICKNESS)));
+  const foot = r => { const u = Math.abs(r - R_FOOT); if (u <= .9) return 1; if (u < 2.4) return .5 + .5 * Math.cos(Math.PI * (u - .9) / 1.5); return 0; };
+  const radii = [];
+  for (let r = R_WELL - 1; r > 74; r -= 1) radii.push(r);
+  for (let r = 74; r > 66; r -= .2) radii.push(r);
+  for (let r = 66; r > .5; r -= 2) radii.push(r);
+  radii.push(0);
+  for (const r of radii) points.push(V(r, H_FOOT - H_FOOT * foot(r)));
+  return points.map(point => point.multiplyScalar(.001));
+}
+function makeForkGeometry() {
+  const parts = [];
+  const handle = new THREE.BoxGeometry(.014, .006, .1); handle.translate(0, .006, .045); parts.push(handle);
+  const neck = new THREE.BoxGeometry(.027, .006, .045); neck.translate(0, .006, -.025); parts.push(neck);
+  for (let i = -1; i <= 1; i++) { const tine = new THREE.BoxGeometry(.006, .006, .045); tine.translate(i * .01, .006, -.067); parts.push(tine); }
+  const merged = mergeGeometries(parts, false);
+  return toCreasedNormals(merged, THREE.MathUtils.degToRad(35));
+}
+function makeProduct(type, parent, material, position = [0, 0, 0], scale = 3.1) {
+  const group = new THREE.Group(); group.position.set(...position); group.scale.setScalar(scale); parent.add(group);
+  if (type === 'assiette') {
+    const geo = toCreasedNormals(new THREE.LatheGeometry(plateProfile(), 96), THREE.MathUtils.degToRad(40));
+    addMesh(group, geo, material, [0, 0, 0]);
+  } else if (type === 'gobelet') {
+    const cup = addMesh(group, new THREE.CylinderGeometry(.04, .0275, .11, 24, 1, true), material, [0, .055, 0]);
+    addMesh(group, new THREE.TorusGeometry(.04, .002, 8, 28), material, [0, .11, 0]);
+    addMesh(group, new THREE.CylinderGeometry(.028, .028, .002, 24), material, [0, .002, 0]);
+    cup.castShadow = true;
+  } else if (type === 'fourchette') {
+    addMesh(group, makeForkGeometry(), material, [0, 0, 0], [Math.PI / 2, 0, 0]);
+  } else if (type === 'cuillere') {
+    addMesh(group, new THREE.BoxGeometry(.014, .006, .105), material, [0, .006, .035]);
+    const bowl = addMesh(group, new THREE.SphereGeometry(1, 20, 12), material, [0, .007, -.052], [.022, .006, .032]);
+    bowl.scale.set(.022, .006, .032);
+  } else if (type === 'boite') {
+    box(group, .15, .018, .12, material, [0, .01, .015]);
+    const lid = box(group, .15, .018, .12, material, [0, .07, -.045]);
+    lid.rotation.x = -.22;
+    group.userData.lid = lid;
+  }
+  return group;
+}
+const STATION_SPACING = 5.25;
+function stationPosition(index) {
+  const row = Math.floor(index / 9);
+  const within = index % 9;
+  const column = row === 0 ? within : 8 - within;
+  return new THREE.Vector3((column - 4) * STATION_SPACING, 0, row === 0 ? -4.6 : 4.6);
+}
+function machineFor(index, model) {
+  const moving = [];
+  let operator = null, points = null, gaugeNeedle = null, pressPlate = null, medallion = null, mat = null;
+  switch (index) {
+    case 0: {
+      box(model, 2.1, 1.65, 1.5, MAT.concrete, [-.45, .98, -.18]);
+      box(model, 2.14, .11, 1.54, MAT.wood, [-.45, 1.86, -.18]);
+      for (let i = 0; i < 3; i++) { cylinder(model, .34, .38, 1.45, MAT.steel, [.25 + i * .6, .97, -.72], 12); cylinder(model, .34, .08, .24, MAT.steel, [.25 + i * .6, 1.82, -.72], 12); }
+      makeHuskPile(model, [-.2, .28, .82], 22);
+      const fan = new THREE.Group(); fan.position.set(-.45, 1.98, -.18); model.add(fan);
+      cylinder(fan, .12, .12, .08, MAT.steel, [0, .06, 0], 10);
+      box(fan, .78, .035, .09, MAT.steel, [0, .13, 0]); box(fan, .09, .035, .78, MAT.steel, [0, .13, 0]);
+      moving.push(t => { fan.rotation.y = t * .55; });
+      break;
+    }
+    case 1: {
+      const truck = new THREE.Group(); truck.position.set(-.45, .25, -.25); model.add(truck);
+      box(truck, 1.45, .58, .78, MAT.steel, [0, .55, 0]); box(truck, .6, .62, .72, MAT.teal, [.93, .5, 0]);
+      for (const x of [-.48, .52, 1.05]) for (const z of [-.43, .43]) cylinder(truck, .17, .17, .12, MAT.ink, [x, .17, z], 12).rotation.x = Math.PI / 2;
+      box(model, 1.15, .12, .78, MAT.concrete, [1.15, .18, .8]); operator = addOperator(model, 1.65, -.8);
+      points = makeFlowPoints(model, 32, PALETTE.husk, .55);
+      moving.push(t => { const a = points.geometry.attributes.position; for (let i = 0; i < a.count; i++) { const y = (a.getY(i) - .018) % 1.2; a.setY(i, y < 0 ? y + 1.2 : y); } a.needsUpdate = true; });
+      break;
+    }
+    case 2: {
+      const screen = box(model, 1.65, .08, .95, MAT.steel, [-.15, .92, 0], [0, 0, -.22], 'vibrating_sieve');
+      rodBetween(model, [-.9, .2, -.35], [-.35, .85, -.35], .055, MAT.steel); rodBetween(model, [.55, .2, -.35], [.35, .85, -.35], .055, MAT.steel);
+      const glass = new THREE.MeshStandardMaterial({ color: PALETTE.teal, transparent: true, opacity: .28, roughness: .2, metalness: .08 });
+      cylinder(model, .27, .38, .88, glass, [.82, .66, -.38], 14);
+      moving.push(t => { screen.position.y = .92 + Math.sin(t * 13) * .035; screen.rotation.z = -.22 + Math.sin(t * 13) * .025; });
+      break;
+    }
+    case 3: {
+      cylinder(model, .58, .72, .92, MAT.steel, [0, .65, 0], 16);
+      cylinder(model, .42, .2, .45, MAT.steel, [0, 1.32, 0], 12);
+      box(model, .95, .16, .95, MAT.concrete, [0, .18, 0]);
+      const rotor = cylinder(model, .48, .48, .08, MAT.husk, [0, .6, .04], 10); rotor.name = 'rotor';
+      for (let i = 0; i < 6; i++) box(rotor, .56, .045, .075, MAT.steel, [0, .1, 0], [0, i * Math.PI / 3, 0]);
+      moving.push(t => { rotor.rotation.y = t * 3.2; });
+      break;
+    }
+    case 4: {
+      const sieve = box(model, 1.5, .06, .86, MAT.steel, [0, 1.05, 0], [0, 0, -.12]);
+      for (let i = -4; i <= 4; i++) rodBetween(model, [i * .15, 1.09, -.39], [i * .15, .86, .39], .012, MAT.ink);
+      box(model, .8, .42, .72, MAT.concrete, [.25, .32, .15]);
+      moving.push(t => { sieve.position.y = 1.05 + Math.sin(t * 9) * .025; });
+      break;
+    }
+    case 5: {
+      for (let row = 0; row < 3; row++) {
+        box(model, 1.7, .065, .08, MAT.wood, [0, .56 + row * .42, -.55]);
+        for (let col = 0; col < 4; col++) {
+          const sack = addMesh(model, new THREE.IcosahedronGeometry(.2, 1), MAT.powder, [-.55 + col * .36, .77 + row * .42, -.45]);
+          sack.scale.set(.8, 1.35, .78); moving.push(t => { sack.rotation.z = Math.sin(t * .7 + col) * .025; });
+        }
+      }
+      box(model, 1.9, .1, 1.2, MAT.wood, [0, .1, 0]);
+      break;
+    }
+    case 6: {
+      cylinder(model, .72, .72, 1.4, MAT.steel, [0, .95, 0], 18);
+      cylinder(model, .78, .78, .12, MAT.steel, [0, 1.7, 0], 18);
+      cylinder(model, .05, .05, 1, MAT.steel, [0, 1.1, 0], 10).name = 'agitator';
+      const paddle = box(model, .9, .09, .12, MAT.steel, [0, .78, 0]);
+      const steam = makeFlowPoints(model, 16, 0xFFFDF6, .4);
+      moving.push(t => { model.getObjectByName('agitator').rotation.y = t * 1.5; paddle.rotation.y = t * 1.5; steam.position.y = .25 + (Math.sin(t * 1.8) + 1) * .18; });
+      const thermometer = box(model, .1, .7, .1, MAT.paper, [.85, .95, 0]);
+      const temp = box(model, .045, .1, .045, MAT.amber, [.85, .68, .06]);
+      moving.push(t => { temp.scale.y = .5 + .4 * (Math.sin(t * .5) * .5 + .5); });
+      break;
+    }
+    case 7: {
+      cylinder(model, .78, .78, .78, MAT.steel, [0, .72, 0], 16);
+      const shaft = cylinder(model, .055, .055, .86, MAT.steel, [0, 1.23, 0], 10);
+      for (let y of [.9, 1.35]) box(model, 1.12, .09, .12, MAT.husk, [0, y, 0]);
+      const mix = makeFlowPoints(model, 28, PALETTE.powder, .9);
+      moving.push(t => { shaft.rotation.y = t * 1.9; mix.rotation.y = -t * .8; });
+      break;
+    }
+    case 8: {
+      box(model, 1.85, .12, 1.12, MAT.steel, [0, .28, 0]);
+      box(model, 1.6, .62, .08, MAT.steel, [0, .67, -.5]);
+      box(model, 1.6, .62, .08, MAT.steel, [0, .67, .5]);
+      const bed = box(model, 1.3, .18, .88, MAT.powder, [0, .46, 0]);
+      const screed = box(model, .1, .62, 1.1, MAT.steel, [-.62, .77, 0]);
+      moving.push(t => { bed.scale.x = .15 + .85 * (Math.sin(t * .3) * .5 + .5); screed.position.x = -.62 + Math.sin(t * .3) * .4; });
+      break;
+    }
+    case 9:
+    case 10: {
+      const hot = index === 10;
+      const frameMat = MAT.steel;
+      for (const x of [-.78, .78]) box(model, .13, 1.7, .15, frameMat, [x, .96, -.25]);
+      box(model, 1.78, .15, .55, frameMat, [0, 1.78, -.25]);
+      box(model, 1.85, .15, 1.25, frameMat, [0, .18, 0]);
+      pressPlate = box(model, 1.18, .13, 1.02, hot ? MAT.hot : MAT.steel, [0, 1.35, .03]);
+      mat = box(model, .86, .13, .78, MAT.panel, [0, .34, .03]);
+      const cylinderBody = cylinder(model, .19, .19, .45, MAT.steel, [0, 1.61, -.25], 12);
+      const baseY = pressPlate.position.y;
+      moving.push(t => { const squeeze = .5 + .5 * Math.sin(t * .7); pressPlate.position.y = baseY - squeeze * .48; mat.scale.y = Math.max(.32, 1 - squeeze * .6); if (hot) MAT.hot.emissiveIntensity = .35 + squeeze * .9; });
+      if (hot) { const vapor = makeFlowPoints(model, 14, 0xFFFDF6, .5); moving.push(t => { vapor.position.y = .3 + (Math.sin(t * 1.3) + 1) * .18; }); }
+      break;
+    }
+    case 11: {
+      box(model, 1.85, .12, 1.15, MAT.steel, [0, .18, 0]);
+      for (let i = -1; i <= 1; i++) box(model, 1.65, .055, .1, MAT.steel, [0, .48 + i * .43, -.47]);
+      mat = box(model, 1.1, .085, .82, MAT.panel, [0, .85, .02]);
+      const waves = [];
+      for (let i = 0; i < 3; i++) { const ring = addMesh(model, new THREE.TorusGeometry(.5 + i * .2, .018, 6, 24), MAT.amber, [0, 1.2 + i * .08, 0], [Math.PI / 2, 0, 0]); waves.push(ring); }
+      moving.push(t => waves.forEach((ring, i) => { ring.scale.setScalar(.7 + (t * .25 + i * .2) % .5); }));
+      break;
+    }
+    case 12: {
+      box(model, 1.65, .09, 1.1, MAT.steel, [0, .32, -.05]);
+      operator = addOperator(model, -.8, .58);
+      mat = box(model, .88, .09, .76, MAT.panel, [.1, .72, -.05]);
+      moving.push(t => { mat.position.y = .72 + .22 * (Math.sin(t * .65) * .5 + .5); mat.rotation.z = .1 * Math.sin(t * .5); });
+      break;
+    }
+    case 13: {
+      box(model, 1.25, 1.62, 1, MAT.concrete, [0, .95, -.32]);
+      for (let i = 0; i < 3; i++) box(model, 1.08, .045, .78, MAT.steel, [0, .48 + i * .42, .22]);
+      for (let i = 0; i < 3; i++) box(model, .82, .055, .64, MAT.panel, [0, .54 + i * .42, .22]);
+      const air = makeFlowPoints(model, 18, PALETTE.green, .55);
+      moving.push(t => { air.position.x = Math.sin(t * 1.1) * .28; });
+      break;
+    }
+    case 14: {
+      box(model, 1.8, .13, 1.25, MAT.steel, [0, .18, 0]);
+      const roller1 = cylinder(model, .13, .13, 1.1, MAT.ink, [0, .64, -.23], 12); roller1.rotation.z = Math.PI / 2;
+      const roller2 = cylinder(model, .13, .13, 1.1, MAT.ink, [0, .64, .28], 12); roller2.rotation.z = Math.PI / 2;
+      const belt = box(model, .95, .055, .68, MAT.panel, [0, .67, .03]);
+      cylinder(model, .36, .28, .55, MAT.steel, [.82, .5, -.1], 12);
+      const dust = makeFlowPoints(model, 16, PALETTE.powder, .3);
+      moving.push(t => { roller1.rotation.x = roller2.rotation.x = t * 2.4; dust.position.x = .5 + Math.sin(t) * .1; });
+      break;
+    }
+    case 15: {
+      box(model, 1.85, .76, .9, MAT.wood, [0, .44, 0]);
+      const dial = cylinder(model, .24, .24, .055, MAT.paper, [.4, 1.12, .1], 24); dial.rotation.x = Math.PI / 2;
+      gaugeNeedle = box(model, .025, .3, .025, MAT.amber, [.4, 1.29, .14]);
+      box(model, .65, .24, .48, MAT.steel, [-.35, .94, .05]);
+      moving.push(t => { gaugeNeedle.rotation.z = Math.sin(t * .6) * .12; });
+      break;
+    }
+    case 16: {
+      box(model, 1.8, .13, 1.15, MAT.wood, [0, .22, 0]);
+      box(model, 1.1, .52, .83, MAT.kraft, [0, .6, 0]);
+      const straps = [];
+      for (const x of [-.38, .38]) straps.push(box(model, .06, .62, .9, MAT.amber, [x, .6, 0]));
+      moving.push(t => straps.forEach(strap => { strap.scale.y = .82 + .18 * (Math.sin(t * .45) * .5 + .5); }));
+      break;
+    }
+    case 17: {
+      for (let row = 0; row < 2; row++) for (let col = 0; col < 2; col++) {
+        box(model, .58, .75, .58, MAT.wood, [-.55 + col * .75, .65, -.45 + row * .75]);
+      }
+      const forklift = new THREE.Group(); forklift.position.set(-1.2, .22, -.5); model.add(forklift);
+      box(forklift, .58, .68, .52, MAT.amber, [0, .53, 0]);
+      for (const x of [-.18, .18]) cylinder(forklift, .11, .11, .09, MAT.ink, [x, .15, .28], 10).rotation.x = Math.PI / 2;
+      rodBetween(forklift, [.25, .1, -.2], [.25, .92, -.2], .035, MAT.steel);
+      box(forklift, .1, .035, .56, MAT.steel, [.47, .13, -.12]);
+      moving.push(t => { forklift.position.x = -1.3 + Math.sin(t * .24) * .35; });
+      break;
+    }
+  }
+  if (operator && !moving.length) moving.push(t => { operator.rotation.y = Math.sin(t * .4) * .035; });
+  medallion = addMedallion(index, model);
+  if (medallion) moving.push(t => { medallion.rotation.y = t * .25; if (medallion.userData.lid) medallion.userData.lid.rotation.x = -.22 + .04 * Math.sin(t); });
+  return { moving, medallion, mat, pressPlate, gaugeNeedle };
+}
+
+function createStation(index) {
+  const root = new THREE.Group();
+  root.position.copy(stationPosition(index));
+  sceneRoot.add(root);
+  addPlatform(root, index);
+  const model = new THREE.Group(); model.position.y = .22; root.add(model);
+  const animation = machineFor(index, model);
+  return { root, model, animation, position: root.position.clone(), hotspot: root.position.clone().add(new THREE.Vector3(0, 2.35, 0)) };
+}
+function createHotspot(index) {
+  const button = document.createElement('button');
+  button.type = 'button'; button.className = 'hotspot';
+  button.setAttribute('aria-label', STEPS[index].name); button.title = STEPS[index].name;
+  button.innerHTML = '<span class="hotspot-ring"></span><span class="hotspot-dot"></span>';
+  button.addEventListener('click', () => selectStep(index, 900));
+  $('hotspots-container').appendChild(button);
+  return button;
+}
+function updateHotspots() {
+  const width = window.innerWidth, height = window.innerHeight;
+  const projected = new THREE.Vector3();
+  hotspots.forEach((button, index) => {
+    const allowed = currentStep < 0 || currentStep === index;
+    if (!allowed) { button.style.display = 'none'; return; }
+    projected.copy(stations[index].hotspot).project(camera);
+    if (projected.z > 1 || projected.z < -1 || projected.x < -1.1 || projected.x > 1.1 || projected.y < -1.1 || projected.y > 1.1) { button.style.display = 'none'; return; }
+    button.style.display = 'block';
+    button.style.left = `${(projected.x * .5 + .5) * width}px`;
+    button.style.top = `${(-projected.y * .5 + .5) * height}px`;
+  });
+}
+function setGroupOpacity(group, opacity) {
+  group.traverse(object => {
+    if (!object.isMesh) return;
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    materials.forEach(material => {
+      material.transparent = opacity < .999;
+      material.opacity = opacity;
+      material.depthWrite = opacity > .8;
+    });
+  });
+}
+function updateStepUI() {
+  progressButtons.forEach((button, index) => {
+    button.classList.toggle('active', index === currentStep);
+    button.classList.toggle('visited', currentStep >= 0 && index < currentStep);
+    button.style.setProperty('--step-color', CSS_COLOR[STEPS[index].color]);
+  });
+  const active = currentStep >= 0 ? STEPS[currentStep] : null;
+  $('step-badge').textContent = active ? String(currentStep + 1) : '—';
+  $('step-badge').style.background = active ? CSS_COLOR[active.color] : CSS_COLOR.green;
+  $('step-label').textContent = active ? active.name : 'Vue d’ensemble';
+  document.querySelectorAll('.hotspot').forEach((button, index) => { button.disabled = currentStep >= 0 && index !== currentStep; });
+}
+function cameraPointFor(index) {
+  return stations[index].position.clone().add(new THREE.Vector3(0, 1.05, 0));
+}
+function cameraOffsetFor(index) {
+  const base = window.innerWidth <= 768 ? 22 : 11.5;
+  const scale = (index >= 4 && index <= 6) ? base * 5 : base;
+  return new THREE.Vector3(scale * .62, scale * .57, scale * .72);
+}
+function cameraTransition(index, duration) {
+  const startTarget = controls.target.clone();
+  const endTarget = cameraPointFor(index);
+  const startPosition = camera.position.clone();
+  const endPosition = endTarget.clone().add(cameraOffsetFor(index));
+  const intermediates = [];
+  if (currentStep >= 0 && currentStep !== index) {
+    const direction = index > currentStep ? 1 : -1;
+    for (let i = currentStep + direction; i !== index; i += direction) intermediates.push(cameraPointFor(i));
+  }
+  const curve = new THREE.CatmullRomCurve3([startTarget, ...intermediates, endTarget], false, 'catmullrom', .15);
+  return tween({ duration, ease: Easing.inOutCubic, update: t => {
+    const target = curve.getPoint(t);
+    const offset = new THREE.Vector3().lerpVectors(startPosition.clone().sub(startTarget), endPosition.clone().sub(endTarget), t);
+    controls.target.copy(target);
+    camera.position.copy(target).add(offset);
+    camera.lookAt(target);
+  }});
+}
+function selectStep(index, duration = 900) {
+  if (index < 0 || index >= STEPS.length || !stations.length) return;
+  const previous = currentStep;
+  currentStep = index;
+  introRunning = false;
+  controls.autoRotate = false;
+  updateStepUI();
+  cameraTransition(index, duration);
+  if (previous >= 0 && previous !== index) {
+    const outgoing = stations[previous].model, incoming = stations[index].model;
+    incoming.scale.setScalar(.85); setGroupOpacity(incoming, .45);
+    tween({ duration, ease: Easing.inOutCubic, update: t => {
+      outgoing.scale.setScalar(1 - .12 * t); outgoing.position.y = .22 - .12 * t; setGroupOpacity(outgoing, 1 - .45 * t);
+      incoming.scale.setScalar(.85 + .15 * t); incoming.position.y = .22 + .12 * (1 - t); setGroupOpacity(incoming, .45 + .55 * t);
+    }, done: () => { outgoing.scale.setScalar(1); outgoing.position.y = .22; setGroupOpacity(outgoing, 1); incoming.scale.setScalar(1); incoming.position.y = .22; setGroupOpacity(incoming, 1); }});
+  }
+  showHint();
+}
+function overview() {
+  currentStep = -1; freeView = false; controls.enableRotate = false;
+  controls.autoRotate = !reducedMotion;
+  syncFreeButtons(); updateStepUI();
+  const start = camera.position.clone(), targetStart = controls.target.clone();
+  const end = overviewCameraPosition();
+  tween({ duration: 900, ease: Easing.inOutCubic, update: t => {
+    controls.target.lerpVectors(targetStart, new THREE.Vector3(0, 0, 0), t);
+    camera.position.lerpVectors(start, end, t); camera.lookAt(controls.target);
+  }});
+  showHint();
+}
+function previousStep() { selectStep(currentStep <= 0 ? STEPS.length - 1 : currentStep - 1); }
+function nextStep(duration = 900) { selectStep(currentStep < 0 ? 0 : (currentStep + 1) % STEPS.length, duration); }
+function setAutoplay(value) {
+  autoPlay = value; lastAutoStep = performance.now();
+  document.querySelectorAll('#btn-auto-dt, #btn-auto-mb').forEach(button => {
+    button.setAttribute('aria-pressed', String(value));
+    button.setAttribute('aria-label', value ? 'Désactiver la lecture automatique' : 'Activer la lecture automatique');
+  });
+  showHint();
+}
+function toggleAutoplay() { setAutoplay(!autoPlay); if (autoPlay && currentStep < 0) selectStep(0, 300); }
+function toggleFreeView() {
+  freeView = !freeView; controls.enableRotate = freeView; controls.autoRotate = false;
+  syncFreeButtons(); showHint();
+}
+function syncFreeButtons() {
+  document.querySelectorAll('#btn-free-dt, #btn-free-mb').forEach(button => {
+    button.setAttribute('aria-pressed', String(freeView));
+    button.setAttribute('aria-label', freeView ? 'Désactiver la vue libre' : 'Activer la vue libre');
+  });
+}
+function showHint() {
+  lastPointerActivity = performance.now(); $('hint').classList.remove('faded');
+  clearTimeout(hintTimer); hintTimer = window.setTimeout(() => $('hint').classList.add('faded'), 6000);
+}
+function buildInterface() {
+  const bar = $('progress-bar');
+  STEPS.forEach((step, index) => {
+    const button = document.createElement('button');
+    button.type = 'button'; button.className = 'step-seg'; button.style.setProperty('--step-color', CSS_COLOR[step.color]);
+    button.setAttribute('aria-label', step.name); button.title = step.name;
+    button.addEventListener('click', () => selectStep(index, 900));
+    bar.appendChild(button); progressButtons.push(button); hotspots.push(createHotspot(index));
+  });
+  updateStepUI();
+  const bind = (id, action) => $(id).addEventListener('click', action);
+  bind('btn-prev-dt', previousStep); bind('btn-prev-mb', previousStep);
+  bind('btn-next-dt', () => nextStep()); bind('btn-next-mb', () => nextStep());
+  bind('btn-auto-dt', toggleAutoplay); bind('btn-auto-mb', toggleAutoplay);
+  bind('btn-free-dt', toggleFreeView); bind('btn-free-mb', toggleFreeView);
+  bind('btn-reset-dt', overview); bind('btn-reset-mb', overview);
+  window.addEventListener('keydown', event => {
+    if (event.target instanceof HTMLElement && ['BUTTON', 'INPUT', 'TEXTAREA'].includes(event.target.tagName)) return;
+    if (event.key === 'ArrowRight') { event.preventDefault(); nextStep(); }
+    else if (event.key === 'ArrowLeft') { event.preventDefault(); previousStep(); }
+    else if (event.key.toLowerCase() === 'r') { event.preventDefault(); overview(); }
+    else if (event.key === ' ') { event.preventDefault(); toggleAutoplay(); }
+  });
+  ['pointerdown', 'pointermove', 'wheel', 'keydown'].forEach(eventName => window.addEventListener(eventName, showHint, { passive: true }));
+}
+
+// Les médaillons restent dans la scène après le refroidissement, puis s’enrichissent à chaque poste.
+function addMedallion(stageIndex, stationModel) {
+  const set = PRODUCT_SETS[stageIndex]; if (!set) return null;
+  const pedestal = new THREE.Group(); pedestal.position.set(1.12, .27, 1.08); stationModel.add(pedestal);
+  cylinder(pedestal, .96, .96, .14, MAT.concrete, [0, 0, 0], 12);
+  cylinder(pedestal, .88, .88, .035, MAT.husk, [0, .09, 0], 12);
+  const products = new THREE.Group(); products.position.y = .12; pedestal.add(products);
+  set.forEach((name, index) => {
+    const x = set.length === 1 ? 0 : (index - (set.length - 1) / 2) * .32;
+    const z = set.length > 3 ? (index % 2 ? .22 : -.22) : 0;
+    const scale = set.length > 3 ? 1.7 : set.length > 1 ? 2.35 : 3.2;
+    makeProduct(name, products, MAT.panel, [x, .06, z], scale);
+  });
+  return pedestal;
+}
+const PRODUCT_SETS = {
+  11: ['assiette'], 12: ['gobelet', 'fourchette'], 13: ['cuillere'],
+  14: ['assiette', 'gobelet', 'fourchette'], 15: ['boite'],
+  16: ['assiette', 'gobelet', 'fourchette', 'cuillere', 'boite'],
+  17: ['assiette', 'gobelet', 'fourchette', 'cuillere', 'boite']
+};
+
+async function generateTextures() {
+  const bar = $('loader-bar');
+  const recipes = [
+    ['husk', PALETTE.husk, 'husk'], ['powder', PALETTE.powder, 'powder'],
+    ['panel', PALETTE.panel, 'powder'], ['steel', PALETTE.steel, 'steel'],
+    ['concrete', PALETTE.concrete, 'concrete'], ['wood', PALETTE.wood, 'wood'],
+    ['amber', PALETTE.amber, 'powder'], ['teal', PALETTE.teal, 'steel'],
+    ['green', PALETTE.green, 'concrete'], ['paper', PALETTE.paper, 'paper'],
+    ['ink', PALETTE.ink, 'steel'], ['kraft', 0xB7895F, 'wood'], ['hot', 0xF36A22, 'steel']
+  ];
+  const total = recipes.length;
+  recipes.forEach(([key, color, style], index) => {
+    const seed = 731 + index * 97;
+    MAT[key] = makeMaterial(color, seed, style, key === 'hot' ? { emissive: 0x9A2300, emissiveIntensity: .5, roughness: .3, metalness: .28 } : {});
+    bar.style.width = `${Math.round((index + 1) / total * 65)}%`;
+  });
+  floorShadowTexture = makeShadowTexture();
+  for (let i = 0; i < STEPS.length; i++) {
+    stations.push(createStation(i));
+    bar.style.width = `${65 + Math.round((i + 1) / STEPS.length * 35)}%`;
+    if (i % 4 === 3) await new Promise(resolve => requestAnimationFrame(resolve));
+  }
+}
+
+function createScene() {
+  scene = new THREE.Scene(); scene.background = new THREE.Color(PALETTE.bg);
+  camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, .1, 250);
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  $('canvas-container').appendChild(renderer.domElement);
+
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  pmrem.compileEquirectangularShader();
+  roomEnv = pmrem.fromScene(new RoomEnvironment(), .04).texture;
+  scene.environment = roomEnv;
+  const ambient = new THREE.AmbientLight(0xffffff, .52); scene.add(ambient);
+  const key = new THREE.DirectionalLight(0xFFF4D9, 2.2);
+  key.position.set(-18, 27, 20); key.castShadow = true;
+  key.shadow.mapSize.set(2048, 2048); key.shadow.camera.left = -32; key.shadow.camera.right = 32;
+  key.shadow.camera.top = 24; key.shadow.camera.bottom = -24; key.shadow.bias = -.00045;
+  scene.add(key);
+  spotlight = new THREE.SpotLight(0xFFF1CE, 2.1, 44, Math.PI / 5, .55, 1.5);
+  spotlight.position.set(-24, 13, -8); spotlight.castShadow = false; scene.add(spotlight); scene.add(spotlight.target);
+  sceneRoot = new THREE.Group(); scene.add(sceneRoot);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(150, 70), new THREE.MeshStandardMaterial({ color: 0xEDE8D6, roughness: 1, metalness: 0 }));
+  floor.rotation.x = -Math.PI / 2; floor.position.y = -.035; floor.receiveShadow = true; scene.add(floor);
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true; controls.dampingFactor = .075; controls.enablePan = false; controls.enableZoom = true;
+  controls.enableRotate = false; controls.autoRotate = false; controls.autoRotateSpeed = .65;
+  controls.minDistance = 2.0; controls.maxDistance = 22; controls.maxPolarAngle = Math.PI / 2 - .03;
+  controls.target.set(0, 0, 0);
+  window.addEventListener('resize', resizeRenderer);
+}
+function resizeRenderer() {
+  if (!renderer || !camera) return;
+  const previousAspect = camera.aspect;
+  camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  if (currentStep < 0 && previousAspect !== camera.aspect) camera.position.copy(overviewCameraPosition());
+  updateHotspots();
+}
+function overviewCameraPosition() {
+  const vfov = THREE.MathUtils.degToRad(camera.fov);
+  const hfov = 2 * Math.atan(Math.tan(vfov / 2) * camera.aspect);
+  const distance = Math.max(24 / Math.tan(hfov / 2), 7.2 / Math.tan(vfov / 2), 40) * 1.13;
+  return new THREE.Vector3(.46, .68, .57).normalize().multiplyScalar(distance);
+}
+function startIntro() {
+  introRunning = true;
+  const mobile = window.matchMedia('(max-width: 768px)').matches;
+  if (mobile) { currentStep = 0; updateStepUI(); }
+  const target = mobile ? cameraPointFor(0) : new THREE.Vector3(0, 0, 0);
+  controls.target.copy(target);
+  const start = mobile ? target.clone().add(cameraOffsetFor(0).multiplyScalar(1.3)) : overviewCameraPosition();
+  const end = start.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2);
+  camera.position.copy(start); camera.lookAt(target);
+  if (reducedMotion) {
+    camera.position.copy(mobile ? target.clone().add(cameraOffsetFor(0)) : overviewCameraPosition());
+    camera.lookAt(target); controls.autoRotate = false; introRunning = false;
+    $('loader').classList.add('hidden'); return;
+  }
+  tween({ duration: 2500, ease: Easing.inOutCubic, update: t => {
+    const orbit = start.clone().lerp(end, t);
+    camera.position.copy(orbit); camera.lookAt(target);
+    spotlight.position.set(-24 + t * 48, 13, -8 + Math.sin(t * Math.PI) * 16);
+    spotlight.target.position.set(-20 + t * 40, .5, mobile ? 0 : -4.6);
+  }, done: () => {
+    introRunning = false;
+    if (mobile) { camera.position.copy(target.clone().add(cameraOffsetFor(0))); camera.lookAt(target); }
+    else { controls.autoRotate = true; }
+    $('loader').classList.add('hidden');
+  }});
+}
+function updateScene(now) {
+  const seconds = now * .001;
+  stations.forEach((station, index) => {
+    station.animation.moving.forEach(update => update(seconds));
+    if (station.animation.medallion) station.animation.medallion.rotation.y = seconds * .18;
+  });
+  if (spotlight && introRunning) {
+    spotlight.position.x = -22 + ((seconds * 8) % 44);
+    spotlight.target.position.set(spotlight.position.x * .45, .4, Math.sin(seconds * 1.5) * 6);
+  }
+  if (autoPlay && !introRunning && now - lastAutoStep > 6000) {
+    lastAutoStep = now; selectStep(currentStep < 0 ? 0 : (currentStep + 1) % STEPS.length, 300);
+  }
+  runTweens(now);
+}
+function animate(now) {
+  if (!renderer || !scene || !camera) return;
+  updateScene(now); controls.update(); updateHotspots(); renderer.render(scene, camera);
+}
+function syncLoop() {
+  const shouldRun = pageVisible && inViewport && !!renderer;
+  if (shouldRun && !loopRunning) { renderer.setAnimationLoop(animate); loopRunning = true; }
+  else if (!shouldRun && loopRunning) { renderer.setAnimationLoop(null); loopRunning = false; }
+}
+function bindVisibility() {
+  document.addEventListener('visibilitychange', () => { pageVisible = !document.hidden; syncLoop(); });
+  const observer = new IntersectionObserver(entries => { inViewport = entries.some(entry => entry.isIntersecting); syncLoop(); }, { threshold: .01 });
+  observer.observe($('canvas-container'));
+}
+function buildUI() {
+  const progress = $('progress-bar');
+  STEPS.forEach((step, index) => {
+    const button = document.createElement('button'); button.type = 'button'; button.className = 'step-seg';
+    button.style.setProperty('--step-color', CSS_COLOR[step.color]); button.setAttribute('aria-label', step.name); button.title = step.name;
+    button.addEventListener('click', () => selectStep(index, 900)); progress.appendChild(button);
+    progressButtons.push(button); hotspots.push(createHotspot(index));
+  });
+  updateStepUI();
+  const bind = (id, callback) => $(id).addEventListener('click', callback);
+  bind('btn-prev-dt', previousStep); bind('btn-prev-mb', previousStep);
+  bind('btn-next-dt', () => nextStep(900)); bind('btn-next-mb', () => nextStep(900));
+  bind('btn-auto-dt', toggleAutoplay); bind('btn-auto-mb', toggleAutoplay);
+  bind('btn-free-dt', toggleFreeView); bind('btn-free-mb', toggleFreeView);
+  bind('btn-reset-dt', overview); bind('btn-reset-mb', overview);
+  window.addEventListener('keydown', event => {
+    if (event.target instanceof HTMLElement && ['BUTTON', 'INPUT', 'TEXTAREA'].includes(event.target.tagName)) return;
+    if (event.key === 'ArrowRight') { event.preventDefault(); nextStep(900); }
+    else if (event.key === 'ArrowLeft') { event.preventDefault(); previousStep(); }
+    else if (event.key.toLowerCase() === 'r') { event.preventDefault(); overview(); }
+    else if (event.key === ' ') { event.preventDefault(); toggleAutoplay(); }
+  });
+  ['pointerdown', 'pointermove', 'wheel', 'keydown'].forEach(name => window.addEventListener(name, showHint, { passive: true }));
+}
+async function init() {
+  try {
+    const testCanvas = document.createElement('canvas');
+    const gl = testCanvas.getContext('webgl2') || testCanvas.getContext('webgl');
+    if (!window.WebGLRenderingContext || !gl) throw new Error('WebGL');
+    buildInterface(); createScene(); await generateTextures();
+    progressButtons.forEach(button => button.setAttribute('aria-disabled', 'false'));
+    showHint();
+    startIntro(); bindVisibility();
+    $('loader-bar').style.width = '100%';
+    syncLoop();
+  } catch (error) {
+    $('loader').classList.add('hidden'); $('webgl-error').style.display = 'flex';
+    console.error(error);
+  }
+}
+
+init();
+</script>
+</body>
+</html>

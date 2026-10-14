@@ -1,6 +1,6 @@
 # RiceWare CI
 
-Site vitrine de RiceWare CI : des coques de riz ivoiriennes transformées en vaisselle compostable. La page d’accueil présente le projet aux partenaires industriels, commerciaux et financiers. Les routes `/blog` et `/boutique` sont prêtes; elles affichent un état vide en attendant les publications et produits.
+Site vitrine de RiceWare CI : la coque et la paille de riz ivoiriennes valorisées en vaisselle compostable. La page d’accueil présente le projet aux partenaires industriels, commerciaux et financiers. Les routes `/blog` et `/boutique` sont prêtes; elles affichent un état vide en attendant les publications et produits.
 
 ## Démarrer
 

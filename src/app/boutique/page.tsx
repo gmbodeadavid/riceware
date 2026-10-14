@@ -2,47 +2,117 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Footer from '@/components/Footer';
 import RiceWareNav from '@/components/RiceWareNav';
+import SectionLabel from '@/components/SectionLabel';
+import type { ProductCategory } from '@/lib/boutique';
+import { CATEGORY_OPTIONS, getCategoryLabel, getFilteredProducts } from '@/lib/boutique';
+import BoutiqueCatalogClient from '@/components/BoutiqueCatalogClient';
 
 export const metadata: Metadata = {
   title: 'Boutique | RiceWare CI',
-  description: 'La boutique RiceWare CI, bientôt disponible.',
+  description: 'Catalogue produit RiceWare CI : assiettes, couverts, barquettes et gobelets.',
 };
 
-export default function BoutiquePage() {
+function createCategoryHref(categoryId: string, query: string) {
+  const params = new URLSearchParams();
+
+  if (categoryId && categoryId !== 'toutes') {
+    params.set('category', categoryId);
+  }
+
+  if (query) {
+    params.set('q', query);
+  }
+
+  const suffix = params.toString();
+  return suffix ? `/boutique?${suffix}` : '/boutique';
+}
+
+export default async function BoutiquePage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ category?: string; q?: string; produit?: string }> | { category?: string; q?: string; produit?: string };
+}) {
+  const params = await Promise.resolve(searchParams ?? {});
+  const categoryParam = Array.isArray(params.category) ? params.category[0] : params.category;
+  const queryParam = Array.isArray(params.q) ? params.q[0] : params.q;
+  const productParam = Array.isArray(params.produit) ? params.produit[0] : params.produit;
+  const selectedCategory: ProductCategory | 'toutes' = categoryParam && CATEGORY_OPTIONS.some((option) => option.id === categoryParam)
+    ? (categoryParam as ProductCategory)
+    : 'toutes';
+  const query = queryParam ?? '';
+  const filteredProducts = getFilteredProducts(selectedCategory, query);
+  const selectedProduct = filteredProducts.find((product) => product.slug === productParam) ?? null;
+
   return (
     <div className="min-h-screen w-full bg-ground font-body text-ink flex flex-col">
       <RiceWareNav />
       <main className="flex-1">
         <section className="bg-ground py-section">
           <div className="max-w-page mx-auto px-5 sm:px-8">
-            <p className="font-mono-brand text-xs leading-4 tracking-[0.08em] uppercase text-husk-text m-0">
-              BOUTIQUE
-            </p>
-            <div className="mt-3 grid gap-4 border-b border-line pb-8 md:grid-cols-[1fr_360px] md:items-end md:gap-10">
+            <SectionLabel>CATALOGUE</SectionLabel>
+
+            <div className="mb-6">
               <h1 className="font-display text-title font-bold text-ink m-0 max-w-[680px]">
-                La gamme RiceWare.
+                La gamme RiceWare en catalogue.
               </h1>
-              <p className="text-sm leading-[22px] text-ink-muted m-0 max-w-[420px]">
-                Assiettes, fourchettes et autres produits fabriqués à partir de coques de riz.
+            </div>
+
+            <div className="rounded-[22px] border border-line bg-surface p-4 sm:p-5">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <form action="/boutique" method="get" className="flex-1">
+                  <label htmlFor="catalog-search" className="sr-only">
+                    Rechercher un produit
+                  </label>
+                  <div className="flex w-full items-center gap-2 rounded-full border border-line bg-ground px-3 py-2.5">
+                    <span aria-hidden="true" className="text-ink-muted">⌕</span>
+                    <input
+                      id="catalog-search"
+                      name="q"
+                      defaultValue={query}
+                      placeholder="Rechercher une référence"
+                      className="w-full bg-transparent text-sm text-ink placeholder:text-ink-muted outline-none"
+                    />
+                    {selectedCategory !== 'toutes' ? (
+                      <input type="hidden" name="category" value={selectedCategory} />
+                    ) : null}
+                  </div>
+                </form>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {CATEGORY_OPTIONS.map((option) => {
+                    const isActive = option.id === selectedCategory;
+                    return (
+                      <Link
+                        key={option.id}
+                        href={createCategoryHref(option.id, query)}
+                        aria-current={isActive ? 'page' : undefined}
+                        className={[
+                          'inline-flex items-center rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
+                          isActive
+                            ? 'border-paddy bg-paddy text-on-paddy'
+                            : 'border-line bg-ground text-ink hover:border-paddy hover:text-paddy',
+                        ].join(' ')}
+                      >
+                        {option.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="font-mono-brand text-[11px] uppercase tracking-[0.08em] text-ink-muted m-0">
+                {filteredProducts.length} {filteredProducts.length <= 1 ? 'produit' : 'produits'} · {getCategoryLabel(selectedCategory)}
               </p>
             </div>
 
-            <div className="grid gap-5 border-b border-line py-8 sm:grid-cols-[160px_1fr] sm:gap-8">
-              <p className="font-mono-brand text-xs uppercase tracking-[0.06em] text-husk-text m-0">
-                Disponibilité
-              </p>
-              <div>
-                <h2 className="font-display text-xl font-semibold text-ink m-0">
-                  Aucun produit disponible pour le moment.
-                </h2>
-                <p className="text-sm leading-[22px] text-ink-muted mt-2 mb-0 max-w-[600px]">
-                  Les premiers produits seront présentés ici dès qu’ils seront prêts.
-                </p>
-                <Link href="/" className="inline-flex mt-5 font-semibold text-sm text-paddy hover:text-paddy-deep transition-colors">
-                  Retour au site <span aria-hidden="true" className="ml-1">→</span>
-                </Link>
-              </div>
-            </div>
+            <BoutiqueCatalogClient
+              key={selectedProduct?.slug ?? 'catalogue'}
+              selectedProduct={selectedProduct}
+              filteredProducts={filteredProducts}
+            />
+
           </div>
         </section>
       </main>

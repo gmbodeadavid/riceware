@@ -2,7 +2,7 @@
 
 # RiceWare CI
 
-Site vitrine de RiceWare CI, en français : une startup d'Abidjan qui veut transformer les coques de riz ivoiriennes en vaisselle compostable. La page d’accueil présente le projet aux partenaires industriels, commerciaux et financiers. Les routes `/blog` et `/boutique` affichent un état vide en attendant articles et produits. Le projet est au stade prototype : beaucoup de chiffres sont des objectifs ou des hypothèses, pas des résultats.
+Site vitrine de RiceWare CI, en français : une startup d'Abidjan qui veut valoriser la coque et la paille de riz ivoiriennes en vaisselle compostable. La page d’accueil présente le projet aux partenaires industriels, commerciaux et financiers. Les routes `/blog` et `/boutique` affichent un état vide en attendant articles et produits. Le projet est au stade prototype : beaucoup de chiffres sont des objectifs ou des hypothèses, pas des résultats.
 
 ## Commandes
 
@@ -68,7 +68,7 @@ Tous les composants sont des Server Components, sauf `LiveCounters.tsx`, `CountU
 
 ## Règles de contenu
 
-Le site s'engage explicitement à ne rien affirmer sans preuve (« Aucune allégation sans preuve »). En conséquence :
+Le site s'engage à ne rien affirmer sans preuve. En conséquence :
 
 - Aucune coordonnée n'est affichée en clair (ni e-mail, ni téléphone, ni nom de domaine). Ne pas les réafficher sans demande explicite.
 - Ne jamais inventer de chiffre, de source, de partenaire ou de résultat. Les valeurs inconnues restent des espaces réservés visibles (`[X]` dans « Traction actuelle », badges « À tester », « Objectif », « À venir »).

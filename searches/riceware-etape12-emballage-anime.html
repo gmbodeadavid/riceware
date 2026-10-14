@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RiceWare CI — Étape 17 · Emballage (animation)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F4F1E4;--ink:#1C2A20;--paper:#FFFDF6;--line:#DDD6BF;--green:#2E7D5B;--amber:#D3A61F;--grey:#808080}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;color:var(--ink);font-family:'IBM Plex Sans',sans-serif;-webkit-font-smoothing:antialiased;background:radial-gradient(ellipse at 50% 42%,#FBF9F0 0%,#F1EDDC 55%,#E4DEC7 100%)}
+#cv{position:fixed;inset:0}#cv canvas{display:block;width:100%;height:100%;touch-action:none;outline:none}
+#hs{position:fixed;inset:0;z-index:5;pointer-events:none;overflow:hidden}
+.hotspot{position:absolute;width:22px;height:22px;padding:0;border:0;background:transparent;transform:translate(-50%,-50%);cursor:pointer;pointer-events:auto}
+.hotspot.off{display:none}
+.hr{position:absolute;inset:0;border:2px solid var(--amber);border-radius:50%;background:rgba(255,253,246,.9);animation:pulse 1.9s infinite}
+.hd{position:absolute;inset:7px;border-radius:50%;background:var(--amber)}
+.tip{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translate(-50%,4px);background:rgba(28,42,32,.94);color:#fff;font-size:12px;line-height:1.35;padding:7px 10px;border-radius:6px;white-space:nowrap;opacity:0;pointer-events:none;transition:.18s}
+.tip b{display:block;font-weight:600}.tip span{opacity:.8}
+.hotspot:hover .tip,.hotspot:focus-visible .tip{opacity:1;transform:translate(-50%,0)}
+@keyframes pulse{0%{transform:scale(.85);opacity:.9}100%{transform:scale(1.45);opacity:0}}
+#ui{position:fixed;inset:0;z-index:10;padding:22px 24px max(18px,env(safe-area-inset-bottom));display:flex;flex-direction:column;justify-content:space-between;pointer-events:none}
+#top{display:flex;justify-content:flex-end}
+#hd{display:flex;flex-direction:column;align-items:flex-end;gap:10px;max-width:560px;text-align:right}
+h1{margin:0;font:700 24px/1.1 'Bricolage Grotesque',sans-serif}
+h2{margin:4px 0 0;font-size:14px;font-weight:400;color:rgba(28,42,32,.72)}
+#ctl{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end;pointer-events:auto}
+.btn{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:8px 14px;border:1px solid var(--line);border-radius:999px;background:var(--paper);color:var(--ink);font:600 12px 'IBM Plex Sans',sans-serif;cursor:pointer;box-shadow:0 2px 6px rgba(28,42,32,.06);transition:.2s}
+.btn:hover{transform:translateY(-1px);background:#F8F6EF}
+.btn[aria-pressed=true]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.btn:focus-visible,.hotspot:focus-visible,#cardX:focus-visible{outline:2px solid var(--green);outline-offset:3px}
+#bot{display:flex;justify-content:center}
+#pc{width:min(620px,92vw);display:flex;flex-direction:column;align-items:center;gap:9px}
+#bar{display:flex;gap:3px;width:100%;height:7px}
+#bar i{flex:1;border-radius:3px;background:rgba(28,42,32,.16)}#bar i.v{background:rgba(46,125,91,.4)}#bar i.a{background:var(--grey)}
+#lab{display:flex;align-items:center;gap:10px}
+#bdg{width:28px;height:28px;border-radius:50%;background:var(--grey);color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center}
+#tl{font-size:17px;font-weight:600}
+#hint{position:fixed;bottom:84px;left:50%;transform:translateX(-50%);font-size:12px;color:rgba(28,42,32,.7);pointer-events:none;white-space:nowrap;transition:opacity .6s}
+/* ===== ENCART UI flottant (HTML superposé, hors scène 3D) ===== */
+#card{position:fixed;top:20px;left:20px;z-index:20;width:264px;padding:14px 14px 12px;border-radius:16px;background:#fff;border:1px solid var(--line);box-shadow:0 18px 40px rgba(28,42,32,.18),0 2px 6px rgba(28,42,32,.08);transition:opacity .3s,transform .3s}
+#card.off{opacity:0;pointer-events:none;transform:translateY(-6px)}
+#card header{margin:0 26px 6px 0;font:700 14px 'Bricolage Grotesque',sans-serif}
+#card svg{display:block;width:100%;height:auto;border-radius:10px;background:linear-gradient(#FBF8EE,#F3EEDB)}
+#card p{margin:8px 0 0;font-size:12px;line-height:1.4;font-weight:600;color:var(--green)}
+#cardX{position:absolute;top:10px;right:10px;width:24px;height:24px;border:0;border-radius:50%;background:#EFEAD7;color:var(--ink);font-size:14px;cursor:pointer}
+#ld{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;transition:opacity .6s,visibility .6s;font:700 22px 'Bricolage Grotesque',sans-serif}
+#ld small{font:400 13px 'IBM Plex Sans';opacity:.7}#ld.h{opacity:0;visibility:hidden}
+@media(max-width:820px){#card{width:176px;padding:10px}#card header{font-size:12px}#card p{display:none}h1{font-size:19px}#hint{display:none}#top{margin-top:150px}}
+@media(prefers-reduced-motion:reduce){.hr{animation:none}}
+#gauge{display:flex;align-items:center;gap:10px;padding:7px 14px;border-radius:999px;background:var(--paper);border:1px solid var(--line);box-shadow:0 2px 8px rgba(28,42,32,.08);font-size:12px;font-weight:600;opacity:0;transform:translateY(6px);transition:.3s}
+#gauge.on{opacity:1;transform:none}#gb{width:140px;height:8px;border-radius:4px;background:rgba(28,42,32,.14);overflow:hidden}#gf{display:block;height:100%;width:0;background:var(--amber);border-radius:4px}#gp{min-width:42px;text-align:right}
+#tp{width:100%;height:3px;border-radius:2px;background:rgba(28,42,32,.1);overflow:hidden}#tpf{display:block;height:100%;width:0;background:var(--ink);opacity:.55}
+</style>
+</head>
+<body>
+<div id="cv" aria-hidden="true"></div>
+<div id="hs"></div>
+<div id="ld">RiceWare CI<small>Préparation de la palette…</small></div>
+
+<aside id="card" aria-label="Produits finis sur étagère">
+  <button id="cardX" aria-label="Fermer l'encart">×</button>
+  <header>Produits finis</header>
+  <svg viewBox="0 0 230 196" role="img" aria-label="Assiette, gobelet, barquette, fourchette et cuillère posés sur une étagère">
+    <!-- étagère haute -->
+    <rect x="8" y="104" width="214" height="11" rx="3" fill="#dcb888"/><rect x="8" y="115" width="214" height="5" rx="2" fill="#c79e66"/>
+    <path d="M26 120 L26 136 L44 120Z M186 120 L186 136 L204 120Z" fill="#c79e66"/>
+    <!-- assiette -->
+    <ellipse cx="56" cy="100" rx="41" ry="8" fill="#d6cfba"/><ellipse cx="56" cy="97" rx="41" ry="8" fill="#ece7d9" stroke="#b9ae8f" stroke-width="1.2"/>
+    <ellipse cx="56" cy="97" rx="27" ry="4.8" fill="#ddd6c2"/>
+    <!-- gobelet -->
+    <path d="M110 58 L146 58 L141 102 Q128 106 115 102Z" fill="#efe9da" stroke="#b9ae8f" stroke-width="1.2" stroke-linejoin="round"/>
+    <path d="M112.5 76 L143.5 76 L142.4 86 Q128 90 113.6 86Z" fill="#a9d3bc"/>
+    <ellipse cx="128" cy="58" rx="18" ry="4.2" fill="#f7f3e8" stroke="#b9ae8f" stroke-width="1.2"/>
+    <!-- barquette -->
+    <path d="M158 84 L216 84 L209 103 Q187 107 165 103Z" fill="#e6dcc0" stroke="#b9ae8f" stroke-width="1.2" stroke-linejoin="round"/>
+    <rect x="153" y="79" width="68" height="7" rx="3.5" fill="#f0e8d0" stroke="#b9ae8f" stroke-width="1.2"/>
+    <path d="M187 88 L187 102" stroke="#cdbf98" stroke-width="1.5"/>
+    <!-- étagère basse (vue en perspective) -->
+    <path d="M22 152 L208 152 L222 176 L8 176Z" fill="#e6c79a"/><rect x="8" y="176" width="214" height="9" rx="2" fill="#c79e66"/>
+    <path d="M60 185 L60 194 L76 185Z M154 185 L154 194 L170 185Z" fill="#c79e66"/>
+    <!-- fourchette -->
+    <g fill="#efe9da" stroke="#b9ae8f" stroke-width="1.1" stroke-linejoin="round">
+      <rect x="16" y="157" width="19" height="2.2" rx="1"/><rect x="16" y="161" width="19" height="2.2" rx="1"/><rect x="16" y="165" width="19" height="2.2" rx="1"/><rect x="16" y="169" width="19" height="2.2" rx="1"/>
+      <rect x="32" y="156" width="15" height="17" rx="6"/><rect x="46" y="162.4" width="66" height="4.6" rx="2.3"/>
+    </g>
+    <!-- cuillère -->
+    <g fill="#efe9da" stroke="#b9ae8f" stroke-width="1.1" stroke-linejoin="round">
+      <ellipse cx="133" cy="164.5" rx="15" ry="8.5"/><rect x="146" y="162.4" width="62" height="4.6" rx="2.3"/>
+    </g>
+  </svg>
+  <p>Assiette · gobelet · barquette · fourchette · cuillère</p>
+</aside>
+
+<div id="ui">
+  <div id="top"><div id="hd">
+    <div><h1>Process de fabrication RiceWare CI</h1><h2>Étape 17 · Emballage sur palette — animation</h2></div>
+    <div id="ctl">
+      <button class="btn" id="bPlay" aria-pressed="true">Pause</button>
+      <button class="btn" id="bRep">Rejouer</button>
+      <button class="btn" id="bSpd" aria-pressed="false">Vitesse ×2</button>
+      <button class="btn" id="bCard" aria-pressed="true">Encart produits</button>
+      <button class="btn" id="bAnn" aria-pressed="true">Annotations</button>
+      <button class="btn" id="bRot" aria-pressed="false">Rotation auto</button>
+      <button class="btn" id="bRes">Vue isométrique</button>
+      <button class="btn" id="bPng">Capturer PNG</button>
+    </div></div></div>
+  <div id="bot"><div id="pc"><div id="gauge" aria-live="polite"><span id="gl">Tension</span><div id="gb"><i id="gf"></i></div><b id="gp">0 %</b></div><div id="bar"></div><div id="tp"><i id="tpf"></i></div><div id="lab"><div id="bdg">17</div><div id="tl">Emballage</div></div></div></div>
+</div>
+<div id="hint">Glisser pour orbiter · Molette pour zoomer · R pour réinitialiser</div>
+
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+const PI=Math.PI,$=id=>document.getElementById(id);
+
+/* ---------- rendu ---------- */
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.outputColorSpace=THREE.SRGBColorSpace;
+$('cv').appendChild(renderer.domElement);
+const scene=new THREE.Scene();
+const cam=new THREE.OrthographicCamera(-1,1,1,-1,.1,300);
+const TGT=new THREE.Vector3(.2,2.1,.4);
+const DIR=new THREE.Vector3(-Math.cos(PI/6)*Math.sin(PI/3),.5,Math.cos(PI/6)*Math.cos(PI/3)).normalize(); // 30° d'élévation, vue 3/4 face à l'opérateur
+function reset(){cam.position.copy(TGT).addScaledVector(DIR,70);cam.zoom=1;cam.updateProjectionMatrix();controls.target.copy(TGT);controls.update()}
+const controls=new OrbitControls(cam,renderer.domElement);
+controls.enableDamping=true;controls.dampingFactor=.08;controls.maxPolarAngle=1.45;controls.minZoom=.55;controls.maxZoom=3.5;controls.autoRotateSpeed=.7;
+controls.addEventListener('start',()=>$('hint').style.opacity=0);
+function fit(){const w=innerWidth,h=innerHeight,a=w/h,hh=a<1.5?6.2*1.5/a:6.2;cam.left=-hh*a;cam.right=hh*a;cam.top=hh;cam.bottom=-hh;cam.updateProjectionMatrix();renderer.setSize(w,h)}
+addEventListener('resize',fit);fit();
+scene.add(new THREE.AmbientLight(0xffffff,.9));
+const sun=new THREE.DirectionalLight(0xffffff,1.5);sun.position.set(-8,20,14);scene.add(sun);
+
+/* ---------- matériaux toon (flat design 3D) ---------- */
+const gm=new THREE.DataTexture(new Uint8Array([150,205,255]),3,1,THREE.RedFormat);gm.minFilter=gm.magFilter=THREE.NearestFilter;gm.needsUpdate=true;
+const T=(c,o={})=>new THREE.MeshToonMaterial({color:c,gradientMap:gm,polygonOffset:true,polygonOffsetFactor:1,polygonOffsetUnits:1,...o});
+const EM=new THREE.LineBasicMaterial({color:0x4f5550,transparent:true,opacity:.5});
+const C1=T(0xe6d2a8),C2=T(0xdcc799),WOOD=T(0xdbb480),WOODD=T(0xc9a06a),STRAP=T(0x2d3034),STEEL=T(0xc3cacf),
+  SKIN=T(0xf1c9a5),SHIRT=T(0xe4d5b3),VEST=T(0xaab1b6),GREEN=T(0x4fae82),PANTS=T(0x7587a0),BOOT=T(0x5a5f66),HELM=T(0xf3c93a),
+  WHITE=T(0xf8f6ef,{side:THREE.DoubleSide}),TOOL=T(0x8ea9c8),TOOLD=T(0x6d84a3),GRIP=T(0xe9a84a),GLOVE=T(0xb9c0c6),DARK=T(0x34383d),
+  BASE=T(0xe7d8b5),BASE2=T(0xdccdaa),BASE3=T(0xd3c3a0);
+function edge(m,a=30){m.add(new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry,a),EM))}
+function bx(p,w,h,d,mat,x,y,z,e=true){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);m.position.set(x,y,z);p.add(m);e&&edge(m);return m}
+function cy(p,rt,rb,h,seg,mat,x,y,z,e=true){const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg),mat);m.position.set(x,y,z);p.add(m);e&&edge(m);return m}
+function sp(p,r,mat,x,y,z,sc){const m=new THREE.Mesh(new THREE.SphereGeometry(r,24,16),mat);m.position.set(x,y,z);if(sc)m.scale.set(...sc);p.add(m);return m}
+function rod(p,a,b,r,mat,seg=12){const A=new THREE.Vector3(...a),B=new THREE.Vector3(...b),d=B.clone().sub(A);const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,d.length(),seg),mat);m.position.copy(A).add(B).multiplyScalar(.5);m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());p.add(m);return m}
+
+/* ---------- base octogonale beige ---------- */
+const blob=new THREE.Mesh(new THREE.CircleGeometry(7.2,48),new THREE.MeshBasicMaterial({color:0x8a8266,transparent:true,opacity:.12}));blob.rotation.x=-PI/2;blob.position.y=-.01;scene.add(blob);
+const baseG=new THREE.Group();baseG.rotation.y=PI/8;scene.add(baseG);
+function octo(r,h,m,y){const g=new THREE.CylinderGeometry(r,r,h,8),me=new THREE.Mesh(g,m);me.position.y=y;baseG.add(me);me.add(new THREE.LineSegments(new THREE.EdgesGeometry(g),EM))}
+octo(5.8,.2,BASE3,.1);octo(5.3,.25,BASE,.325);octo(4.6,.02,BASE2,.46);
+const BT=.47;                                         // surface supérieure de la base
+const R=new THREE.Group();R.position.y=BT;scene.add(R); // tout repose exactement sur BT
+
+/* ---------- palette bois (le dessous affleure la base, sans la traverser) ---------- */
+const PW=1.2,PZ=.96;                                   // demi-largeur x / demi-profondeur z
+const pal=new THREE.Group();R.add(pal);
+for(const x of[-1.09,0,1.09])bx(pal,.22,.05,PZ*2,WOODD,x,.025,0);                          // semelles
+for(const x of[-1.09,0,1.09])for(const z of[-.85,0,.85])bx(pal,.22,.12,.22,WOOD,x,.11,z);  // tasseaux
+for(const z of[-.86,-.43,0,.43,.86])bx(pal,PW*2,.05,.2,WOOD,0,.195,z);                     // plateau supérieur
+const DECK=.22;
+
+/* ---------- pile de cartons plats (empilage animé) ---------- */
+const N=20,LH=.1,PITCH=.11,SW=1.15;
+const layers=[];
+for(let i=0;i<N;i++){const m=bx(R,SW*2,LH,PZ*2,i%2?C1:C2,0,DECK+i*PITCH+LH/2,0);m.userData.y=m.position.y;m.visible=false;layers.push(m)}
+const YT=DECK+(N-1)*PITCH+LH;
+for(const z of[-.5,.5])bx(layers[N-1],SW*2-.3,.004,.012,new THREE.MeshBasicMaterial({color:0xb79e6a}),0,LH/2+.002,z,false);
+let label;
+{const c=document.createElement('canvas');c.width=512;c.height=256;const g=c.getContext('2d');
+ g.fillStyle='#fffdf6';g.fillRect(0,0,512,256);g.strokeStyle='#2e7d5b';g.lineWidth=10;g.strokeRect(10,10,492,236);
+ g.fillStyle='#2e7d5b';g.font='700 70px sans-serif';g.textAlign='center';g.fillText('RiceWare CI',256,118);g.fillStyle='#1c2a20';g.font='600 40px sans-serif';g.fillText('Cartons plats · Lot 17',256,185);
+ const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=8;
+ label=new THREE.Mesh(new THREE.PlaneGeometry(.56,.28),new THREE.MeshBasicMaterial({map:t,toneMapped:false}));label.position.set(-.05,1.1,PZ+.003);label.visible=false;R.add(label)}
+
+/* ---------- sangles : se déroulent autour de la pile (anneau tracé progressivement) ---------- */
+function rr(s,x0,y0,x1,y1,r){s.moveTo(x0+r,y0);s.lineTo(x1-r,y0);s.absarc(x1-r,y0+r,r,-PI/2,0);s.lineTo(x1,y1-r);s.absarc(x1-r,y1-r,r,0,PI/2);s.lineTo(x0+r,y1);s.absarc(x0+r,y1-r,r,PI/2,PI);s.lineTo(x0,y0+r);s.absarc(x0+r,y0+r,r,PI,PI*1.5)}
+const SXR=.545,SXL=-.545,SWID=.09,ZO=PZ+.034;
+const CY=(.095+YT+.034)/2,A0=Math.atan2(.9-CY,ZO);
+function strapMat(){const m=STRAP.clone();const u={value:0};m.userData.u=u;
+  m.onBeforeCompile=sh=>{sh.uniforms.uP=u;
+    sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vP;').replace('#include <begin_vertex>','#include <begin_vertex>\nvP=position;');
+    sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vP;\nuniform float uP;').replace('void main() {',`void main() {\n float aa=atan(vP.y-${CY.toFixed(4)},vP.x); float tt=fract((aa-${A0.toFixed(4)})/6.28318); if(tt>uP) discard;`)};
+  return m}
+function strap(xc){
+  const sh=new THREE.Shape();rr(sh,-ZO,.095,ZO,YT+.034,.05);
+  const h=new THREE.Path();h.moveTo(-PZ-.004,.125);h.lineTo(PZ+.004,.125);h.lineTo(PZ+.004,YT+.004);h.lineTo(-PZ-.004,YT+.004);h.closePath();sh.holes.push(h);
+  const mat=strapMat();
+  const m=new THREE.Mesh(new THREE.ExtrudeGeometry(sh,{depth:SWID,bevelEnabled:false,curveSegments:10}),mat);
+  m.rotation.y=-PI/2;m.position.set(xc+SWID/2,0,0);R.add(m);edge(m,40);m.children[0].visible=false;return m}
+const strapA=strap(SXR),strapB=strap(SXL);
+const SLACK=new THREE.Color(0x7a8086),TAUT=new THREE.Color(0x2d3034);
+function seal(x){const m=new THREE.Mesh(new THREE.BoxGeometry(.12,.05,.012),STEEL.clone());m.position.set(x,1.0,ZO+.006);m.visible=false;R.add(m);return m}
+const sealA=seal(SXR),sealB=seal(SXL);
+
+/* ---------- outil de cerclage (tendeur à levier) ---------- */
+const TG=new THREE.Group();TG.visible=false;R.add(TG);
+bx(TG,.2,.36,.12,TOOL,0,0,.06);bx(TG,.26,.07,.17,TOOLD,0,.215,.085);bx(TG,.14,.05,.14,STEEL,0,-.205,.07);
+const LG=new THREE.Group();LG.position.set(0,.2,.17);TG.add(LG);
+rod(LG,[0,0,0],[0,.18,.29],.032,TOOLD);rod(LG,[0,.11,.17],[0,.18,.29],.05,GRIP);
+const LEVER_TIP=new THREE.Vector3(0,.18,.29);
+
+/* ---------- opérateur (jambes articulées, bras en IK) ---------- */
+const G=new THREE.Group();R.add(G);
+function leg(s){const g=new THREE.Group();g.position.set(s*.16,1.02,0);G.add(g);cy(g,.11,.12,.86,16,PANTS,0,-.43,0,false);bx(g,.25,.16,.42,BOOT,0,-.94,-.05);return g}
+const legR=leg(1),legL=leg(-1);
+bx(G,.56,.2,.34,PANTS,0,1.12,0);
+bx(G,.62,.7,.34,SHIRT,0,1.57,0);
+bx(G,.64,.62,.03,VEST,0,1.55,-.185);bx(G,.64,.62,.03,VEST,0,1.55,.185);
+for(const s of[-1,1])bx(G,.13,.04,.4,VEST,s*.2,1.92,0);
+for(const y of[1.42,1.68]){bx(G,.64,.07,.012,GREEN,0,y,-.2,false);bx(G,.64,.07,.012,GREEN,0,y,.2,false)}
+for(const s of[-1,1]){bx(G,.06,.55,.012,GREEN,s*.2,1.55,-.2,false);bx(G,.06,.55,.012,GREEN,s*.2,1.55,.2,false)}
+cy(G,.09,.1,.1,12,SKIN,0,1.97,0,false);
+const HY=2.2;sp(G,.25,SKIN,0,HY,0);
+{const m=new THREE.Mesh(new THREE.SphereGeometry(.262,28,14,PI*1.5-.95,1.9,PI*.5+.05,.75),WHITE);m.position.set(0,HY,0);G.add(m)}
+for(const s of[-1,1])sp(G,.022,DARK,s*.085,HY+.06,-.236);
+{const d=new THREE.Mesh(new THREE.SphereGeometry(.295,32,16,0,PI*2,0,PI*.52),HELM);d.position.set(0,HY+.04,0);G.add(d);
+ cy(G,.35,.35,.03,32,HELM,0,HY+.04-.295*Math.cos(PI*.52),0,false);bx(G,.4,.03,.2,HELM,0,HY+.03,-.33,false)}
+const UPV=new THREE.Vector3(0,1,0);
+function mkArm(){const o={};const r=(rad,mat)=>{const m=new THREE.Mesh(new THREE.CylinderGeometry(1,1,1,12),mat);m.userData.r=rad;R.add(m);return m};
+  o.u=r(.085,SHIRT);o.f=r(.075,SHIRT);o.sh=sp(R,.105,VEST,0,0,0);o.el=sp(R,.085,SHIRT,0,0,0);o.h=sp(R,.1,GLOVE,0,0,0);return o}
+function setRod(m,a,b){const d=b.clone().sub(a),L=d.length();m.position.copy(a).add(b).multiplyScalar(.5);m.quaternion.setFromUnitVectors(UPV,d.normalize());m.scale.set(m.userData.r,L,m.userData.r)}
+function armUpdate(o,sh,hand,hint){
+  const l=.52,d=hand.clone().sub(sh),L=d.length(),h=Math.sqrt(Math.max(.01,l*l-(L/2)**2)),n=d.clone().normalize();
+  const p=hint.clone().sub(n.clone().multiplyScalar(hint.dot(n))).normalize();
+  const el=sh.clone().add(hand).multiplyScalar(.5).add(p.multiplyScalar(h));
+  o.sh.position.copy(sh);o.el.position.copy(el);o.h.position.copy(hand);setRod(o.u,sh,el);setRod(o.f,el,hand)}
+const armR=mkArm(),armL=mkArm();
+function shadow(x,z,rx,rz,o=.16){const m=new THREE.Mesh(new THREE.CircleGeometry(1,40),new THREE.MeshBasicMaterial({color:0x6e6648,transparent:true,opacity:o,depthWrite:false}));m.rotation.x=-PI/2;m.scale.set(rx,rz,1);m.position.set(x,.004,z);R.add(m);return m}
+shadow(0,0,1.75,1.45);const opShadow=shadow(0,0,.65,.5,.2);
+
+/* ---------- chronologie (secondes) ---------- */
+const V=(x,y,z)=>new THREE.Vector3(x,y,z);
+const P0=V(3.7,0,3.1),P1=V(1.1,0,1.65),P2=V(.01,0,1.65),P3=P0.clone();
+const L1=P0.distanceTo(P1),L2=P1.distanceTo(P2),L3=P2.distanceTo(P3);
+const TT={enter:5.6,stack:6.4,s1:[6.6,8.3],s2:[8.1,9.8],in1:[10,10.7],pump1:[10.7,16.7],crimp1:16.7,out1:[17.3,17.9],walk2:[17.9,20.9],in2:[21,21.7],pump2:[21.7,27.7],crimp2:27.7,out2:[28.3,28.9],exit:[29.2,34],end:36};
+const prog=(t,a,b)=>Math.min(1,Math.max(0,(t-a)/(b-a)));
+const ease=x=>x*x*(3-2*x),outC=x=>1-Math.pow(1-x,3);
+function tens(t,a,b){if(t<=a)return 0;if(t>=b)return 1;const c=(t-a)/(b-a)*6,f=Math.floor(c);return Math.min(1,(f+ease(Math.min(1,(c-f)*1.7)))/6)}
+function opPos(t){
+  const e1=prog(t,0,TT.enter),e2=prog(t,TT.walk2[0],TT.walk2[1]),e3=prog(t,TT.exit[0],TT.exit[1]),a=ease(e1),b=ease(e2),c=ease(e3);
+  let p,mv,dir;
+  if(t<TT.walk2[0]){p=P0.clone().lerp(P1,a);mv=e1>0&&e1<1;dir=P1.clone().sub(P0)}
+  else if(t<TT.exit[0]){p=P1.clone().lerp(P2,b);mv=e2>0&&e2<1;dir=P2.clone().sub(P1)}
+  else{p=P2.clone().lerp(P3,c);mv=e3>0&&e3<1;dir=P3.clone().sub(P2)}
+  return{p,mv,dir,len:a*L1+b*L2+c*L3}}
+const CAP=[[0,'Empilage des cartons plats sur la palette'],[TT.stack,'Passage des deux sangles noires autour de la pile'],[TT.s2[1]+.1,'Sangle n°1 : tension au tendeur manuel'],[TT.out1[1],'Déplacement vers la sangle n°2'],[TT.in2[0],'Sangle n°2 : tension au tendeur manuel'],[TT.out2[1],'Palette cerclée, prête pour le stockage']];
+let yaw=0,amp=0,lastCap=-1;
+
+function frame(t,dt,snap){
+  // 1. empilage
+  layers.forEach((m,i)=>{const u=prog(t,.3+i*.27,.8+i*.27);m.visible=u>0;m.position.y=m.userData.y+(1-outC(u))*3.4});
+  label.visible=t>TT.stack;
+  // 2. sangles
+  const d1=ease(prog(t,TT.s1[0],TT.s1[1])),d2=ease(prog(t,TT.s2[0],TT.s2[1]));
+  strapA.material.userData.u.value=d1>=1?1.01:d1;strapB.material.userData.u.value=d2>=1?1.01:d2;
+  strapA.children[0].visible=d1>=1;strapB.children[0].visible=d2>=1;
+  const tA=tens(t,TT.pump1[0],TT.pump1[1]),tB=tens(t,TT.pump2[0],TT.pump2[1]);
+  strapA.material.color.copy(SLACK).lerp(TAUT,tA);strapB.material.color.copy(SLACK).lerp(TAUT,tB);
+  // 3. outil
+  const act=t<TT.out1[1]?1:2,xc=act===1?SXR:SXL;
+  const pr=act===1?ease(prog(t,TT.in1[0],TT.in1[1]))*(1-ease(prog(t,TT.out1[0],TT.out1[1]))):ease(prog(t,TT.in2[0],TT.in2[1]))*(1-ease(prog(t,TT.out2[0],TT.out2[1])));
+  const ps=act===1?TT.pump1:TT.pump2,pumping=t>=ps[0]&&t<=ps[1];
+  const pa=pumping?(1-Math.cos(2*PI*(t-ps[0])))/2:0;
+  TG.visible=pr>.001;TG.position.set(xc,1.35,ZO+(1-pr)*.5);LG.rotation.x=pumping?-.35+.9*pa:-.2;
+  // 4. opérateur
+  const o=opPos(t),ph=o.len*3.6;
+  amp+=((o.mv?1:0)-amp)*Math.min(1,dt*10);
+  legR.rotation.x=Math.sin(ph)*.55*amp;legL.rotation.x=-Math.sin(ph)*.55*amp;
+  G.position.copy(o.p);G.position.y=Math.abs(Math.sin(ph))*.04*amp;
+  let ty;if(o.mv)ty=Math.atan2(-o.dir.x,-o.dir.z);else ty=Math.atan2(-(xc-o.p.x),-(ZO-o.p.z));
+  const dd=((ty-yaw+PI*3)%(PI*2))-PI;yaw=snap?ty:yaw+dd*(1-Math.exp(-dt*8));G.rotation.y=yaw;
+  opShadow.position.set(o.p.x+.1,.004,o.p.z+.1);
+  G.updateMatrix();scene.updateMatrixWorld(true);
+  const toR=v=>v.clone().applyMatrix4(G.matrix);
+  const le=R.worldToLocal(LG.localToWorld(LEVER_TIP.clone()));
+  const sw=Math.sin(ph)*.28*amp,w=ease(pr);
+  const freeR=toR(V(.46,1.0,-.1+sw)),freeL=toR(V(-.46,1.0,-.1-sw));
+  const bodyT=V(TG.position.x,TG.position.y,TG.position.z+.21);
+  armUpdate(armR,toR(V(.4,1.78,0)),freeR.lerp(bodyT,w),V(.5,-1,-.3).applyQuaternion(G.quaternion));
+  armUpdate(armL,toR(V(-.4,1.78,0)),freeL.lerp(le,w),V(-.5,-1,-.3).applyQuaternion(G.quaternion));
+  // 5. agrafes (sertissage)
+  for(const [m,c] of[[sealA,TT.crimp1],[sealB,TT.crimp2]]){const u=ease(prog(t,c,c+.25));m.visible=u>.01;m.scale.setScalar(Math.max(.01,u));m.material.emissive.setScalar(Math.max(0,1-prog(t,c,c+.8))*.7)}
+  // 6. jauge + légende
+  const gOn=(t>=TT.in1[0]&&t<TT.out1[1])||(t>=TT.in2[0]&&t<TT.out2[1]);
+  $('gauge').classList.toggle('on',gOn);
+  if(gOn){const tv=act===1?tA:tB,sealed=(act===1?t>TT.crimp1:t>TT.crimp2);const pct=Math.round(tv*100);
+    $('gl').textContent=`Sangle n°${act}`+(sealed?' · sertie ✓':' · tension');$('gf').style.width=pct+'%';$('gp').textContent=pct+' %'}
+  let ci=0;CAP.forEach((c,i)=>{if(t>=c[0])ci=i});if(ci!==lastCap){lastCap=ci;$('tl').textContent=CAP[ci][1]}
+  $('tpf').style.width=(t/TT.end*100)+'%';
+  // 7. annotations mobiles
+  HS[3].v.set(TG.position.x,TG.position.y+.1,TG.position.z+.2);HS[3].b.style.visibility=TG.visible?'visible':'hidden';
+  HS[4].v.set(o.p.x,2.75,o.p.z);
+}
+
+/* ---------- annotations ---------- */
+const HS=[
+ ['Palette en bois','Semelles, tasseaux et plateau, posés à plat',[0,.15,1.0]],
+ ['Pile de cartons plats','20 couches de cartons beiges',[-.7,1.9,.97]],
+ ['Sangles de cerclage','2 sangles noires qui épousent la pile',[-.545,YT+.1,.5]],
+ ['Outil de cerclage manuel','Tendeur à levier',[SXR,1.45,ZO+.2]],
+ ['Opérateur','Casque jaune, masque blanc, gilet gris à bandes vertes',[1.1,2.75,1.65]]
+].map(([t,s,p])=>{const b=document.createElement('button');b.className='hotspot';b.type='button';b.setAttribute('aria-label',t);
+  b.innerHTML=`<span class="hr"></span><span class="hd"></span><span class="tip"><b>${t}</b><span>${s}</span></span>`;$('hs').appendChild(b);return{b,v:new THREE.Vector3(...p)}});
+const tmp=new THREE.Vector3();
+function place(){const w=innerWidth,h=innerHeight;for(const o of HS){tmp.copy(o.v);R.localToWorld(tmp);tmp.project(cam);o.b.style.left=((tmp.x+1)/2*w)+'px';o.b.style.top=((1-tmp.y)/2*h)+'px'}}
+
+/* ---------- UI ---------- */
+for(let i=0;i<18;i++){const e=document.createElement('i');e.className=i===16?'a':(i<16?'v':'');$('bar').appendChild(e)}
+const tog=(id,fn)=>$(id).onclick=e=>{const on=e.currentTarget.getAttribute('aria-pressed')!=='true';e.currentTarget.setAttribute('aria-pressed',on);fn(on)};
+tog('bCard',on=>$('card').classList.toggle('off',!on));
+tog('bAnn',on=>HS.forEach(o=>o.b.classList.toggle('off',!on)));
+tog('bRot',on=>controls.autoRotate=on);
+let clk=0,playing=true,spd=1,snap=true;
+tog('bPlay',on=>{playing=on;$('bPlay').textContent=on?'Pause':'Lecture'});
+tog('bSpd',on=>{spd=on?2:1;$('bSpd').textContent=on?'Vitesse ×1':'Vitesse ×2'});
+$('bRep').onclick=()=>{clk=0;snap=true};
+$('cardX').onclick=()=>{$('card').classList.add('off');$('bCard').setAttribute('aria-pressed','false')};
+$('bRes').onclick=reset;
+$('bPng').onclick=()=>{renderer.render(scene,cam);const a=document.createElement('a');a.href=renderer.domElement.toDataURL('image/png');a.download='riceware-etape17-emballage.png';a.click()};
+addEventListener('keydown',e=>{if(e.key==='r'||e.key==='R')reset();if(e.code==='Space'){e.preventDefault();$('bPlay').click()}});
+
+reset();
+let vis=true;document.addEventListener('visibilitychange',()=>vis=!document.hidden);
+const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;if(reduced){clk=TT.end-1}
+let last=performance.now();
+(function loop(now){requestAnimationFrame(loop);const dt=Math.min((now-last)/1000,.05);last=now;if(!vis)return;
+  if(playing){clk+=dt*spd;if(clk>TT.end){clk=0;snap=true}}
+  frame(clk,dt*spd,snap);snap=false;controls.update();renderer.render(scene,cam);place()})(last);
+setTimeout(()=>$('ld').classList.add('h'),300);
+</script>
+</body>
+</html>

@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RiceWare CI — Étape 7 · Préparation du liant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F4F1E4;--ink:#1C2A20;--paper:#FFFDF6;--line:#DDD6BF;--green:#2E7D5B;--amber:#D3A61F;--ease:cubic-bezier(.2,.8,.2,1)}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;color:var(--ink);font-family:'IBM Plex Sans',sans-serif;-webkit-font-smoothing:antialiased;background:radial-gradient(ellipse at 50% 38%,#FBF9F0 0%,#F1EDDC 55%,#E4DEC7 100%)}
+#cv{position:fixed;inset:0}#cv canvas{display:block;width:100%;height:100%;touch-action:none;outline:none}
+#hs{position:fixed;inset:0;z-index:5;pointer-events:none;overflow:hidden}
+.hotspot{position:absolute;width:22px;height:22px;padding:0;border:0;background:transparent;transform:translate(-50%,-50%);cursor:pointer;pointer-events:auto}
+.hotspot.off{display:none}
+.hr{position:absolute;inset:0;border:2px solid var(--amber);border-radius:50%;background:rgba(255,253,246,.9);animation:pulse 1.9s infinite}
+.hd{position:absolute;inset:7px;border-radius:50%;background:var(--amber)}
+.tip{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translate(-50%,4px);background:rgba(28,42,32,.94);color:#fff;font-size:12px;line-height:1.35;padding:7px 10px;border-radius:6px;white-space:nowrap;opacity:0;pointer-events:none;transition:.18s}
+.tip b{display:block;font-weight:600}.tip span{opacity:.8}
+.hotspot:hover .tip,.hotspot:focus-visible .tip{opacity:1;transform:translate(-50%,0)}
+@keyframes pulse{0%{transform:scale(.85);opacity:.9}100%{transform:scale(1.45);opacity:0}}
+#ui{position:fixed;inset:0;z-index:10;padding:22px 24px max(18px,env(safe-area-inset-bottom));display:flex;flex-direction:column;justify-content:space-between;pointer-events:none}
+#top{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap}
+h1{margin:0;font:700 24px/1.1 'Bricolage Grotesque',sans-serif}
+h2{margin:4px 0 0;font-size:14px;font-weight:400;color:rgba(28,42,32,.72)}
+#ctl{display:flex;gap:7px;flex-wrap:wrap;pointer-events:auto}
+.btn{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:8px 14px;border:1px solid var(--line);border-radius:999px;background:var(--paper);color:var(--ink);font:600 12px 'IBM Plex Sans',sans-serif;cursor:pointer;box-shadow:0 2px 6px rgba(28,42,32,.06);transition:.2s var(--ease)}
+.btn:hover{transform:translateY(-1px);background:#F8F6EF}
+.btn[aria-pressed=true]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.btn:focus-visible,.hotspot:focus-visible{outline:2px solid var(--green);outline-offset:3px}
+#bot{display:flex;justify-content:center}
+#pc{width:min(620px,92vw);display:flex;flex-direction:column;align-items:center;gap:9px}
+#bar{display:flex;gap:3px;width:100%;height:7px}
+#bar i{flex:1;border-radius:3px;background:rgba(28,42,32,.16)}#bar i.a{background:var(--green)}
+#lab{display:flex;align-items:center;gap:10px}
+#bd{width:28px;height:28px;border-radius:50%;background:var(--green);color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center}
+#tl{font-size:17px;font-weight:600}
+#hint{position:fixed;bottom:84px;left:50%;transform:translateX(-50%);font-size:12px;color:rgba(28,42,32,.7);pointer-events:none;white-space:nowrap;transition:opacity .6s}
+#ld{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;transition:opacity .6s,visibility .6s;font:700 22px 'Bricolage Grotesque',sans-serif}
+#ld small{font:400 13px 'IBM Plex Sans';opacity:.7}#ld.h{opacity:0;visibility:hidden}
+@media(max-width:640px){h1{font-size:19px}#hint{display:none}}
+@media(prefers-reduced-motion:reduce){.hr{animation:none}}
+</style>
+</head>
+<body>
+<div id="cv" aria-hidden="true"></div>
+<div id="hs"></div>
+<div id="ld">RiceWare CI<small>Construction de la zone de préparation du liant…</small></div>
+<div id="ui">
+  <div id="top">
+    <div><h1>Process de fabrication RiceWare CI</h1><h2>Étape 7 · Préparation du liant (amidon de manioc) — vue isométrique PBR</h2></div>
+    <div id="ctl">
+      <button class="btn" id="bAnn" aria-pressed="true">Annotations</button>
+      <button class="btn" id="bRot" aria-pressed="false">Rotation auto</button>
+      <button class="btn" id="bMix" aria-pressed="true">Mixage</button>
+      <button class="btn" id="bCycle">↻ Rejouer le cycle</button>
+      <button class="btn" id="bRes">Vue isométrique</button>
+      <button class="btn" id="bPng">Capturer PNG</button>
+    </div>
+  </div>
+  <div id="bot"><div id="pc"><div id="bar"></div><div id="lab"><div id="bd">7</div><div id="tl">Préparation du liant d'amidon de manioc</div></div></div></div>
+</div>
+<div id="hint">Glisser pour orbiter · Molette pour zoomer · Clic droit pour déplacer</div>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+const $=id=>document.getElementById(id), V=(x,y,z)=>new THREE.Vector3(x,y,z);
+
+/* ---------- rendu ---------- */
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true});
+const PR=Math.min(devicePixelRatio,2);renderer.setPixelRatio(PR);
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.08;
+renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.setClearColor(0,0);
+$('cv').appendChild(renderer.domElement);
+const scene=new THREE.Scene();
+scene.environment=new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(),0.04).texture;
+const cam=new THREE.OrthographicCamera(-1,1,1,-1,-300,400);
+const HOME=V(26,21,26),TGT=V(-.2,2.4,.2);
+cam.position.copy(HOME);
+const controls=new OrbitControls(cam,renderer.domElement);
+controls.target.copy(TGT);controls.enableDamping=true;controls.dampingFactor=.08;
+controls.maxPolarAngle=1.45;controls.minZoom=.55;controls.maxZoom=3.2;controls.autoRotateSpeed=.8;
+controls.addEventListener('start',()=>$('hint').style.opacity=0);
+function fit(){const w=innerWidth,h=innerHeight,a=w/h,hh=a<1.7?8.6*1.7/a:8.6;
+  cam.left=-hh*a;cam.right=hh*a;cam.top=hh;cam.bottom=-hh;cam.updateProjectionMatrix();renderer.setSize(w,h)}
+addEventListener('resize',fit);fit();
+
+/* ---------- lumières ---------- */
+scene.add(new THREE.HemisphereLight(0xfff4e0,0xcfc6ac,.6));
+const sun=new THREE.DirectionalLight(0xfff0d8,2.6);sun.position.set(-12,24,16);sun.castShadow=true;
+sun.shadow.mapSize.set(4096,4096);Object.assign(sun.shadow.camera,{left:-15,right:15,top:15,bottom:-15,near:1,far:80});
+sun.shadow.bias=-.0004;sun.shadow.normalBias=.03;sun.shadow.radius=5;scene.add(sun);
+const fill=new THREE.DirectionalLight(0xcfe0ff,.6);fill.position.set(20,10,-8);scene.add(fill);
+
+/* ---------- textures procédurales ---------- */
+let seed=13;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+function ctex(w,h,fn,rx=1,ry=1,srgb=true){const c=document.createElement('canvas');c.width=w;c.height=h;fn(c.getContext('2d'),w,h);
+  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(rx,ry);t.anisotropy=8;if(srgb)t.colorSpace=THREE.SRGBColorSpace;return t}
+const concrete=(rx,ry)=>ctex(256,256,(g,w,h)=>{g.fillStyle='#d3cebf';g.fillRect(0,0,w,h);
+  for(let i=0;i<5000;i++){const v=rnd()>.5?255:60;g.fillStyle=`rgba(${v},${v},${v},${.05+rnd()*.07})`;g.fillRect(rnd()*w,rnd()*h,1+rnd()*2,1+rnd()*2)}},rx,ry);
+const plate=(rx,ry,srgb=true)=>ctex(64,64,(g,w,h)=>{g.fillStyle='#8f959b';g.fillRect(0,0,w,h);g.fillStyle='#c4c9ce';
+  [[16,16,1],[48,48,1],[48,16,-1],[16,48,-1]].forEach(([x,y,s])=>{g.save();g.translate(x,y);g.rotate(s*Math.PI/4);g.fillRect(-9,-2.5,18,5);g.restore()})},rx,ry,srgb);
+const brushed=(rx,ry)=>ctex(256,256,(g,w,h)=>{g.fillStyle='#b9bfc5';g.fillRect(0,0,w,h);
+  for(let i=0;i<1100;i++){g.fillStyle=rnd()>.5?`rgba(255,255,255,${.04+rnd()*.07})`:`rgba(0,0,0,${.04+rnd()*.07})`;g.fillRect(0,rnd()*h,w,.6+rnd()*1.4)}},rx,ry);
+const woodTex=(rx,ry)=>ctex(256,256,(g,w,h)=>{g.fillStyle='#a77b4f';g.fillRect(0,0,w,h);
+  for(let i=0;i<140;i++){const y=rnd()*h;g.fillStyle=rnd()>.5?`rgba(90,55,25,${.1+rnd()*.2})`:`rgba(220,175,120,${.08+rnd()*.15})`;g.fillRect(0,y,w,.8+rnd()*2.2)}
+  for(let i=0;i<5;i++){const x=rnd()*w,y=rnd()*h;g.fillStyle='rgba(70,40,18,.35)';g.beginPath();g.ellipse(x,y,9,4,0,0,6.3);g.fill()}},rx,ry);
+const swirlTex=ctex(256,256,(g,w,h)=>{g.fillStyle='#f6f2e6';g.fillRect(0,0,w,h);g.translate(128,128);
+  for(let k=0;k<4;k++){g.strokeStyle=`rgba(210,200,175,${.45})`;g.lineWidth=7;g.beginPath();for(let a=0;a<12;a+=.1){const r=6+a*10;g.lineTo(Math.cos(a+k*1.57)*r,Math.sin(a+k*1.57)*r)}g.stroke()}
+  for(let i=0;i<500;i++){g.fillStyle=`rgba(255,255,255,${.3+rnd()*.4})`;const a=rnd()*6.28,r=rnd()*125;g.beginPath();g.arc(Math.cos(a)*r,Math.sin(a)*r,1+rnd()*3,0,6.3);g.fill()}});
+const M=(c,o={})=>new THREE.MeshStandardMaterial({color:c,roughness:.6,metalness:0,envMapIntensity:.6,...o});
+const glassMat=(o={})=>new THREE.MeshPhysicalMaterial({color:0xffffff,metalness:0,roughness:.1,transmission:.9,thickness:.08,ior:1.45,envMapIntensity:1.4,clearcoat:1,clearcoatRoughness:.05,side:THREE.DoubleSide,...o});
+
+/* ---------- helpers ---------- */
+const sh=m=>{m.castShadow=m.receiveShadow=true;return m};
+const box=(w,h,d,mat,x=0,y=0,z=0,p)=>{const m=sh(new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat));m.position.set(x,y,z);p&&p.add(m);return m};
+const rbox=(w,h,d,r,mat,x=0,y=0,z=0,p)=>{const m=sh(new THREE.Mesh(new RoundedBoxGeometry(w,h,d,3,r),mat));m.position.set(x,y,z);p&&p.add(m);return m};
+const cyl=(rt,rb,h,seg,mat,x=0,y=0,z=0,p,rot)=>{const m=sh(new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg),mat));m.position.set(x,y,z);if(rot)m.rotation.set(...rot);p&&p.add(m);return m};
+const sph=(r,mat,x,y,z,p)=>{const m=sh(new THREE.Mesh(new THREE.SphereGeometry(r,20,14),mat));m.position.set(x,y,z);p&&p.add(m);return m};
+const lathe=(pts,mat,seg=40)=>sh(new THREE.Mesh(new THREE.LatheGeometry(pts.map(p=>new THREE.Vector2(p[0],p[1])),seg),mat));
+function tube(pts,r,mat,p,seg=60){const c=new THREE.CatmullRomCurve3(pts);const m=sh(new THREE.Mesh(new THREE.TubeGeometry(c,seg,r,12,false),mat));p&&p.add(m);return m}
+
+/* ---------- matériaux ---------- */
+const bt=brushed(3,3);
+const steel=M(0xc6ccd0,{metalness:.92,roughness:.3,envMapIntensity:1.2,map:bt,bumpMap:bt,bumpScale:.5});
+const steelD=steel.clone();steelD.side=THREE.DoubleSide;
+const frameM=M(0x6d7882,{metalness:.75,roughness:.38,envMapIntensity:1});
+const darkM=M(0x30363c,{metalness:.7,roughness:.5,envMapIntensity:.9});
+const rubber=M(0x15171a,{roughness:.9});
+const yel=M(0xf2c230,{roughness:.5}),redM=M(0xc0261c,{roughness:.45});
+const wood=M(0xffffff,{map:woodTex(2,1),roughness:.7,envMapIntensity:.5});
+const woodD=M(0xffffff,{map:woodTex(1,2),roughness:.75,envMapIntensity:.5});
+
+/* ---------- cadrans (thermomètre / manomètre) ---------- */
+function mkDial(){const c=document.createElement('canvas');c.width=c.height=256;const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return {g:c.getContext('2d'),t}}
+function drawDial(d,min,max,val,title,unit,step,redFrom){const g=d.g,a0=Math.PI*.75,a1=Math.PI*2.25,cx=128,cy=128;
+  g.clearRect(0,0,256,256);g.fillStyle='#f8f8f3';g.beginPath();g.arc(cx,cy,126,0,7);g.fill();
+  g.strokeStyle='#d33';g.lineWidth=9;g.beginPath();const ra=a0+(a1-a0)*(redFrom-min)/(max-min);g.arc(cx,cy,96,ra,a1);g.stroke();
+  g.fillStyle='#111';g.strokeStyle='#111';g.textAlign='center';g.textBaseline='middle';
+  const n=Math.round((max-min)/step);
+  for(let i=0;i<=n*5;i++){const a=a0+(a1-a0)*i/(n*5),maj=i%5===0,r1=maj?98:104;g.lineWidth=maj?3:1.5;g.beginPath();g.moveTo(cx+Math.cos(a)*r1,cy+Math.sin(a)*r1);g.lineTo(cx+Math.cos(a)*112,cy+Math.sin(a)*112);g.stroke();
+    if(maj){g.font='700 17px Arial';g.fillText(String(min+i/5*step),cx+Math.cos(a)*80,cy+Math.sin(a)*80)}}
+  g.font='700 18px Arial';g.fillText(title,cx,168);g.font='600 15px Arial';g.fillText(unit,cx,190);
+  const a=a0+(a1-a0)*Math.max(0,Math.min(1,(val-min)/(max-min)));
+  g.strokeStyle='#c01818';g.lineWidth=4;g.beginPath();g.moveTo(cx-Math.cos(a)*16,cy-Math.sin(a)*16);g.lineTo(cx+Math.cos(a)*92,cy+Math.sin(a)*92);g.stroke();
+  g.fillStyle='#222';g.beginPath();g.arc(cx,cy,9,0,7);g.fill();d.t.needsUpdate=true}
+function makeGauge(d,R){ // face vers +z
+  const g=new THREE.Group();
+  cyl(R+.03,R+.03,.1,32,steel,0,0,-.05,g,[Math.PI/2,0,0]);
+  const ring=sh(new THREE.Mesh(new THREE.TorusGeometry(R+.02,.02,10,40),steel));ring.position.z=.0;g.add(ring);
+  const f=new THREE.Mesh(new THREE.CircleGeometry(R,40),new THREE.MeshBasicMaterial({map:d.t,toneMapped:false}));f.position.z=.002;g.add(f);
+  const gl=new THREE.Mesh(new THREE.CircleGeometry(R,40),glassMat({side:THREE.FrontSide}));gl.position.z=.02;g.add(gl);
+  return g}
+const dT=mkDial(),dP=mkDial();drawDial(dT,0,120,80,'TEMP','°C',20,100);drawDial(dP,0,6,1.8,'PRESSION','bar',1,4.5);
+
+/* ================= GROUPES ================= */
+const world=new THREE.Group();scene.add(world);
+const G_site=new THREE.Group();world.add(G_site);
+const VX=2.7,VZ=-1.2,VR=1.3,TBX=-3.2,TBZ=1.4,WKX=.7,WKZ=1.5;
+
+/* ---- site ---- */
+box(15.8,.4,15.8,M(0x9a9585,{roughness:.9}),0,-.58,0,G_site);
+box(15,.4,15,M(0xd3cebf,{roughness:.88,map:concrete(5,5)}),0,-.2,0,G_site);
+{const lm=(w,d,x,z)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(w,d),yel);m.rotation.x=-Math.PI/2;m.position.set(x,.008,z);m.receiveShadow=true;G_site.add(m)};
+ lm(.12,9.6,-6.1,0);lm(.12,9.6,.5,0)}
+{const gr=new THREE.Mesh(new THREE.PlaneGeometry(1.1,.8),M(0x7d8389,{metalness:.8,roughness:.45,map:plate(3,3),bumpMap:plate(3,3,false),bumpScale:1}));gr.rotation.x=-Math.PI/2;gr.position.set(VX-.4,.01,VZ+3.1);gr.receiveShadow=true;G_site.add(gr)}
+
+/* ================= INGREDIENTS GROUP ================= */
+function createIngredientsGroup(){
+  const g=new THREE.Group();g.position.set(TBX,0,TBZ);
+  // planche en bois sur tréteaux
+  rbox(3.3,.12,1.7,.03,wood,0,.94,0,g);
+  [-1,1].forEach(sx=>[-1,1].forEach(sz=>box(.12,.88,.12,woodD,sx*1.45,.44,sz*.7,g)));
+  rbox(2.95,.06,1.3,.02,woodD,0,.3,0,g);box(3.0,.08,.08,woodD,0,.78,.7,g);box(3.0,.08,.08,woodD,0,.78,-.7,g);
+  // sacs sous la table
+  [[-.8,.1,0],[.1,.1,.1]].forEach(([x,y,z],i)=>rbox(.8,.3,.5,.1,M(0xe3d3ae,{roughness:.9}),x,.36+.15,z,g));
+  // --- sac Cassava Starch
+  const bagTex=ctex(256,340,(c,w,h)=>{c.fillStyle='#dac49c';c.fillRect(0,0,w,h);for(let i=0;i<2500;i++){c.fillStyle=`rgba(120,90,50,${rnd()*.08})`;c.fillRect(rnd()*w,rnd()*h,2,2)}
+    c.fillStyle='#2E7D5B';c.fillRect(0,60,w,70);c.fillStyle='#F4F1E4';c.font='700 34px "Bricolage Grotesque",Arial';c.textAlign='center';c.textBaseline='middle';c.fillText('CASSAVA STARCH',w/2,96);
+    c.fillStyle='#2b2418';c.font='700 22px Arial';c.fillText('AMIDON DE MANIOC',w/2,170);c.font='600 18px Arial';c.fillText('Qualité industrielle',w/2,198);
+    c.font='700 54px "Bricolage Grotesque",Arial';c.fillText('25 kg',w/2,262);
+    c.strokeStyle='#2E7D5B';c.lineWidth=5;c.beginPath();c.moveTo(40,320);c.lineTo(216,320);c.stroke()});
+  const bag=new THREE.Group();bag.position.set(-1.05,1.0,-.05);bag.rotation.y=.12;g.add(bag);
+  rbox(.82,1.0,.42,.14,M(0xdac49c,{roughness:.9}),0,.5,0,bag);
+  box(.76,.1,.36,M(0xcdb68a,{roughness:.9}),0,1.02,0,bag);                        // pli du haut
+  const bf=new THREE.Mesh(new THREE.PlaneGeometry(.7,.9),new THREE.MeshStandardMaterial({map:bagTex,roughness:.9,transparent:false}));bf.position.set(0,.5,.217);bag.add(bf);
+  box(.7,.025,.03,M(0x5a4a30),0,.96,.215,bag);
+  // --- pichet d'eau translucide
+  const pit=new THREE.Group();pit.position.set(.15,1.0,.35);g.add(pit);
+  const pg=[[0,0],[.2,0],[.23,.04],[.25,.3],[.22,.52],[.2,.6],[.21,.62],[.19,.63],[.18,.6],[.2,.52],[.23,.3],[.21,.05],[0,.03]];
+  const pm=lathe(pg,glassMat({transmission:.9,roughness:.1}),48);pm.castShadow=false;pit.add(pm);
+  const wt=lathe([[0,.04],[.205,.05],[.23,.3],[.215,.44],[0,.44]],glassMat({color:0xb9ddf5,transmission:.9,roughness:.05,ior:1.33,thickness:.2}),40);wt.castShadow=false;pit.add(wt);
+  const hd=sh(new THREE.Mesh(new THREE.TorusGeometry(.14,.022,10,32,Math.PI),glassMat({thickness:.04})));hd.position.set(.2,.3,0);hd.rotation.set(0,0,-Math.PI/2);hd.castShadow=false;pit.add(hd);
+  // --- deux tubercules de manioc
+  const barkTex=ctex(128,256,(c,w,h)=>{c.fillStyle='#7b5230';c.fillRect(0,0,w,h);for(let i=0;i<60;i++){c.fillStyle=`rgba(${rnd()>.5?'50,30,12':'160,115,70'},${.15+rnd()*.25})`;c.fillRect(0,rnd()*h,w,1+rnd()*3)}});
+  const root=(len,x,z,ry,tilt)=>{const rg=new THREE.Group();rg.position.set(x,1.0+.14,z);rg.rotation.set(0,ry,Math.PI/2+tilt);g.add(rg);
+    const geo=new THREE.LatheGeometry([[0,0],[.12,0],[.14,.15],[.15,.4],[.12,.65],[.07,.85],[.02,.98],[0,1]].map(p=>new THREE.Vector2(p[0],p[1])),28);
+    const pp=geo.attributes.position;for(let i=0;i<pp.count;i++){const y=pp.getY(i);if(y>.02){const n=1+.06*Math.sin(i*1.7+y*9);pp.setX(i,pp.getX(i)*n);pp.setZ(i,pp.getZ(i)*n);pp.setY(i,y+.02*Math.sin(i*.9))}}geo.computeVertexNormals();
+    const m=sh(new THREE.Mesh(geo,new THREE.MeshStandardMaterial({map:barkTex,roughness:.85,flatShading:true})));m.scale.set(1,len,1);rg.add(m);
+    const cut=new THREE.Mesh(new THREE.CircleGeometry(.118,24),M(0xf3ecd8,{roughness:.6}));cut.rotation.x=Math.PI/2;cut.position.y=-.004;rg.add(cut);
+    sh(cut);return rg};
+  root(.95,-.35,-.42,.35,.0);root(.8,.2,-.62,-.15,0);
+  // tranches de manioc
+  [[-.55,.45],[-.38,.58]].forEach(([x,z])=>{cyl(.1,.1,.03,24,M(0xf3ecd8,{roughness:.55}),x,1.025,z,g);});
+  // --- bocaux de produits chimiques
+  const jarData=[['BORAX',0xf4f4f0,.0,'#2b6cb0',1.15,-.45],['NaOH',0xdfe9f2,.0,'#c0261c',1.15,-.05],['CONSERV.',0xe8c26a,.0,'#2E7D5B',1.15,.35]];
+  jarData.forEach(([txt,cont,_,lab,x,z],i)=>{const j=new THREE.Group();j.position.set(x,1.0,z+0);g.add(j);
+    const jg=sh(new THREE.Mesh(new THREE.CylinderGeometry(.11,.11,.24,32),glassMat({transmission:.9,roughness:.1})));jg.position.y=.12;jg.castShadow=false;j.add(jg);
+    cyl(.095,.095,.15+i*.015,28,M(cont,{roughness:.6}),0,.085+i*.007,0,j);
+    cyl(.115,.115,.05,28,M(0x4a5560,{metalness:.8,roughness:.35}),0,.265,0,j);
+    const lt=ctex(256,64,(c,w,h)=>{c.fillStyle='#fff';c.fillRect(0,0,w,h);c.fillStyle=lab;c.fillRect(0,0,w,14);c.fillStyle='#111';c.font='700 30px Arial';c.textAlign='center';c.textBaseline='middle';c.fillText(txt,w/2,42)});
+    const lb=new THREE.Mesh(new THREE.CylinderGeometry(.113,.113,.1,32,1,true,-.9,1.8),new THREE.MeshStandardMaterial({map:lt,roughness:.6}));lb.position.y=.12;lb.rotation.y=Math.PI*.5-.2;j.add(lb)});
+  // bol d'amidon + mesure
+  const bowl=lathe([[0,0],[.1,0],[.18,.08],[.24,.18],[.25,.2],[.23,.2],[.17,.1],[.09,.03],[0,.03]],M(0xf2f0ea,{roughness:.3,metalness:0}),40);bowl.material.side=THREE.DoubleSide;bowl.position.set(.62,1.0,-.35);g.add(bowl);
+  const mound=sh(new THREE.Mesh(new THREE.SphereGeometry(1,24,10,0,Math.PI*2,0,Math.PI/2),M(0xfbfaf5,{roughness:.95})));mound.scale.set(.21,.1,.21);mound.position.set(.62,1.13,-.35);g.add(mound);
+  return g}
+
+/* ================= MIXER GROUP ================= */
+const NF=260;
+let helice,swirl,liqSide,winLayer,liqMat,winMat,swirlMat,waterStream,powderIM,fleckIM;
+const LB=.53,LH=1.78,FX=VX+.67,FZ=VZ+.67,WX=VX-.62,WZ=VZ-.5;
+function createMixerGroup(){
+  const g=new THREE.Group();
+  const th0=Math.PI/4-.5,wl=1.0;
+  // bandes pleines basse/haute + partie centrale découpée (fenêtre)
+  const band=(y,h)=>{const m=sh(new THREE.Mesh(new THREE.CylinderGeometry(VR,VR,h,64,1,true),steelD));m.position.set(VX,y,VZ);g.add(m)};
+  band(.7,.4);band(2.5,.4);
+  const mid=sh(new THREE.Mesh(new THREE.CylinderGeometry(VR,VR,1.4,64,1,true,th0+wl,Math.PI*2-wl),steelD));mid.position.set(VX,1.6,VZ);g.add(mid);
+  // vitre (transmission 0.9 / roughness 0.1)
+  const win=new THREE.Mesh(new THREE.CylinderGeometry(VR+.005,VR+.005,1.4,32,1,true,th0,wl),glassMat({transmission:.9,roughness:.1,thickness:.1,depthWrite:false}));win.renderOrder=1;win.position.set(VX,1.6,VZ);g.add(win);
+  // cadre de la vitre + boulons
+  [th0,th0+wl].forEach(a=>{const b=box(.14,1.5,.12,steel,VX+Math.sin(a)*(VR+.03),1.6,VZ+Math.cos(a)*(VR+.03),g);b.rotation.y=a;
+    for(let k=0;k<6;k++){const bo=cyl(.035,.035,.04,6,darkM,VX+Math.sin(a)*(VR+.1),1.0+k*.2,VZ+Math.cos(a)*(VR+.1),g,[Math.PI/2,0,0]);bo.rotation.y=a}});
+  // fond, anneaux, pieds
+  const bot=cyl(VR,VR,.06,64,steel,VX,.5,VZ,g);
+  [.5,.9,2.3,2.7].forEach(y=>{const r=sh(new THREE.Mesh(new THREE.TorusGeometry(VR+.005,.04,10,64),steel));r.rotation.x=Math.PI/2;r.position.set(VX,y,VZ);g.add(r)});
+  for(let i=0;i<4;i++){const a=Math.PI/4+i*Math.PI/2+Math.PI/4;const x=VX+Math.cos(a)*1.0,z=VZ+Math.sin(a)*1.0;box(.14,.5,.14,frameM,x,.25,z,g);box(.32,.04,.32,darkM,x,.02,z,g)}
+  // liquide (paroi opaque + couche translucide devant la fenêtre + surface tournoyante)
+  liqMat=new THREE.MeshStandardMaterial({color:0xa7cfe6,roughness:.35,emissive:0x1b1a16,emissiveIntensity:.35,side:THREE.DoubleSide});
+  liqSide=sh(new THREE.Mesh(new THREE.CylinderGeometry(VR-.07,VR-.07,LH,48,1,true,th0+wl,Math.PI*2-wl),liqMat));liqSide.position.set(VX,LB+LH/2,VZ);g.add(liqSide);
+  winMat=new THREE.MeshStandardMaterial({color:0xbfe0f2,roughness:.3,transparent:true,opacity:.2,depthWrite:false,side:THREE.DoubleSide,emissive:0x1b1a16,emissiveIntensity:.3});
+  winLayer=new THREE.Mesh(new THREE.CylinderGeometry(VR-.07,VR-.07,LH,32,1,true,th0,wl),winMat);winLayer.position.set(VX,LB+LH/2,VZ);winLayer.renderOrder=2;g.add(winLayer);
+  swirlMat=new THREE.MeshStandardMaterial({map:swirlTex,color:0xa7cfe6,roughness:.3,emissive:0x1b1a16,emissiveIntensity:.35});
+  swirl=sh(new THREE.Mesh(new THREE.CircleGeometry(VR-.07,64),swirlMat));
+  swirl.rotation.x=-Math.PI/2;swirl.position.set(VX,LB+LH,VZ);g.add(swirl);
+  // sortie basse + vanne
+  {const a=Math.PI/4-1.35,ox=VX+Math.sin(a)*VR,oz=VZ+Math.cos(a)*VR;
+   tube([V(ox,.7,oz),V(ox+Math.sin(a)*.4,.7,oz+Math.cos(a)*.4),V(ox+Math.sin(a)*.55,.5,oz+Math.cos(a)*.55),V(ox+Math.sin(a)*.55,.2,oz+Math.cos(a)*.55)],.07,steel,g);
+   const vv=new THREE.Group();vv.position.set(ox+Math.sin(a)*.55,.4,oz+Math.cos(a)*.55);g.add(vv);cyl(.1,.1,.18,18,darkM,0,0,0,vv);cyl(.02,.02,.2,10,steel,0,.18,0,vv);
+   const w=sh(new THREE.Mesh(new THREE.TorusGeometry(.1,.018,8,24),redM));w.rotation.x=Math.PI/2;w.position.y=.28;vv.add(w)}
+  // ---- portique + moteur
+  const gz=VZ-1.9;
+  [-1,1].forEach(s=>{box(.24,4.0,.24,frameM,VX+s*1.7,2.0,gz,g);box(.6,.05,.6,darkM,VX+s*1.7,.03,gz,g)});
+  box(3.7,.24,.24,frameM,VX,3.6,gz,g);
+  box(.5,.2,2.0,frameM,VX,3.82,VZ-.9,g);
+  box(.9,.06,.9,darkM,VX,3.95,VZ,g);
+  box(.56,.5,.56,M(0x2f6aa3,{roughness:.4,metalness:.4}),VX,4.23,VZ,g);       // réducteur
+  cyl(.3,.3,.8,32,M(0xe8731a,{roughness:.4,metalness:.3}),VX,4.88,VZ,g);       // moteur
+  for(let i=0;i<5;i++)cyl(.32,.32,.03,32,darkM,VX,4.6+i*.14,VZ,g);              // ailettes
+  cyl(.31,.31,.1,32,darkM,VX,5.33,VZ,g);box(.22,.18,.2,darkM,VX+.34,4.9,VZ,g);
+  cyl(.13,.13,.2,20,steel,VX,3.62,VZ,g);
+  // support de boîtier électrique
+  box(.4,.5,.2,M(0x2f9a55,{roughness:.4,metalness:.2}),VX-1.7,2.1,gz+.22,g);
+  sph(.04,new THREE.MeshStandardMaterial({color:0x22cc66,emissive:0x22cc66,emissiveIntensity:1.5}),VX-1.7,2.25,gz+.33,g);
+  // ---- arbre + hélice (rotation axe Y)
+  helice=new THREE.Group();helice.position.set(VX,0,VZ);g.add(helice);
+  cyl(.06,.06,2.7,18,steel,0,2.35,0,helice);
+  [[1.15,3,.6],[1.85,2,.45]].forEach(([y,n,L],k)=>{cyl(.1,.1,.12,20,steel,0,y,0,helice);
+    for(let i=0;i<n;i++){const a=new THREE.Group();a.rotation.y=i*Math.PI*2/n+k*.6;a.position.y=y;helice.add(a);const b=box(L,.04,.2,steel,L/2+.08,0,0,a);b.rotation.x=.5}});
+  // ---- thermomètre plongeant
+  {const a=Math.PI/4+.95;const tg=new THREE.Group();tg.position.set(VX+Math.sin(a)*VR,2.7,VZ+Math.cos(a)*VR);tg.rotation.y=a;g.add(tg);
+   box(.12,.1,.6,frameM,0,.1,-.2,tg);
+   const gg=makeGauge(dT,.2);gg.position.set(0,.42,.12);tg.add(gg);box(.06,.2,.06,steel,0,.2,.1,tg);
+   cyl(.025,.025,1.5,10,steel,0,-.65,-.45,tg);cyl(.045,.045,.1,12,darkM,0,.05,-.45,tg);}
+  // ---- manomètre de pression
+  {const a=Math.PI/4-.95;const pg=new THREE.Group();pg.position.set(VX+Math.sin(a)*VR,2.0,VZ+Math.cos(a)*VR);pg.rotation.y=a;g.add(pg);
+   cyl(.05,.05,.35,12,steel,0,0,.17,pg,[Math.PI/2,0,0]);cyl(.09,.09,.1,16,darkM,0,0,.1,pg,[Math.PI/2,0,0]);
+   const gg=makeGauge(dP,.23);gg.position.set(0,.0,.46);pg.add(gg)}
+  // entonnoir d'alimentation en amidon (face à la vitre)
+  cyl(.24,.07,.32,28,steel,FX,3.1,FZ,g);cyl(.26,.26,.03,28,steel,FX,3.27,FZ,g);cyl(.05,.05,.38,14,steel,FX,2.82,FZ,g);
+  {const b=box(.06,.06,.5,steel,VX+Math.sin(Math.PI/4)*1.12,3.05,VZ+Math.cos(Math.PI/4)*1.12,g);b.rotation.y=Math.PI/4;
+   box(.06,.4,.06,steel,VX+Math.sin(Math.PI/4)*1.27,2.85,VZ+Math.cos(Math.PI/4)*1.27,g)}
+  // arrivée d'eau (tuyau + vanne) depuis le portique
+  tube([V(VX-1.58,3.0,VZ-1.85),V(VX-1.25,3.0,VZ-1.35),V(VX-.85,3.0,VZ-.8),V(WX,2.98,WZ)],.06,steel,g);
+  cyl(.06,.06,.3,14,steel,WX,2.86,WZ,g);
+  {const v=cyl(.09,.09,.16,16,darkM,VX-1.1,3.0,VZ-1.2,g);const w=sh(new THREE.Mesh(new THREE.TorusGeometry(.1,.018,8,24),new THREE.MeshStandardMaterial({color:0x2a6fd0,roughness:.4})));w.rotation.x=Math.PI/2;w.position.set(VX-1.1,3.15,VZ-1.2);g.add(w)}
+  waterStream=new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,1,10),new THREE.MeshPhysicalMaterial({color:0xaad8f5,transparent:true,opacity:.55,roughness:.05,clearcoat:1}));waterStream.position.set(WX,2.5,WZ);g.add(waterStream);
+  // poudre d'amidon qui tombe de l'entonnoir
+  powderIM=new THREE.InstancedMesh(new THREE.SphereGeometry(.022,6,5),M(0xffffff,{roughness:.9}),70);powderIM.frustumCulled=false;g.add(powderIM);
+  // grumeaux / grains d'amidon en circulation dans la cuve
+  fleckIM=new THREE.InstancedMesh(new THREE.IcosahedronGeometry(.05,0),new THREE.MeshStandardMaterial({color:0xffffff,roughness:.7,flatShading:true}),NF);fleckIM.frustumCulled=false;fleckIM.castShadow=false;g.add(fleckIM);
+  for(let i=0;i<NF;i++){const c=new THREE.Color().setHSL(.1+rnd()*.03,.35+rnd()*.25,.62+rnd()*.15);fleckIM.setColorAt(i,c)}
+  // soupape de sécurité arrière
+  {const x=VX-.6,z=VZ-.8;cyl(.06,.06,.3,12,steel,x,2.85,z,g);cyl(.09,.09,.1,16,redM,x,3.05,z,g)}
+  return g}
+
+/* ================= WORKER GROUP ================= */
+let person;
+function createWorkerGroup(){
+  const g=new THREE.Group();g.position.set(WKX,0,WKZ);
+  person=new THREE.Group();person.rotation.y=1.75;person.scale.setScalar(1.15);g.add(person);
+  const skin=M(0x6b4430,{roughness:.55}),suit=M(0x80888f,{roughness:.8}),boot=M(0x1d1f22,{roughness:.6}),refl=M(0xdfe3e6,{metalness:.5,roughness:.3,envMapIntensity:1}),glove=M(0xe08a1e,{roughness:.6});
+  [-1,1].forEach(s=>{box(.2,.14,.34,boot,s*.12,.07,.04,person);box(.18,.78,.2,suit,s*.12,.53,0,person);box(.185,.06,.205,refl,s*.12,.55,0,person)});
+  box(.5,.18,.28,suit,0,1,0,person);box(.52,.05,.29,rubber,0,.93,0,person);
+  box(.52,.58,.28,suit,0,1.31,0,person);[1.2,1.42].forEach(y=>box(.535,.06,.29,refl,0,y,0,person));
+  cyl(.07,.07,.1,12,skin,0,1.64,0,person);sph(.15,skin,0,1.76,0,person);
+  const hat=sh(new THREE.Mesh(new THREE.SphereGeometry(.19,24,12,0,Math.PI*2,0,Math.PI/2),new THREE.MeshPhysicalMaterial({color:0xf2c230,roughness:.35,clearcoat:1})));hat.position.set(0,1.79,0);person.add(hat);
+  cyl(.2,.2,.025,28,M(0xf2c230,{roughness:.35}),0,1.79,.035,person);box(.05,.03,.38,M(0xf2c230),0,1.98,0,person);
+  rbox(.23,.12,.1,.04,M(0xf5f7f8,{roughness:.9}),0,1.715,.125,person);
+  box(.26,.06,.06,M(0x1a2630,{roughness:.1,metalness:.6}),0,1.79,.135,person);
+  [-1,1].forEach(s=>box(.01,.07,.02,M(0xf5f7f8),s*.14,1.74,.05,person));
+  const arm=(s,r1,r2)=>{const a=new THREE.Group();a.position.set(s*.34,1.5,0);a.rotation.x=r1;person.add(a);
+    box(.15,.34,.15,suit,0,-.17,0,a);const el=new THREE.Group();el.position.set(0,-.34,0);el.rotation.order='YXZ';el.rotation.set(r2,-s*.5,0);a.add(el);
+    box(.13,.3,.13,suit,0,-.15,0,el);box(.135,.05,.135,refl,0,-.1,0,el);sph(.07,glove,0,-.32,0,el)};
+  arm(1,-.7,-.9);arm(-1,-.05,-.25);
+  const cb=new THREE.Group();cb.position.set(.3,1.28,.4);cb.rotation.set(-.35,-.4,0);person.add(cb);
+  rbox(.34,.44,.025,.01,M(0x7a5232,{roughness:.7}),0,0,0,cb);
+  const paper=new THREE.Mesh(new THREE.PlaneGeometry(.29,.38),new THREE.MeshStandardMaterial({map:ctex(128,180,(c,w,h)=>{c.fillStyle='#fff';c.fillRect(0,0,w,h);c.fillStyle='#2E7D5B';c.fillRect(8,8,w-16,16);c.fillStyle='#9aa';for(let y=36;y<h-8;y+=11)c.fillRect(10,y,w-20-rnd()*30,2)}),roughness:.9}));paper.position.set(0,-.01,.0145);cb.add(paper);
+  return g}
+
+/* ---------- assemblage ---------- */
+const IngredientsGroup=createIngredientsGroup();
+const MixerGroup=createMixerGroup();
+const WorkerGroup=createWorkerGroup();
+world.add(IngredientsGroup,MixerGroup,WorkerGroup);
+
+/* ================= CYCLE DE PROCESS (animation cohérente) ================= */
+const lerp=(a,b,t)=>a+(b-a)*t,cl=(x,a,b)=>Math.min(b,Math.max(a,x)),sstep=(a,b,x)=>{x=cl((x-a)/(b-a),0,1);return x*x*(3-2*x)};
+const CYC=27,PHN=['Remplissage en eau','Ajout de l’amidon de manioc','Mixage & montée en température','Gélatinisation du liant','Liant prêt · vidange'];
+const cW=new THREE.Color(0xa7cfe6),cW2=new THREE.Color(0xbfe0f2),cM=new THREE.Color(0xf6f3ea);
+function cycleState(t){
+  const level=.02+.76*sstep(0,5,t)+.07*sstep(5.5,10,t)-.83*sstep(23.5,26.5,t);
+  const speed=.35+.75*sstep(5,10,t)+.4*sstep(10,13,t)-.4*sstep(18,20,t)-.9*sstep(23.5,26,t);
+  const temp=25+3*sstep(0,5,t)+54*sstep(9,18,t)-10*sstep(23.5,26.5,t);
+  return {level:Math.max(.02,level),speed,temp,pres:1+.9*cl((temp-28)/54,0,1),milk:sstep(5.5,17,t)*(1-sstep(25,26.5,t)),
+    nVis:NF*sstep(5.2,9.5,t),dis:1-sstep(11,19,t),water:t<5.2?1-sstep(4.6,5.2,t):0,powder:t>5&&t<10?sstep(5,5.5,t)*(1-sstep(9.5,10,t)):0,
+    ph:t<5?0:t<10?1:t<18?2:t<23.5?3:4}}
+const fl={th:[],ph:[],rf:[],y:[]};for(let i=0;i<NF;i++){fl.th.push(rnd()*6.28);fl.ph.push(rnd()*6.28);fl.rf.push(rnd());fl.y.push(rnd())}
+const pw=Array.from({length:70},()=>({o:rnd(),dx:(rnd()-.5)*.05,dz:(rnd()-.5)*.05}));
+const dm=new THREE.Object3D();let cT=0,lastPh=-1,lastLab='';
+function applyCycle(t,dt){
+  const s=cycleState(t),h=LH*s.level,surf=LB+h;
+  liqSide.scale.y=winLayer.scale.y=h/LH;liqSide.position.y=winLayer.position.y=LB+h/2;
+  swirl.position.y=surf+.006*Math.sin(t*5);swirl.visible=winLayer.visible=liqSide.visible=s.level>.03;
+  liqMat.color.lerpColors(cW,cM,s.milk);swirlMat.color.lerpColors(cW,cM,s.milk);winMat.color.lerpColors(cW2,cM,s.milk);winMat.opacity=lerp(.16,.62,s.milk);
+  const sp=mixOn?s.speed:0;
+  helice.rotation.y+=.05*sp*dt*60;swirl.rotation.z-=.025*sp*dt*60;
+  // eau
+  waterStream.visible=s.water>.01&&surf<2.9;if(waterStream.visible){const L=2.9-surf;waterStream.scale.set(1+.15*Math.sin(t*30),L,1+.15*Math.sin(t*30));waterStream.position.y=surf+L/2;waterStream.material.opacity=.55*s.water}
+  // poudre
+  for(let i=0;i<70;i++){const p=(pw[i].o+t*1.5)%1,y=2.64-p*(2.64-surf);dm.position.set(FX+pw[i].dx*(1+p*3),y,FZ+pw[i].dz*(1+p*3));dm.rotation.set(0,0,0);dm.scale.setScalar(s.powder>.01&&y>surf+.02?s.powder:.0001);dm.updateMatrix();powderIM.setMatrixAt(i,dm.matrix)}
+  powderIM.instanceMatrix.needsUpdate=true;
+  // grains d'amidon : vortex + recirculation, dissolution progressive
+  const Rin=VR-.17,yb=LB+.2,yt=surf-.1;
+  for(let i=0;i<NF;i++){
+    fl.th[i]+=dt*(2.6*sp)*(1.3-.55*fl.rf[i]);fl.ph[i]+=dt*(1.1*sp);
+    const vis=i<s.nVis&&yt>yb+.1&&mixOn||(i<s.nVis&&!mixOn&&yt>yb+.1);
+    const r=Math.min(Rin,Rin*(.26+.64*fl.rf[i])+.1*Math.cos(fl.ph[i])),y=yb+(yt-yb)*(.5+.5*Math.sin(fl.ph[i]+fl.y[i]*6.28));
+    dm.position.set(VX+Math.cos(fl.th[i])*r,y,VZ+Math.sin(fl.th[i])*r);dm.rotation.set(fl.th[i],fl.ph[i],0);
+    dm.scale.setScalar(vis?Math.max(.0001,s.dis*(.7+.6*fl.rf[(i*7)%NF])):.0001);dm.updateMatrix();fleckIM.setMatrixAt(i,dm.matrix)}
+  fleckIM.instanceMatrix.needsUpdate=true;
+  return s}
+$('bCycle').onclick=()=>{cT=0};
+
+
+/* ---------- hotspots ---------- */
+const HS=[['Planche en bois','Plan de travail des ingrédients',TBX,1.1,TBZ+.5],['Sac Cassava Starch','Amidon de manioc · 25 kg',TBX-1.05,2.25,TBZ],
+['Pichet d’eau','Verre translucide (transmission 0.9)',TBX+.15,1.8,TBZ+.35],['Tubercules de manioc','Racines brutes + tranches',TBX-.2,1.45,TBZ-.5],
+['Bocaux','Borax · soude · conservateur',TBX+1.15,1.5,TBZ-.05],['Entonnoir d’amidon','Dosage de la poudre de manioc',FX,3.45,FZ],['Arrivée d’eau','Remplissage de la cuve',WX,3.2,WZ],['Cuve de mixage inox','Liquide blanc en cuisson',VX,2.9,VZ],
+['Vitre frontale','Fenêtre de contrôle du mélange',VX+.9,1.6,VZ+.95],['Moteur sur portique','Motoréducteur d’agitation',VX,5.5,VZ],
+['Hélice d’agitation','Rotation sur l’axe Y',VX,3.2,VZ],['Thermomètre plongeant','Sonde de température',VX+1.3,3.1,VZ-.15],
+['Manomètre','Cadran de pression',VX-.28,2.3,VZ+1.5],['Ouvrier','Tenue grise · casque jaune · masque',WKX,2.9,WKZ]];
+const hsEl=$('hs'),hsNodes=HS.map(h=>{const b=document.createElement('button');b.className='hotspot';b.setAttribute('aria-label',h[0]);
+  b.innerHTML=`<span class="hr"></span><span class="hd"></span><span class="tip"><b>${h[0]}</b><span>${h[1]}</span></span>`;hsEl.appendChild(b);return b});
+let mixOn=true;
+const tog=(id,fn)=>$(id).onclick=e=>{const p=e.currentTarget.getAttribute('aria-pressed')!=='true';e.currentTarget.setAttribute('aria-pressed',p);fn(p)};
+tog('bAnn',p=>hsNodes.forEach(n=>n.classList.toggle('off',!p)));
+tog('bRot',p=>controls.autoRotate=p);
+tog('bMix',p=>mixOn=p);
+$('bRes').onclick=()=>{cam.position.copy(HOME);controls.target.copy(TGT);cam.zoom=1;cam.updateProjectionMatrix()};
+$('bPng').onclick=()=>{renderer.render(scene,cam);const c=document.createElement('canvas');c.width=renderer.domElement.width;c.height=renderer.domElement.height;const g=c.getContext('2d');
+  const gr=g.createRadialGradient(c.width/2,c.height*.38,0,c.width/2,c.height*.38,c.width*.7);gr.addColorStop(0,'#FBF9F0');gr.addColorStop(1,'#E4DEC7');g.fillStyle=gr;g.fillRect(0,0,c.width,c.height);g.drawImage(renderer.domElement,0,0);
+  const a=document.createElement('a');a.download='riceware-etape7.png';a.href=c.toDataURL('image/png');a.click()};
+const bar=$('bar');for(let i=0;i<18;i++){const e=document.createElement('i');if(i<7)e.className='a';bar.appendChild(e)}
+
+/* ---------- boucle ---------- */
+let last=performance.now()/1000,dialT=0;const tmp=V(0,0,0);
+function loop(){requestAnimationFrame(loop);const n=performance.now()/1000,dt=Math.min(.05,n-last);last=n;
+  cT=(cT+dt)%CYC;const s=applyCycle(cT,dt);
+  dialT+=dt;if(dialT>.2){dialT=0;drawDial(dT,0,120,s.temp+.4*Math.sin(n*3),'TEMP','°C',20,100);drawDial(dP,0,6,s.pres+.04*Math.sin(n*2),'PRESSION','bar',1,4.5);
+    const lab='Phase '+(s.ph+1)+'/5 · '+PHN[s.ph]+' · '+Math.round(s.temp)+' °C';if(lab!==lastLab){lastLab=lab;$('tl').textContent=lab}}
+  person.rotation.y=1.75+Math.sin(n*.45)*.07;person.position.y=Math.sin(n*1.6)*.004;
+  controls.update();renderer.render(scene,cam);
+  HS.forEach((h,i)=>{tmp.set(h[2],h[3],h[4]).project(cam);const nd=hsNodes[i];nd.style.left=((tmp.x+1)/2*innerWidth)+'px';nd.style.top=((1-tmp.y)/2*innerHeight)+'px'})}
+loop();setTimeout(()=>$('ld').classList.add('h'),400);
+</script>
+</body>
+</html>

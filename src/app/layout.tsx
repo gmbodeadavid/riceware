@@ -23,7 +23,7 @@ const plexMono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   title: 'RiceWare CI',
-  description: 'Des coques de riz aux assiettes compostables en Côte d’Ivoire.',
+  description: 'De la paille et de la coque de riz à la vaisselle compostable en Côte d’Ivoire.',
 };
 
 export default function RootLayout({

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RiceWare CI — Étape 5 · Tamisage</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#1C2A20;--amber:#D3A61F;--green:#2E7D5B}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;color:var(--ink);font-family:'IBM Plex Sans',sans-serif;background:#fff}
+#cv{position:fixed;inset:0}#cv canvas{display:block;width:100%;height:100%;touch-action:none;outline:none}
+#hs{position:fixed;inset:0;z-index:5;pointer-events:none;overflow:hidden}
+.hot{position:absolute;width:22px;height:22px;padding:0;border:0;background:none;transform:translate(-50%,-50%);cursor:pointer;pointer-events:auto}
+.hot i{position:absolute;inset:0;border:2px solid var(--amber);border-radius:50%;background:rgba(255,253,246,.9);animation:p 1.9s infinite}
+.hot u{position:absolute;inset:7px;border-radius:50%;background:var(--amber)}
+.hot div{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translate(-50%,4px);background:rgba(28,42,32,.94);color:#fff;font-size:12px;line-height:1.35;padding:7px 10px;border-radius:6px;white-space:nowrap;opacity:0;pointer-events:none;transition:.18s;text-align:left}
+.hot div b{display:block;font-weight:600}.hot div span{opacity:.8}
+.hot:hover div,.hot:focus-visible div{opacity:1;transform:translate(-50%,0)}
+@keyframes p{0%{transform:scale(.85);opacity:.9}100%{transform:scale(1.45);opacity:0}}
+#ui{position:fixed;inset:0;z-index:10;padding:22px 24px max(18px,env(safe-area-inset-bottom));display:flex;flex-direction:column;justify-content:space-between;pointer-events:none}
+#top{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap}
+h1{margin:0;font:700 24px/1.1 'Bricolage Grotesque',sans-serif}
+h2{margin:4px 0 0;font-size:14px;font-weight:400;color:rgba(28,42,32,.72)}
+#ctl{display:flex;gap:7px;flex-wrap:wrap;pointer-events:auto}
+.btn{border:1px solid #DDD6BF;background:#FFFDF6;color:var(--ink);font:500 13px 'IBM Plex Sans',sans-serif;padding:8px 13px;border-radius:8px;cursor:pointer}
+.btn:hover{border-color:var(--green)}.btn:focus-visible{outline:2px solid var(--green);outline-offset:2px}.btn[aria-pressed=true]{background:var(--green);color:#fff;border-color:var(--green)}
+#cap{font-size:13px;color:rgba(28,42,32,.75);max-width:560px;line-height:1.45}
+@media(prefers-reduced-motion:reduce){.hot i{animation:none}}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+</head><body>
+<div id="cv"></div><div id="hs"></div>
+<div id="ui"><div id="top"><div><h1>RiceWare CI — Étape 5 · Tamisage</h1><h2>Tamis vibrant — vue isométrique PBR</h2></div>
+<div id="ctl"><button class="btn" id="bRot" aria-pressed="false">Rotation auto</button><button class="btn" id="bAnn" aria-pressed="true">Annotations</button><button class="btn" id="bRotor" aria-pressed="true">Vibration en marche</button><button class="btn" id="bReset">Réinitialiser la vue</button></div></div>
+<div id="cap">Le mélange avance sur les grilles inclinées : la farine traverse et tombe sous la machine, les grains entiers glissent jusqu'au bac de bout de course.</div></div>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
+const host=document.getElementById('cv');
+const R=new THREE.WebGLRenderer({antialias:true});
+R.setPixelRatio(Math.min(devicePixelRatio,2));R.shadowMap.enabled=true;R.shadowMap.type=THREE.PCFSoftShadowMap;
+R.toneMapping=THREE.ACESFilmicToneMapping;R.toneMappingExposure=1.05;R.outputColorSpace=THREE.SRGBColorSpace;
+host.appendChild(R.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0xffffff);
+scene.environment=new THREE.PMREMGenerator(R).fromScene(new RoomEnvironment(),0.04).texture;scene.environmentIntensity=.6;
+const cam=new THREE.OrthographicCamera(-1,1,1,-1,-60,60);
+const TGT=new THREE.Vector3(.7,1.5,0),HOME=TGT.clone().add(new THREE.Vector3(9,7,9));cam.position.copy(HOME);
+const ctl=new OrbitControls(cam,R.domElement);ctl.target.copy(TGT);ctl.enableDamping=true;ctl.enablePan=false;
+ctl.minPolarAngle=.35;ctl.maxPolarAngle=1.45;ctl.minZoom=.6;ctl.maxZoom=2.5;ctl.autoRotateSpeed=1.2;
+const sun=new THREE.DirectionalLight(0xfff3dc,2.4);sun.position.set(7,12,6);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
+Object.assign(sun.shadow.camera,{left:-9,right:9,top:9,bottom:-9,near:1,far:35});sun.shadow.bias=-.0004;sun.shadow.normalBias=.03;
+scene.add(sun,new THREE.HemisphereLight(0xffffff,0xd8cfb0,.7));
+
+const M=(c,r=.6,m=0,o={})=>new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:m,flatShading:true,...o});
+const side=M(0xC3CBCD,.4,.6),steel=M(0xB8BEC0,.28,.9),dark=M(0x4a5256,.5,.5),cream=M(0xE9DDBF,.55,.05),mgreen=M(0x1F7A4D,.4,.4),dgreen=M(0x14573a,.45,.4),
+ spring=M(0xC0392B,.4,.5),flour=M(0xEFE3C6,.95),rice=M(0xEBD9A0,.5),skin=M(0xD9A47E,.7),yellow=M(0xF2C200,.4),gray=M(0x7f888d,.7),gray2=M(0x5d666b,.8),white=M(0xF4F4F0,.8),boot=M(0x2a2420,.8);
+const sh=m=>{m.castShadow=m.receiveShadow=true;return m};
+const box=(w,h,d,mat,x,y,z,p)=>{const m=sh(new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat));m.position.set(x,y,z);p.add(m);return m};
+const cyl=(rt,rb,h,seg,mat,x,y,z,p,rx=0,rz=0)=>{const m=sh(new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg),mat));m.position.set(x,y,z);m.rotation.set(rx,0,rz);p.add(m);return m};
+
+const floor=new THREE.Mesh(new THREE.CylinderGeometry(7.5,7.5,.2,64),M(0xB4B4B4,.9));floor.position.set(.7,-.1,0);floor.receiveShadow=true;scene.add(floor);
+const ring=new THREE.Mesh(new THREE.TorusGeometry(7.1,.04,6,96),M(0xD3A61F,.6));ring.rotation.x=Math.PI/2;ring.position.set(.7,.01,0);scene.add(ring);
+
+// scenegraph
+const sifterGroup=new THREE.Group(),baseFrame=new THREE.Group(),vibratingScreen=new THREE.Group(),binsAndMotor=new THREE.Group();
+sifterGroup.add(baseFrame,vibratingScreen,binsAndMotor);scene.add(sifterGroup);
+const PY=2.5,TH=-.18,L=3.6,W=1.5;
+vibratingScreen.position.y=PY;vibratingScreen.rotation.z=TH;
+const vib=vibratingScreen;
+
+// grilles : alphaMap
+function meshTex(rx,ry){const c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d');g.fillStyle='#000';g.fillRect(0,0,64,64);g.fillStyle='#fff';g.fillRect(0,0,64,6);g.fillRect(0,0,6,64);
+ const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(rx,ry);return t}
+const screenMat=(rx,ry,c)=>new THREE.MeshStandardMaterial({color:c,metalness:.9,roughness:.3,alphaMap:meshTex(rx,ry),transparent:true,alphaTest:.4,side:THREE.DoubleSide});
+function screen(y,rx,ry,c){const m=new THREE.Mesh(new THREE.PlaneGeometry(L-.02,W-.02),screenMat(rx,ry,c));m.rotation.x=-Math.PI/2;m.position.y=y;m.receiveShadow=true;vib.add(m)}
+screen(.12,16,7,0xD9DEE0);screen(-.12,30,13,0xBFC5C7);
+for(const s of[-1,1])box(L,.7,.05,side,0,0,s*(W/2+.025),vib);
+box(.05,.7,W+.1,side,-L/2-.025,0,0,vib);
+for(const y of[.35,-.35])for(const s of[-1,1])box(L+.02,.05,.1,steel,0,y,s*(W/2+.02),vib);
+// trémie de récupération (farine) sous les grilles
+const hg=new THREE.Group();hg.position.y=-.7;hg.scale.set(1.7,1,.707);vib.add(hg);
+const hm=sh(new THREE.Mesh(new THREE.CylinderGeometry(1.5,.22,.7,4,1,true),new THREE.MeshStandardMaterial({color:0xE9DDBF,roughness:.4,metalness:.1,flatShading:true,transparent:true,opacity:.3,side:THREE.DoubleSide,depthWrite:false})));hm.castShadow=false;hm.rotation.y=Math.PI/4;hg.add(hm);
+// moteur vibrant vert
+const mot=new THREE.Group();mot.position.set(1.25,-1.15,0);vib.add(mot);
+cyl(.22,.22,.9,14,mgreen,0,0,0,mot,Math.PI/2);
+for(const z of[-.5,.5])cyl(.24,.24,.1,14,dgreen,0,0,z,mot,Math.PI/2);
+for(const z of[-.3,0,.3]){const t=sh(new THREE.Mesh(new THREE.TorusGeometry(.225,.025,5,14),dgreen));t.position.z=z;mot.add(t)}
+cyl(.04,.04,1.4,8,steel,0,0,0,mot,Math.PI/2);
+for(const z of[-.66,.66]){const w=sh(new THREE.Mesh(new THREE.CylinderGeometry(.2,.2,.07,14,1,false,0,Math.PI),dark));w.rotation.x=Math.PI/2;w.rotation.z=z>0?.5:Math.PI+.5;w.position.z=z;mot.add(w)}
+box(.18,.14,.14,dgreen,.3,.02,0,mot);
+for(const z of[-.3,.3]){const b=sh(new THREE.Mesh(new THREE.TorusGeometry(.235,.02,5,14),steel));b.position.z=z*1;mot.add(b);box(.08,.27,.08,steel,0,.355,z,mot)}
+// grains sur la grille
+const GN=260,grains=new THREE.InstancedMesh(new THREE.OctahedronGeometry(.04,0),rice,GN);grains.castShadow=true;vib.add(grains);
+const gp=Array.from({length:GN},()=>({x:-1.75+Math.random()*3.4,z:(Math.random()-.5)*1.3,v:.006+Math.random()*.01,k:Math.random()*6,r:Math.random()*3}));
+const o3=new THREE.Object3D(),cc=new THREE.Color();
+gp.forEach((g,i)=>grains.setColorAt(i,cc.setHSL(.12+Math.random()*.02,.5,.7+Math.random()*.12)));
+
+// pieds, ressorts
+vib.updateMatrixWorld(true);
+const lx=[];
+for(const x of[-1.4,1.4])for(const sz of[-1,1]){
+ box(.4,.05,.3,side,x,-.375,sz*.9,vib);
+ const v=new THREE.Vector3(x,-.4,sz*.9);vib.localToWorld(v);const top=v.y-.03,lt=top-.38;
+ box(.1,lt,.1,dark,v.x,lt/2,v.z,baseFrame);box(.3,.03,.3,steel,v.x,.015,v.z,baseFrame);
+ for(let i=0;i<6;i++){const t=sh(new THREE.Mesh(new THREE.TorusGeometry(.07,.014,5,10),spring));t.rotation.x=Math.PI/2;t.position.set(v.x,lt+.04+i*.06,v.z);baseFrame.add(t)}
+ if(sz>0)lx.push(v.x);}
+const xa=lx[0],xb=lx[1];
+for(const x of[xa,xb])box(.06,.06,1.86,dark,x,.3,0,baseFrame);
+for(const z of[-.9,.9])for(const y of[.3,1.0]){box(xb-xa,.06,.06,dark,(xa+xb)/2,y,z,baseFrame)}
+// sortie poudre
+const pipeM=new THREE.MeshStandardMaterial({color:0xD5DCDE,roughness:.3,metalness:.3,transparent:true,opacity:.3,depthWrite:false});
+const ov=new THREE.Vector3(0,-1.05,0);vib.localToWorld(ov);const ox=ov.x,pTop=ov.y-.1,pH=.35,pBot=pTop-pH;
+for(const z of[-.1,.1])box(.5,pH,.03,pipeM,ox,pTop-pH/2,z,binsAndMotor).castShadow=false;
+for(const x of[-.235,.235])box(.03,pH,.2,pipeM,ox+x,pTop-pH/2,0,binsAndMotor).castShadow=false;
+for(const sx of[-1,1]){box(.06,pTop-.1,.06,dark,ox+sx*.9,(pTop-.1)/2,0,binsAndMotor);box(.65,.04,.04,dark,ox+sx*.575,pTop-pH/2,0,binsAndMotor)}
+function bin(w,d,h,m,rim,x,z,mound,mc){const b=new THREE.Group();b.position.set(x,0,z);binsAndMotor.add(b);
+ box(w,.05,d,m,0,.025,0,b);for(const s of[-1,1]){box(w,h,.05,m,0,h/2,s*(d/2-.025),b);box(.05,h,d-.1,m,s*(w/2-.025),h/2,0,b);box(w+.06,.05,.07,rim,0,h,s*(d/2),b)}
+ const mm=sh(new THREE.Mesh(new THREE.IcosahedronGeometry(1,2),mc));mm.scale.set(w*.38,.2,d*.36);mm.position.y=h-.18;b.add(mm)}
+bin(1.3,1.0,.7,M(0x8F989D,.5,.3),M(0x687176,.5,.3),ox,0,1,flour);
+bin(1.2,1.0,.7,M(0xD6C39B,.7),M(0xB8A26F,.6),2.9,0,1,rice);
+// goulotte des grains
+const A=new THREE.Vector3(1.9,2.05,0),B=new THREE.Vector3(2.75,1.15,0),sl=(B.y-A.y)/(B.x-A.x);
+const ch=new THREE.Group();ch.position.set((A.x+B.x)/2,(A.y+B.y)/2,0);ch.rotation.z=Math.atan2(B.y-A.y,B.x-A.x);binsAndMotor.add(ch);
+const cl=A.distanceTo(B);box(cl,.04,.8,steel,0,0,0,ch);for(const s of[-1,1])box(cl,.16,.04,steel,0,.1,s*.38,ch);
+for(const z of[-.3,.3])box(.08,1.9,.08,dark,2.0,.95,z,binsAndMotor);
+
+// particules
+// écoulement de la farine : grilles -> trémie -> sortie
+const FN=450,fl=new THREE.InstancedMesh(new THREE.IcosahedronGeometry(.022,0),flour,FN);vib.add(fl);
+const fp=Array.from({length:FN},()=>({nx:Math.random()*2-1,nz:Math.random()*2-1,u:Math.random(),s:.005+Math.random()*.006}));
+const hw=y=>{if(y>-.35)return[1.78,.73];const t=(-.35-y)/.7;return[1.78-1.53*t,.73-.63*t]};
+const o2=new THREE.Object3D();
+const o=new THREE.Object3D();
+const PN=140,pw=new THREE.InstancedMesh(new THREE.IcosahedronGeometry(.028,0),flour,PN);binsAndMotor.add(pw);
+const pp=Array.from({length:PN},()=>({x:ox+(Math.random()-.5)*.24,z:(Math.random()-.5)*.1,y:pTop-Math.random()*(pTop-.7),v:.012+Math.random()*.01}));
+const RN=70,rg=new THREE.InstancedMesh(new THREE.OctahedronGeometry(.04,0),rice,RN);binsAndMotor.add(rg);
+const rp=Array.from({length:RN},()=>({x:1.82,y:2.2,z:0,vx:.004,vy:0,on:false,w:Math.random()*120}));
+
+// opérateur
+function worker(){const g=new THREE.Group(),w={g};
+ for(const s of[-1,1]){box(.15,.8,.17,gray2,s*.1,.45,0,g);box(.17,.1,.26,boot,s*.1,.05,.04,g)}
+ box(.42,.58,.26,gray,0,1.13,0,g);box(.44,.05,.27,gray2,0,.85,0,g);
+ w.head=new THREE.Group();w.head.position.y=1.5;g.add(w.head);
+ const h=sh(new THREE.Mesh(new THREE.SphereGeometry(.155,8,6),skin));h.position.y=.08;w.head.add(h);
+ const hat=sh(new THREE.Mesh(new THREE.SphereGeometry(.18,10,6,0,Math.PI*2,0,Math.PI/2),yellow));hat.position.y=.13;w.head.add(hat);
+ cyl(.23,.23,.025,12,yellow,0,.13,.03,w.head);box(.17,.1,.09,white,0,.04,.14,w.head);
+ for(const s of[-1,1]){const a=new THREE.Group();a.position.set(s*.27,1.38,0);g.add(a);box(.11,.55,.12,gray,0,-.26,0,a);box(.1,.1,.11,skin,0,-.58,0,a);w[s>0?'R':'L']=a}
+ return w}
+const wk=worker();wk.g.position.set(.9,0,2.4);wk.g.rotation.y=Math.atan2(-.5,-2.4);wk.head.rotation.x=.1;wk.R.rotation.x=-.35;wk.L.rotation.x=-.1;sifterGroup.add(wk.g);
+
+// annotations
+const mw=new THREE.Vector3(1.25,-1.15,.5);vib.localToWorld(mw);
+const spots=[['Grilles de tamisage','Deux grilles superposées',[-.3,2.95,.3]],['Moteur vibrant','Fixé sous le cadre',[mw.x,mw.y,mw.z]],['Sortie farine','Poudre fine sous la machine',[ox,pTop-.1,.12]],['Bac gris','Récupère la poudre',[ox,.7,.5]],['Goulotte des grains','Grains entiers en bout de course',[2.3,1.7,.4]],['Bac beige','Récupère les grains',[2.9,.7,.5]]];
+const hs=document.getElementById('hs');
+const els=spots.map(s=>{const b=document.createElement('button');b.className='hot';b.setAttribute('aria-label',s[0]);b.innerHTML=`<i></i><u></u><div><b>${s[0]}</b><span>${s[1]}</span></div>`;hs.appendChild(b);return b});
+
+let run=true;
+const bR=document.getElementById('bRot'),bP=document.getElementById('bRotor'),bA=document.getElementById('bAnn');
+bR.onclick=()=>{ctl.autoRotate=!ctl.autoRotate;bR.setAttribute('aria-pressed',ctl.autoRotate)};
+bP.onclick=()=>{run=!run;bP.setAttribute('aria-pressed',run);bP.textContent=run?'Vibration en marche':'Vibration à l\u2019arrêt'};
+bA.onclick=()=>{const on=bA.getAttribute('aria-pressed')!=='true';bA.setAttribute('aria-pressed',on);hs.style.display=on?'':'none'};
+document.getElementById('bReset').onclick=()=>{cam.position.copy(HOME);ctl.target.copy(TGT);cam.zoom=1;cam.updateProjectionMatrix();ctl.update()};
+function fit(){const w=innerWidth,h=innerHeight,a=w/h,s=Math.max(4.6,7.4/a);R.setSize(w,h);cam.left=-s*a;cam.right=s*a;cam.top=s;cam.bottom=-s;cam.updateProjectionMatrix()}
+addEventListener('resize',fit);fit();
+
+const v=new THREE.Vector3(),clock=new THREE.Clock();
+R.setAnimationLoop(()=>{
+ const t=clock.getElapsedTime();
+ if(run){
+  vibratingScreen.position.set(Math.cos(t*40)*.005,PY+Math.sin(t*40)*.01,0);vibratingScreen.rotation.z=TH+Math.sin(t*43)*.002;
+  gp.forEach(g=>{g.x+=g.v;if(g.x>1.75){g.x=-1.75;g.z=(Math.random()-.5)*1.3}});
+  for(const p of pp){p.y-=p.v;if(p.y<.68){p.y=pTop;p.x=ox+(Math.random()-.5)*.24}}
+  for(const p of fp){p.u+=p.s;if(p.u>1){p.u=0;p.nx=Math.random()*2-1;p.nz=Math.random()*2-1}}
+  rp.forEach((p,i)=>{if(!p.on){if(--p.w<0){p.on=true;p.x=1.82;p.y=2.22;p.z=(Math.random()-.5)*.5;p.vx=.004;p.vy=0}return}
+   p.vy-=.0028;p.x+=p.vx;p.y+=p.vy;
+   if(p.x>=1.9&&p.x<=2.75){const sy=A.y+(p.x-A.x)*sl+.05;if(p.y<sy){p.y=sy;p.vx=.022;p.vy=sl*.022}}
+   if(p.y<.7){p.on=false;p.w=Math.random()*60}});
+ }
+ gp.forEach((g,i)=>{o3.position.set(g.x,.16+(run?Math.abs(Math.sin(g.k+t*30))*.012:0),g.z);o3.rotation.set(g.r,g.k,g.r*2);o3.scale.set(1,.7,1.5);o3.updateMatrix();grains.setMatrixAt(i,o3.matrix)});
+ grains.instanceMatrix.needsUpdate=grains.instanceColor.needsUpdate=true;
+ pp.forEach((p,i)=>{o.position.set(p.x,p.y,p.z);o.rotation.set(0,0,0);o.updateMatrix();pw.setMatrixAt(i,o.matrix)});pw.instanceMatrix.needsUpdate=true;
+ rp.forEach((p,i)=>{o.position.set(p.x,p.on?p.y:-5,p.z);o.rotation.set(t,i,0);o.updateMatrix();rg.setMatrixAt(i,o.matrix)});rg.instanceMatrix.needsUpdate=true;
+ fp.forEach((p,i)=>{const y=-.16-Math.pow(p.u,1.2)*.89,h=hw(y);o2.position.set(p.nx*h[0]*.92,y,p.nz*h[1]*.92);o2.updateMatrix();fl.setMatrixAt(i,o2.matrix)});fl.instanceMatrix.needsUpdate=true;
+ wk.head.rotation.x=.1+Math.sin(t*.8)*.05;
+ ctl.update();R.render(scene,cam);
+ const W_=innerWidth,H_=innerHeight;spots.forEach((s,i)=>{v.set(...s[2]).project(cam);els[i].style.left=(v.x*.5+.5)*W_+'px';els[i].style.top=(-v.y*.5+.5)*H_+'px'});
+});
+</script></body></html>

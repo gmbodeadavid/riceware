@@ -93,7 +93,7 @@ function HuskRow() {
 
 export default function ProblemSection() {
   return (
-    <section id="probleme" className="bg-ground py-section">
+    <section id="probleme" className="bg-surface py-section">
       <div className="max-w-page mx-auto px-5 sm:px-8">
         <div className="text-center mb-8 lg:mb-10">
           <SectionLabel>LE PROBLÈME</SectionLabel>
@@ -142,8 +142,8 @@ export default function ProblemSection() {
         </div>
 
         <div className="mt-6 bg-surface border border-ink/12 rounded-[10px] px-[22px] py-5 min-[900px]:px-8 min-[900px]:py-6 text-center">
-          <p className="font-display font-semibold text-[17px] sm:text-xl leading-[1.35] tracking-[-0.01em] text-ink max-w-[900px] mx-auto">
-            <strong className="font-bold text-husk-text">RiceWare</strong> transforme les coques de riz en alternatives locales aux plastiques à usage unique.
+          <p className="font-display font-semibold text-[17px] sm:text-xl xl:text-[15px] leading-[1.35] tracking-[-0.01em] text-ink max-w-full mx-auto xl:whitespace-nowrap">
+            <strong className="font-bold text-husk-text">RiceWare</strong> valorise la coque et la paille de riz pour développer des alternatives locales aux plastiques à usage unique.
           </p>
         </div>
       </div>

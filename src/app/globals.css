@@ -19,6 +19,8 @@
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
   --radius-sm: 4px;
+  --radius-panel: 1.125rem;
+  --radius-control: 0.75rem;
 
   --color-ground: #f4f1e4;
   --color-surface: #fffdf6;
@@ -48,6 +50,7 @@
 @layer base {
   html {
     scroll-behavior: smooth;
+    scroll-padding-top: 68px;
   }
 
   @media (prefers-reduced-motion: reduce) {

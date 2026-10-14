@@ -1,6 +1,14 @@
 export const NAV_LINKS = [
-  { label: 'Pourquoi la coque', href: '/#pourquoi-la-coque' },
-  { label: 'Procédé', href: '/#procede' },
+  { label: 'Accueil', href: '/#top' },
+  { label: 'Produits', href: '/#produit' },
   { label: 'Impact', href: '/#impact' },
-  { label: 'Contact', href: '/#contact' },
+  { label: 'À propos', href: '/#equipe' },
+  { label: 'Blog', href: '/blog' },
+] as const;
+
+export const FOOTER_LINKS = [
+  { label: 'Produits', href: '/#produit' },
+  { label: 'Impact', href: '/#impact' },
+  { label: 'À propos', href: '/#equipe' },
+  { label: 'Blog', href: '/blog' },
 ] as const;

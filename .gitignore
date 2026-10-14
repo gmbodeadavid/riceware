@@ -32,6 +32,17 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
+
+# sqlite
+/prisma/dev.db
+/prisma/dev.db-journal
+/prisma/*.db
+/prisma/*.db-journal
+
+# uploaded media (images du blog, servies par /media/blog/[filename])
+/storage/
+/public/uploads/
 
 # vercel
 .vercel
@@ -42,4 +53,6 @@ next-env.d.ts
 
 # local workspace files
 /.claude/
+/.commandcode/
+/.kombai/tmp/
 /skip.txt

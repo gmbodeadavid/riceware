@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RiceWare CI — Étape 18 · Stockage produits finis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F4F1E4;--ink:#1C2A20;--paper:#FFFDF6;--line:#DDD6BF;--green:#2E7D5B;--amber:#D3A61F;--grey:#808080}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;color:var(--ink);font-family:'IBM Plex Sans',sans-serif;-webkit-font-smoothing:antialiased;background:radial-gradient(ellipse at 50% 40%,#FBF9F0 0%,#F1EDDC 55%,#E4DEC7 100%)}
+#cv{position:fixed;inset:0}#cv canvas{display:block;width:100%;height:100%;touch-action:none;outline:none}
+#hs{position:fixed;inset:0;z-index:5;pointer-events:none;overflow:hidden}
+.hotspot{position:absolute;width:22px;height:22px;padding:0;border:0;background:transparent;transform:translate(-50%,-50%);cursor:pointer;pointer-events:auto}
+.hotspot.off{display:none}
+.hr{position:absolute;inset:0;border:2px solid var(--amber);border-radius:50%;background:rgba(255,253,246,.9);animation:pulse 1.9s infinite}
+.hd{position:absolute;inset:7px;border-radius:50%;background:var(--amber)}
+.tip{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translate(-50%,4px);background:rgba(28,42,32,.94);color:#fff;font-size:12px;line-height:1.35;padding:7px 10px;border-radius:6px;white-space:nowrap;opacity:0;pointer-events:none;transition:.18s}
+.tip b{display:block;font-weight:600}.tip span{opacity:.8}
+.hotspot:hover .tip,.hotspot:focus-visible .tip{opacity:1;transform:translate(-50%,0)}
+@keyframes pulse{0%{transform:scale(.85);opacity:.9}100%{transform:scale(1.45);opacity:0}}
+#ui{position:fixed;inset:0;z-index:10;padding:22px 24px max(18px,env(safe-area-inset-bottom));display:flex;flex-direction:column;justify-content:space-between;pointer-events:none}
+#top{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap}
+h1{margin:0;font:700 24px/1.1 'Bricolage Grotesque',sans-serif}
+h2{margin:4px 0 0;font-size:14px;font-weight:400;color:rgba(28,42,32,.72)}
+#ctl{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end;pointer-events:auto}
+.btn{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:8px 14px;border:1px solid var(--line);border-radius:999px;background:var(--paper);color:var(--ink);font:600 12px 'IBM Plex Sans',sans-serif;cursor:pointer;box-shadow:0 2px 6px rgba(28,42,32,.06);transition:.2s}
+.btn:hover{transform:translateY(-1px);background:#F8F6EF}
+.btn[aria-pressed=true]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.btn:focus-visible,.hotspot:focus-visible{outline:2px solid var(--green);outline-offset:3px}
+#bot{display:flex;justify-content:center}
+#pc{width:min(640px,92vw);display:flex;flex-direction:column;align-items:center;gap:9px}
+#bar{display:flex;gap:3px;width:100%;height:7px}
+#bar i{flex:1;border-radius:3px;background:rgba(28,42,32,.16)}#bar i.v{background:rgba(46,125,91,.4)}#bar i.a{background:var(--grey)}
+#lab{display:flex;align-items:center;gap:10px}
+#bdg{width:28px;height:28px;border-radius:50%;background:var(--grey);color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center}
+#tl{font-size:17px;font-weight:600}
+#tp{width:100%;height:3px;border-radius:2px;background:rgba(28,42,32,.1);overflow:hidden}#tpf{display:block;height:100%;width:0;background:var(--ink);opacity:.55}
+#hint{position:fixed;bottom:96px;left:50%;transform:translateX(-50%);font-size:12px;color:rgba(28,42,32,.7);pointer-events:none;white-space:nowrap;transition:opacity .6s}
+#ld{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;transition:opacity .6s,visibility .6s;font:700 22px 'Bricolage Grotesque',sans-serif}
+#ld small{font:400 13px 'IBM Plex Sans';opacity:.7}#ld.h{opacity:0;visibility:hidden}
+@media(max-width:700px){h1{font-size:19px}#hint{display:none}}
+@media(prefers-reduced-motion:reduce){.hr{animation:none}}
+</style>
+</head>
+<body>
+<div id="cv" aria-hidden="true"></div>
+<div id="hs"></div>
+<div id="ld">RiceWare CI<small>Construction de l'entrepôt…</small></div>
+<div id="ui">
+  <div id="top">
+    <div><h1>Process de fabrication RiceWare CI</h1><h2>Étape 18 · Stockage des produits finis</h2></div>
+    <div id="ctl">
+      <button class="btn" id="bPlay" aria-pressed="true">Pause</button>
+      <button class="btn" id="bRep">Rejouer</button>
+      <button class="btn" id="bSpd" aria-pressed="false">Vitesse ×2</button>
+      <button class="btn" id="bAnn" aria-pressed="true">Annotations</button>
+      <button class="btn" id="bRot" aria-pressed="false">Rotation auto</button>
+      <button class="btn" id="bRes">Vue isométrique</button>
+      <button class="btn" id="bPng">Capturer PNG</button>
+    </div>
+  </div>
+  <div id="bot"><div id="pc"><div id="bar"></div><div id="tp"><i id="tpf"></i></div><div id="lab"><div id="bdg">18</div><div id="tl">Stockage produits finis</div></div></div></div>
+</div>
+<div id="hint">Glisser pour orbiter · Molette pour zoomer · Espace : pause · R : réinitialiser</div>
+
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+const PI=Math.PI,$=id=>document.getElementById(id);
+const V=(x,y,z)=>new THREE.Vector3(x,y,z);
+
+/* ---------- rendu / caméra orthographique isométrique ---------- */
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.outputColorSpace=THREE.SRGBColorSpace;
+$('cv').appendChild(renderer.domElement);
+const scene=new THREE.Scene();
+const cam=new THREE.OrthographicCamera(-1,1,1,-1,.1,400);
+const TGT0=V(.5,3.4,-.6);
+const DIR=V(Math.cos(PI/6)*Math.sin(.66),.5,Math.cos(PI/6)*Math.cos(.66)).normalize();
+const controls=new OrbitControls(cam,renderer.domElement);
+controls.enableDamping=true;controls.dampingFactor=.08;controls.maxPolarAngle=1.45;controls.minZoom=.55;controls.maxZoom=4;controls.autoRotateSpeed=.6;
+let userCam=false;controls.addEventListener('start',()=>{userCam=true;$('hint').style.opacity=0});
+function reset(){userCam=false;cam.position.copy(TGT0).addScaledVector(DIR,90);cam.zoom=1;cam.updateProjectionMatrix();controls.target.copy(TGT0);controls.update()}
+function fit(){const w=innerWidth,h=innerHeight,a=w/h,hh=a<1.6?9.6*1.6/a:9.6;cam.left=-hh*a;cam.right=hh*a;cam.top=hh;cam.bottom=-hh;cam.updateProjectionMatrix();renderer.setSize(w,h)}
+addEventListener('resize',fit);fit();
+scene.add(new THREE.AmbientLight(0xffffff,.92));
+const sun=new THREE.DirectionalLight(0xffffff,1.45);sun.position.set(-8,22,14);scene.add(sun);
+
+/* ---------- matériaux toon pastel ---------- */
+const gm=new THREE.DataTexture(new Uint8Array([150,205,255]),3,1,THREE.RedFormat);gm.minFilter=gm.magFilter=THREE.NearestFilter;gm.needsUpdate=true;
+const T=(c,o={})=>new THREE.MeshToonMaterial({color:c,gradientMap:gm,polygonOffset:true,polygonOffsetFactor:1,polygonOffsetUnits:1,...o});
+const EM=new THREE.LineBasicMaterial({color:0x4f5550,transparent:true,opacity:.5});
+const BASE=T(0xe7d8b5),BASE2=T(0xdccdaa),BASE3=T(0xd3c3a0),
+  SAGE=T(0x9bb8a5),BEAM=T(0xe3b98a),STEEL=T(0xc3cacf),STEELD=T(0x9aa2a8),DARK=T(0x4a5056),
+  WOOD=T(0xdbb480),WOODD=T(0xc9a06a),BR=[T(0xc79a6b),T(0xb98d62),T(0xd0a878)],
+  FGREEN=T(0x6faf8d),FBEIGE=T(0xe8dcb4),FDARK=T(0x5b6269),TIRE=T(0x3b4045),HUB=T(0xd9d4c4),
+  SKIN=T(0xf1c9a5),SHIRT=T(0xe4d5b3),VEST=T(0xaab1b6),GREEN=T(0x4fae82),PANTS=T(0x7587a0),BOOT=T(0x5a5f66),HELM=T(0xf3c93a),
+  WHITE=T(0xf8f6ef,{side:THREE.DoubleSide}),GLOVE=T(0xb9c0c6),EYE=T(0x34383d),YEL=T(0xe6c04a),IM=T(0xe8e4d9,{side:THREE.DoubleSide});
+function edge(m,a=30){m.add(new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry,a),EM))}
+function bx(p,w,h,d,mat,x,y,z,e=true){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);m.position.set(x,y,z);p.add(m);e&&edge(m);return m}
+function cy(p,rt,rb,h,seg,mat,x,y,z,e=true){const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg),mat);m.position.set(x,y,z);p.add(m);e&&edge(m);return m}
+function sp(p,r,mat,x,y,z){const m=new THREE.Mesh(new THREE.SphereGeometry(r,22,14),mat);m.position.set(x,y,z);p.add(m);return m}
+function rod(p,a,b,r,mat,seg=8){const A=V(...a),B=V(...b),d=B.clone().sub(A);const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,d.length(),seg),mat);m.position.copy(A).add(B).multiplyScalar(.5);m.quaternion.setFromUnitVectors(V(0,1,0),d.normalize());p.add(m);return m}
+function lathe(pts,mat,seg=44){const g=new THREE.LatheGeometry(pts.map(p=>new THREE.Vector2(p[0],p[1])),seg);const m=new THREE.Mesh(g,mat);edge(m,35);return m}
+
+/* ---------- base octogonale beige ---------- */
+const blob=new THREE.Mesh(new THREE.CircleGeometry(15,48),new THREE.MeshBasicMaterial({color:0x8a8266,transparent:true,opacity:.12}));blob.rotation.x=-PI/2;blob.position.y=-.01;scene.add(blob);
+const baseG=new THREE.Group();baseG.rotation.y=PI/8;scene.add(baseG);
+function octo(r,h,m,y){const g=new THREE.CylinderGeometry(r,r,h,8),me=new THREE.Mesh(g,m);me.position.y=y;baseG.add(me);me.add(new THREE.LineSegments(new THREE.EdgesGeometry(g),EM))}
+octo(13.2,.2,BASE3,.1);octo(12.5,.25,BASE,.325);octo(11.6,.02,BASE2,.46);
+const BT=.47;const R=new THREE.Group();R.position.y=BT;scene.add(R);
+// marquage au sol de l'allée
+for(const x of[1.15,3.35])bx(R,.1,.006,13,YEL,x,.003,0.4,false);
+
+/* ---------- palettes et cartons (géométries fusionnées, réutilisées) ---------- */
+const merge=l=>mergeGeometries(l.map(([w,h,d,x,y,z])=>{const g=new THREE.BoxGeometry(w,h,d);g.translate(x,y,z);return g}));
+const PAL=[];for(const x of[-.52,0,.52]){PAL.push([.12,.035,1,x,.0175,0]);for(const z of[-.4,0,.4])PAL.push([.12,.1,.12,x,.085,z])}
+for(const z of[-.4,-.2,0,.2,.4])PAL.push([1.2,.04,.16,0,.155,z]);
+const PALG=merge(PAL),PALE=new THREE.EdgesGeometry(PALG,30);
+const PIL=[];for(const y of[.4,.86])for(const x of[-.29,.29])for(const z of[-.25,.25])PIL.push([.56,.45,.48,x,y,z]);
+const PILG=merge(PIL),PILE=new THREE.EdgesGeometry(PILG,30);
+function makeLoad(variant){const g=new THREE.Group();
+  const p=new THREE.Mesh(PALG,WOOD);p.add(new THREE.LineSegments(PALE,EM));g.add(p);
+  const q=new THREE.Mesh(PILG,BR[variant%3]);q.add(new THREE.LineSegments(PILE,EM));g.add(q);return g}
+
+/* ---------- racks métalliques ---------- */
+const LV=[0,2,4,6],BAYW=3,ZF=-6,ZB=-7,ZC=-6.5;
+function rackRun(nb){
+  const g=new THREE.Group(),x0=-nb*BAYW/2;
+  for(let i=0;i<=nb;i++){const x=x0+i*BAYW;
+    for(const z of[ZF,ZB])bx(g,.12,7.4,.12,SAGE,x,3.7,z);
+    for(let k=0;k<4;k++){const ya=k*2,yb=ya+2,a=k%2?ZF:ZB,b=k%2?ZB:ZF;rod(g,[x,ya+.05,a],[x,yb-.05,b],.022,STEELD,6)}
+    bx(g,.12,.08,1.12,SAGE,x,7.34,ZC,false)}
+  for(let i=0;i<nb;i++){const xc=x0+(i+.5)*BAYW;
+    for(let k=1;k<4;k++)for(const z of[ZF,ZB])bx(g,BAYW-.12,.14,.08,BEAM,xc,LV[k]-.07,z)}
+  return g}
+const slots=[];const rnd=(()=>{let s=77;return()=>{s=(s*16807)%2147483647;return s/2147483647}})();
+function fillRack(g,nb,skip){
+  const x0=-nb*BAYW/2;let n=0;
+  for(let i=0;i<nb;i++)for(let k=0;k<4;k++)for(let p=0;p<2;p++){
+    if(skip&&skip(i,k,p))continue;if(rnd()<.14)continue;
+    const l=makeLoad(n++);l.position.set(x0+(i+.5)*BAYW+(p?.75:-.75),LV[k],ZC);g.add(l)}}
+const back=rackRun(4);R.add(back);
+fillRack(back,4,(i,k,p)=>i===2&&k===2&&p===1);            // créneau cible laissé libre
+const left=rackRun(3);left.rotation.y=PI/2;left.position.set(-2.5,0,-2.5);R.add(left);fillRack(left,3);
+const SLOT=V(1.5+.75,LV[2],ZC);                             // centre du créneau cible (monde)
+
+/* ---------- charpente métallique ---------- */
+const TRZ=[-7.2,-2.4,2.4,7.2];
+for(const z of TRZ){
+  bx(R,21,.14,.16,STEELD,0,9.4,z);
+  for(const s of[-1,1])rod(R,[s*10.5,9.4,z],[0,11.6,z],.06,STEELD,6);
+  const topY=x=>9.4+2.2*(1-Math.abs(x)/10.5),xs=[-7,-3.5,0,3.5,7];
+  xs.forEach((x,i)=>{rod(R,[x,9.47,z],[x,topY(x)-.03,z],.035,STEEL,6);if(i<4){const x2=xs[i+1];(i%2?rod(R,[x2,9.47,z],[x,topY(x)-.03,z],.03,STEEL,6):rod(R,[x,9.47,z],[x2,topY(x2)-.03,z],.03,STEEL,6))}});
+  for(const s of[-1,1])bx(R,.26,9.4,.26,STEELD,s*10.5,4.7,z);
+  for(const x of[-5,5]){rod(R,[x,9.4-.07,z],[x,8.9,z],.02,DARK,6);cy(R,.1,.4,.4,16,YEL,x,8.65,z)}
+}
+for(const x of[-7,-3.5,0,3.5,7]){const y=9.4+2.2*(1-Math.abs(x)/10.5)+.12;bx(R,.1,.1,14.4+.0,STEEL,x,y,0)}
+
+/* ---------- chariot élévateur ---------- */
+const F=new THREE.Group();R.add(F);                          // avant = -z
+bx(F,1,.5,2.1,FGREEN,0,.55,.05);                              // châssis
+bx(F,1.04,.7,.62,FBEIGE,0,.65,.98);                           // contrepoids
+bx(F,.9,.12,.5,FGREEN,0,.86,-.88);
+bx(F,.5,.3,.18,FDARK,0,.95,-.45);                             // tableau de bord
+function wheel(x,z,r,w){const g=new THREE.Group();g.position.set(x,r,z);F.add(g);
+  const t=cy(g,r,r,w,28,TIRE,0,0,0);t.rotation.z=PI/2;const h=cy(g,r*.55,r*.55,w+.02,20,HUB,0,0,0,false);h.rotation.z=PI/2;
+  bx(g,w+.05,r*.28,r*.28,FDARK,0,r*.3,0,false);return g}
+const wF=[wheel(-.7,-.55,.45,.3),wheel(.7,-.55,.45,.3)],wR=[wheel(-.7,.9,.3,.26),wheel(.7,.9,.3,.26)];
+const WH=[...wF,...wR];
+// arceau de sécurité
+for(const x of[-.45,.45])for(const z of[-.35,.62])bx(F,.07,1.75,.07,FDARK,x,1.675,z);
+bx(F,1.04,.07,1.04,FDARK,0,2.575,.135);
+for(let i=0;i<5;i++)bx(F,1.0,.03,.05,FDARK,0,2.5,-.3+i*.22,false);
+// siège
+bx(F,.6,.1,.5,FDARK,0,.85,.3);bx(F,.6,.6,.1,FDARK,0,1.2,.6);
+// opérateur assis
+bx(F,.5,.2,.34,PANTS,0,1.0,.3);
+for(const s of[-1,1]){bx(F,.2,.16,.55,PANTS,s*.14,1.2,.1);bx(F,.18,.22,.18,PANTS,s*.14,1.01,-.2);bx(F,.2,.1,.3,BOOT,s*.14,.85,-.26)}
+bx(F,.5,.6,.3,SHIRT,0,1.4,.33);
+bx(F,.52,.52,.03,VEST,0,1.4,.165);bx(F,.52,.52,.03,VEST,0,1.4,.495);
+for(const s of[-1,1])bx(F,.13,.04,.34,VEST,s*.17,1.72,.33);
+for(const y of[1.3,1.52]){bx(F,.52,.06,.012,GREEN,0,y,.14,false);bx(F,.52,.06,.012,GREEN,0,y,.516,false)}
+cy(F,.08,.09,.1,12,SKIN,0,1.79,.33,false);
+const HG=new THREE.Group();HG.position.set(0,1.98,.33);HG.rotation.y=-.95;F.add(HG);   // regarde vers la caméra
+sp(HG,.21,SKIN,0,0,0);
+{const m=new THREE.Mesh(new THREE.SphereGeometry(.222,24,12,PI*1.5-.95,1.9,PI*.5+.05,.75),WHITE);HG.add(m)}
+for(const s of[-1,1])sp(HG,.018,EYE,s*.07,.05,-.2);
+{const d=new THREE.Mesh(new THREE.SphereGeometry(.25,28,14,0,PI*2,0,PI*.52),HELM);d.position.y=.035;HG.add(d);
+ cy(HG,.3,.3,.026,28,HELM,0,.035-.25*Math.cos(PI*.52),0,false);bx(HG,.34,.026,.17,HELM,0,.025,-.28,false)}
+// volant + bras
+const sw=new THREE.Mesh(new THREE.TorusGeometry(.17,.025,8,24),FDARK);sw.position.set(0,1.5,-.3);sw.rotation.x=-1.1;F.add(sw);
+rod(F,[0,1.12,-.42],[0,1.48,-.31],.03,FDARK);
+for(const s of[-1,1]){const sh=[s*.32,1.62,.33],el=[s*.42,1.38,.08],ha=[s*.17,1.5,-.28];
+  rod(F,sh,el,.075,SHIRT,10);rod(F,el,ha,.065,SHIRT,10);sp(F,.075,SHIRT,...el);sp(F,.085,GLOVE,...ha)}
+// mât télescopique + chariot porte-fourches
+bx(F,.12,2.6,.14,FDARK,-.38,1.4,-1.2);bx(F,.12,2.6,.14,FDARK,.38,1.4,-1.2);bx(F,.86,.1,.1,FDARK,0,2.65,-1.2,false);bx(F,.86,.1,.1,FDARK,0,.15,-1.2,false);
+const MI=new THREE.Group();F.add(MI);                         // éléments internes du mât
+bx(MI,.09,2.6,.07,STEEL,-.38,1.3,-1.34);bx(MI,.09,2.6,.07,STEEL,.38,1.3,-1.34);bx(MI,.86,.08,.07,STEEL,0,2.55,-1.34,false);
+const CG=new THREE.Group();F.add(CG);                         // chariot : y = bas des fourches
+bx(CG,1.1,.9,.05,STEELD,0,.45,-1.43);
+for(const x of[-.28,.28])bx(CG,.14,.05,1,STEEL,x,.025,-1.96);
+for(const y of[.5,.7])bx(CG,1.1,.04,.03,STEELD,0,y,-1.47,false);
+
+/* ---------- charge sur palette ---------- */
+const LOAD=makeLoad(1);R.add(LOAD);
+
+/* ---------- présentoir métallique + vaisselle ---------- */
+const DS=new THREE.Group();DS.position.set(5.6,0,5.4);DS.rotation.y=.66;R.add(DS);
+for(const x of[-1.75,1.75])for(const z of[-.55,.55])bx(DS,.08,2.5,.08,STEELD,x,1.25,z);
+for(const y of[1.0,2.0])bx(DS,3.6,.06,1.26,STEEL,0,y,0);
+for(const s of[-1,1]){rod(DS,[s*1.75,.1,-.55],[s*1.75,2.45,.55],.018,STEELD,6);}
+bx(DS,3.6,.5,.04,SAGE,0,2.3,-.62,false);
+const Y1=1.03,Y2=2.03,IT=new THREE.Group();DS.add(IT);
+const item=(m,s,x,y,z,ry=0)=>{m.scale.set(s,s,s);m.position.set(x,y,z);m.rotation.y=ry;IT.add(m);return m};
+// mêmes maillages que les étapes de moulage / pressage
+const Plate=()=>lathe([[0,0],[.2,0],[.24,.02],[.34,.045],[.38,.055],[.38,.062],[.37,.062],[.33,.042],[.24,.019],[0,.019]],IM);
+const Cup=()=>lathe([[0,0],[.145,0],[.15,.035],[.2,.05],[.245,.4],[.26,.42],[.262,.44],[.245,.44],[.23,.425],[.18,.07],[0,.07]],IM);
+function forkShape(){const s=new THREE.Shape();s.moveTo(-.4,-.045);s.lineTo(-.02,-.03);s.lineTo(.08,-.085);s.lineTo(.2,-.085);
+  const tw=.03,gp=.0167;let y=-.085;for(let i=0;i<4;i++){s.lineTo(.4,y);s.lineTo(.4,y+tw);s.lineTo(.2,y+tw);y+=tw;if(i<3){s.lineTo(.2,y+gp);y+=gp}}
+  s.lineTo(.08,.085);s.lineTo(-.02,.03);s.lineTo(-.4,.045);s.lineTo(-.4,-.045);return s}
+function spoonShape(){const s=new THREE.Shape();s.moveTo(-.4,-.03);s.lineTo(-.02,-.025);
+  for(let t=PI+.25;t<=3*PI-.25;t+=.15)s.lineTo(.22+.2*Math.cos(t),.105*Math.sin(t));s.lineTo(-.02,.025);s.lineTo(-.4,.03);s.lineTo(-.4,-.03);return s}
+function flat(shape){const g=new THREE.ExtrudeGeometry(shape,{depth:.03,bevelEnabled:false,curveSegments:14});g.rotateX(-PI/2);const m=new THREE.Mesh(g,IM);edge(m,35);return m}
+function clamshell(){const g=new THREE.Group(),W=.9,D=.66,H=.2,t=.03;
+  bx(g,W,t,D,IM,0,t/2,0);bx(g,W,H,t,IM,0,H/2+t,D/2-t/2);bx(g,W,H,t,IM,0,H/2+t,-D/2+t/2);
+  for(const s of[-1,1])bx(g,t,H,D-2*t,IM,s*(W/2-t/2),H/2+t,0);
+  const hg=new THREE.Group();hg.position.set(0,H+t,-D/2);hg.rotation.x=-PI*.62;g.add(hg);        // couvercle ouvert
+  bx(hg,W,t,D,IM,0,0,D/2);bx(hg,W,.12,t,IM,0,-.06-t/2,D-t/2);for(const s of[-1,1])bx(hg,t,.12,D-2*t,IM,s*(W/2-t/2),-.06-t/2,D/2);
+  return g}
+item(Plate(),1.5,-1.05,Y2,.05);item(Cup(),1.5,-.1,Y2,.05);item(clamshell(),1,1.05,Y2,.05);
+item(flat(forkShape()),1.5,-.8,Y1,.1,.12);item(flat(spoonShape()),1.5,.7,Y1,.1,-.1);
+const shelfW=V(5.6,1.7,5.4);
+
+/* ---------- chronologie (s) ---------- */
+const prog=(t,a,b)=>Math.min(1,Math.max(0,(t-a)/(b-a))),ease=x=>x*x*(3-2*x),lerp=(a,b,t)=>a+(b-a)*t;
+const TL={enter:[0,2.5],lift:[2.5,4.5],slide:[4.5,5.2],rest:[5.2,5.5],back:[5.5,6.3],drop:[6.3,6.9],show:[6.9,8.6],hold:11.3,ret:[11.3,12.4],end:13.4};
+const AX=SLOT.x,Z0=4.8,ZSTAGE=-2.8,ZPLACE=SLOT.z+2.06,ZBACK=-1.6;
+const C0=.3,CSLIDE=LV[2]+.14,CREST=LV[2]+.06;
+const CAP=[[0,"Le chariot avance dans l'allée, palette en position basse"],[TL.lift[0],"Levée verticale de la palette vers l'étage ciblé"],[TL.slide[0],'Dépose de la palette dans le rack'],[TL.back[0],'Le chariot recule, fourches à vide'],[TL.show[0],'Mise en valeur : la gamme complète RiceWare']];
+let lastCap=-1,camOff=V(0,0,0);
+function frame(t){
+  // trajectoire du chariot
+  let z=Z0,c=C0;
+  z=lerp(Z0,ZSTAGE,ease(prog(t,...TL.enter)));
+  c=lerp(C0,CSLIDE,ease(prog(t,...TL.lift)));
+  if(t>=TL.slide[0])z=lerp(ZSTAGE,ZPLACE,ease(prog(t,...TL.slide)));
+  if(t>=TL.rest[0])c=lerp(CSLIDE,CREST,ease(prog(t,...TL.rest)));
+  if(t>=TL.back[0])z=lerp(ZPLACE,ZBACK,ease(prog(t,...TL.back)));
+  if(t>=TL.drop[0])c=lerp(CREST,C0,ease(prog(t,...TL.drop)));
+  F.position.set(AX,0,z);
+  WH.forEach((w,i)=>w.rotation.x=z/(i<2?.45:.3));
+  CG.position.y=c;MI.position.y=(c-C0)*.5;
+  // charge : sur les fourches, puis posée dans le rack
+  const placed=t>=TL.back[0];
+  const py=t>=TL.rest[0]?Math.max(LV[2],c-.06):c-.06,pz=placed?SLOT.z:z-2.06;
+  LOAD.position.set(AX,py,pz);
+  // caméra : mise en valeur du présentoir
+  const k=ease(prog(t,...TL.show))-ease(prog(t,...TL.ret));
+  camOff.copy(cam.position).sub(controls.target);
+  if(!userCam){controls.target.copy(TGT0).lerp(shelfW,k);cam.position.copy(controls.target).add(camOff);cam.zoom=1+1.15*k;cam.updateProjectionMatrix()}
+  // légende
+  let ci=0;CAP.forEach((a,i)=>{if(t>=a[0])ci=i});if(ci!==lastCap){lastCap=ci;$('tl').textContent=CAP[ci][1]}
+  $('tpf').style.width=(t/TL.end*100)+'%';
+  HS[0].v.set(AX,3.0,z);HS[1].v.set(AX,py+1.3,pz);
+}
+
+/* ---------- annotations ---------- */
+const HS=[
+ ['Chariot élévateur','Vert et beige · opérateur casqué et masqué',[0,3,0]],
+ ['Palette de cartons','Palette bois + cartons bruns empilés',[0,2,0]],
+ ['Racks métalliques','Alvéoles chargées de palettes de cartons',[-4.5,6.4,-6.5]],
+ ['Présentoir produits finis','Assiette, gobelet, fourchette, cuillère, barquette',[5.6,2.9,5.4]],
+ ['Charpente métallique','Fermes triangulées et pannes',[0,11.8,0]]
+].map(([t,s,p])=>{const b=document.createElement('button');b.className='hotspot';b.type='button';b.setAttribute('aria-label',t);
+  b.innerHTML=`<span class="hr"></span><span class="hd"></span><span class="tip"><b>${t}</b><span>${s}</span></span>`;$('hs').appendChild(b);return{b,v:new THREE.Vector3(...p)}});
+const tmp=V(0,0,0);
+function place(){const w=innerWidth,h=innerHeight;for(const o of HS){tmp.copy(o.v);R.localToWorld(tmp);tmp.project(cam);o.b.style.left=((tmp.x+1)/2*w)+'px';o.b.style.top=((1-tmp.y)/2*h)+'px'}}
+
+/* ---------- UI ---------- */
+for(let i=0;i<18;i++){const e=document.createElement('i');e.className=i===17?'a':'v';$('bar').appendChild(e)}
+const tog=(id,fn)=>$(id).onclick=e=>{const on=e.currentTarget.getAttribute('aria-pressed')!=='true';e.currentTarget.setAttribute('aria-pressed',on);fn(on)};
+let clk=0,playing=true,spd=1;
+tog('bPlay',on=>{playing=on;$('bPlay').textContent=on?'Pause':'Lecture'});
+tog('bSpd',on=>{spd=on?2:1;$('bSpd').textContent=on?'Vitesse ×1':'Vitesse ×2'});
+tog('bAnn',on=>HS.forEach(o=>o.b.classList.toggle('off',!on)));
+tog('bRot',on=>controls.autoRotate=on);
+$('bRep').onclick=()=>{clk=0;userCam=false};
+$('bRes').onclick=reset;
+$('bPng').onclick=()=>{renderer.render(scene,cam);const a=document.createElement('a');a.href=renderer.domElement.toDataURL('image/png');a.download='riceware-etape18-stockage.png';a.click()};
+addEventListener('keydown',e=>{if(e.key==='r'||e.key==='R')reset();if(e.code==='Space'){e.preventDefault();$('bPlay').click()}});
+reset();
+let vis=true;document.addEventListener('visibilitychange',()=>vis=!document.hidden);
+if(matchMedia('(prefers-reduced-motion: reduce)').matches)clk=TL.show[1];
+let last=performance.now();
+(function loop(now){requestAnimationFrame(loop);const dt=Math.min((now-last)/1000,.05);last=now;if(!vis)return;
+  if(playing){clk+=dt*spd;if(clk>TL.end){clk=0;userCam=false}}
+  frame(clk);controls.update();renderer.render(scene,cam);place()})(last);
+setTimeout(()=>$('ld').classList.add('h'),400);
+</script>
+</body>
+</html>

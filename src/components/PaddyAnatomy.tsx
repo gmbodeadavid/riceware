@@ -120,7 +120,7 @@ export default function PaddyAnatomy() {
         )}
       </div>
       <figcaption className="sr-only">
-        Anatomie d’un grain de paddy : 70 % de grain destiné à l’alimentation humaine, laissé intact ; 10 % de son, laissé intact ; 20 % de coque, non comestible, la seule partie utilisée par RiceWare.
+        Anatomie d’un grain de paddy : 70 % de grain destiné à l’alimentation humaine, laissé intact ; 10 % de son, laissé intact ; 20 % de coque non comestible. RiceWare valorise la coque et la paille de riz.
       </figcaption>
     </figure>
   );
