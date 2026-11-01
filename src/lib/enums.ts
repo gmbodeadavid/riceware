@@ -76,6 +76,17 @@ export const GOAL_STATUSES = [
 
 export type GoalStatus = (typeof GOAL_STATUSES)[number]['value'];
 
+// ─── Traçabilité — PackLot ─────────────────────────────────────────────────
+
+export const PACK_LOT_STATUSES = [
+  { value: 'quarantaine', label: 'Quarantaine', badge: 'warning' },
+  { value: 'libre',       label: 'Libre',       badge: 'success' },
+  { value: 'rappel',      label: 'Rappel',      badge: 'danger' },
+  { value: 'epuise',      label: 'Épuisé',      badge: 'default' },
+] as const;
+
+export type PackLotStatus = (typeof PACK_LOT_STATUSES)[number]['value'];
+
 // ─── Ré-exports depuis types.ts (production) ──────────────────────────────
 // Les enums de production restent dans src/lib/production/types.ts pour la cohésion
 // du module production, mais sont ré-exportés ici pour la cohérence des imports.

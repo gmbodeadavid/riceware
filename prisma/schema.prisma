@@ -41,15 +41,16 @@ model ProductCategory {
 }
 
 model ProductPack {
-  id         String  @id
+  id         String    @id
   productId  String
   packKey    String
   label      String
   quantity   Int
   price      String
-  priceValue Int     @default(0)
+  priceValue Int       @default(0)
   note       String
-  product    Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  packLots   PackLot[]
 
   @@unique([productId, packKey])
 }
@@ -215,7 +216,7 @@ model Order {
 }
 
 model OrderLine {
-  id                  String  @id @default(cuid())
+  id                  String                @id @default(cuid())
   orderId             String
   productId           String?
   productPackId       String?
@@ -224,8 +225,9 @@ model OrderLine {
   quantity            Int
   unitPriceAmount     Int
   lineTotalAmount     Int
-  packQuantity        Int     @default(1)
-  order               Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  packQuantity        Int                   @default(1)
+  order               Order                 @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  allocations         OrderLineAllocation[]
 }
 
 model User {
@@ -266,26 +268,27 @@ model Rizerie {
 }
 
 model LotCoques {
-  id            String            @id @default(cuid())
-  code          String            @unique
+  id            String                  @id @default(cuid())
+  code          String                  @unique
   rizerieId     String
   receivedAt    DateTime
   grossWeightKg Float
-  tareWeightKg  Float             @default(0)
+  tareWeightKg  Float                   @default(0)
   netWeightKg   Float
   humidityPct   Float
-  visualQuality String            @default("conforme")
-  status        String            @default("accepted")
+  visualQuality String                  @default("conforme")
+  status        String                  @default("accepted")
   photoUrl      String?
   notes         String?
   createdById   String?
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
   deletedAt     DateTime?
   deletedById   String?
-  batches       BatchProduction[] @relation("LotBatches")
-  createdBy     User?             @relation("LotCreator", fields: [createdById], references: [id])
-  rizerie       Rizerie           @relation(fields: [rizerieId], references: [id])
+  batches       BatchProduction[]       @relation("LotBatches")
+  createdBy     User?                   @relation("LotCreator", fields: [createdById], references: [id])
+  rizerie       Rizerie                 @relation(fields: [rizerieId], references: [id])
+  usages        BatchMaterialUsage[]
 
   @@index([receivedAt])
   @@index([rizerieId])
@@ -293,11 +296,11 @@ model LotCoques {
 }
 
 model BatchProduction {
-  id             String        @id @default(cuid())
-  code           String        @unique
-  lotId          String?
+  id             String               @id @default(cuid())
+  code           String               @unique
+  lotId          String?              // @deprecated — source de vérité = BatchMaterialUsage.usages
   startedAt      DateTime
-  productType    String        @default("assiette")
+  productType    String               @default("assiette")
   powderKg       Float
   binderKg       Float
   mixHumidityPct Float
@@ -305,22 +308,24 @@ model BatchProduction {
   pressureMpa    Float
   cycleTimeMin   Float
   piecesProduced Int
-  rejects        Int           @default(0)
+  rejects        Int                  @default(0)
   rejectCause    String?
   observations   String?
-  powderCostFcfa Float         @default(0)
-  binderCostFcfa Float         @default(0)
-  laborCostFcfa  Float         @default(0)
-  energyCostFcfa Float         @default(0)
+  powderCostFcfa Float                @default(0)
+  binderCostFcfa Float                @default(0)
+  laborCostFcfa  Float                @default(0)
+  energyCostFcfa Float                @default(0)
   operatorId     String?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
   deletedAt      DateTime?
   deletedById    String?
-  operator       User?         @relation("BatchOperator", fields: [operatorId], references: [id])
-  lot            LotCoques?    @relation("LotBatches", fields: [lotId], references: [id])
+  operator       User?                @relation("BatchOperator", fields: [operatorId], references: [id])
+  lot            LotCoques?           @relation("LotBatches", fields: [lotId], references: [id])
   products       ProduitFini[]
   tests          TestQualite[]
+  usages         BatchMaterialUsage[]
+  packLots       PackLot[]
 
   @@index([startedAt])
   @@index([lotId])
@@ -400,15 +405,24 @@ model StockMovement {
   type              String
   quantity          Float
   resultingQuantity Float
-  reference         String?
+  reference         String?  // texte libre, conservé pour compatibilité — ne plus y écrire de logique métier
   note              String?
   createdById       String?
+  // FK optionnelles P2 — traçabilité
+  lotCoquesId       String?
+  batchId           String?
+  packLotId         String?
+  orderId           String?
   createdAt         DateTime @default(now())
   createdBy         User?    @relation("MovementAuthor", fields: [createdById], references: [id])
   stock             Stock    @relation(fields: [stockId], references: [id], onDelete: Cascade)
 
   @@index([createdAt])
   @@index([stockId])
+  @@index([lotCoquesId])
+  @@index([batchId])
+  @@index([packLotId])
+  @@index([orderId])
 }
 
 model Partner {
@@ -492,6 +506,52 @@ model AuditLog {
 
   @@index([createdAt])
   @@index([entityType])
+}
+
+model BatchMaterialUsage {
+  id          String          @id @default(cuid())
+  batchId     String
+  lotCoquesId String
+  kgUsed      Float?          // null = non renseigné (données historiques sans kgUsed)
+  estimated   Boolean         @default(false)
+  createdAt   DateTime        @default(now())
+  batch       BatchProduction @relation(fields: [batchId], references: [id])
+  lot         LotCoques       @relation(fields: [lotCoquesId], references: [id])
+
+  @@unique([batchId, lotCoquesId])
+  @@index([lotCoquesId])
+}
+
+model PackLot {
+  id          String      @id @default(cuid())
+  code        String      @unique   // ex. PK-20261101-001 (génération automatique)
+  batchId     String
+  packId      String                // ProductPack
+  quantity    Int                   // nombre de packs produits
+  status      String      @default("quarantaine") // quarantaine | libre | rappel | epuise
+  packedAt    DateTime    @default(now())
+  createdById String?
+  deletedAt   DateTime?
+  batch       BatchProduction @relation(fields: [batchId], references: [id])
+  pack        ProductPack     @relation(fields: [packId], references: [id])
+  allocations OrderLineAllocation[]
+
+  @@index([batchId])
+  @@index([packId])
+}
+
+model OrderLineAllocation {
+  id          String    @id @default(cuid())
+  orderLineId String
+  packLotId   String
+  quantity    Int
+  createdAt   DateTime  @default(now())
+  createdById String?
+  orderLine   OrderLine @relation(fields: [orderLineId], references: [id])
+  packLot     PackLot   @relation(fields: [packLotId], references: [id])
+
+  @@unique([orderLineId, packLotId])
+  @@index([packLotId])
 }
 
 model Setting {

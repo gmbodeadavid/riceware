@@ -729,6 +729,279 @@ async function main() {
       'Comptes de démonstration : définissez SEED_ADMIN_PASSWORD pour réinitialiser leurs mots de passe. Sinon le mot de passe initial reste RiceWare2026!.',
     );
   }
+
+  // ─── P2 — Données de démonstration traçabilité ──────────────────────────────
+  // 2 rizeries supplémentaires, 3 lots (dont 2 pour le batch multi-lots), 1 batch
+  // multi-lots, 2 PackLot, 2 commandes allouées.
+
+  await prisma.rizerie.upsert({
+    where: { id: 'seed-p2-rizerie-daloa' },
+    update: { name: 'Rizerie de Daloa', location: 'Daloa' },
+    create: {
+      id: 'seed-p2-rizerie-daloa',
+      name: 'Rizerie de Daloa',
+      location: 'Daloa',
+      contractType: 'achat',
+      active: true,
+    },
+  });
+
+  await prisma.rizerie.upsert({
+    where: { id: 'seed-p2-rizerie-man' },
+    update: { name: 'Rizerie de Man', location: 'Man' },
+    create: {
+      id: 'seed-p2-rizerie-man',
+      name: 'Rizerie de Man',
+      location: 'Man',
+      contractType: 'achat',
+      active: true,
+    },
+  });
+
+  // 2 nouveaux lots (un pour chaque rizerie P2)
+  await prisma.lotCoques.upsert({
+    where: { id: 'seed-p2-lot-daloa' },
+    update: { status: 'accepted', netWeightKg: 600, code: 'RW-2026-10-28-001' },
+    create: {
+      id: 'seed-p2-lot-daloa',
+      code: 'RW-2026-10-28-001',
+      rizerieId: 'seed-p2-rizerie-daloa',
+      receivedAt: daysAgo(8),
+      grossWeightKg: 650,
+      tareWeightKg: 50,
+      netWeightKg: 600,
+      humidityPct: 0.12,
+      visualQuality: 'conforme',
+      status: 'accepted',
+    },
+  });
+
+  await prisma.lotCoques.upsert({
+    where: { id: 'seed-p2-lot-man' },
+    update: { status: 'accepted', netWeightKg: 400, code: 'RW-2026-10-29-001' },
+    create: {
+      id: 'seed-p2-lot-man',
+      code: 'RW-2026-10-29-001',
+      rizerieId: 'seed-p2-rizerie-man',
+      receivedAt: daysAgo(7),
+      grossWeightKg: 430,
+      tareWeightKg: 30,
+      netWeightKg: 400,
+      humidityPct: 0.11,
+      visualQuality: 'conforme',
+      status: 'accepted',
+    },
+  });
+
+  // Batch multi-lots : lotId pointe sur daloa (héritage), mais usages couvre les deux lots
+  await prisma.batchProduction.upsert({
+    where: { id: 'seed-p2-batch-multi' },
+    update: { code: 'RW-BAT-2026-10-30-001' },
+    create: {
+      id: 'seed-p2-batch-multi',
+      code: 'RW-BAT-2026-10-30-001',
+      lotId: 'seed-p2-lot-daloa',  // @deprecated — conservé pour compatibilité
+      startedAt: daysAgo(6),
+      productType: 'assiette',
+      powderKg: 250,
+      binderKg: 10,
+      mixHumidityPct: 0.08,
+      pressingTempC: 185,
+      pressureMpa: 18,
+      cycleTimeMin: 6,
+      piecesProduced: 2400,
+      rejects: 60,
+      powderCostFcfa: 12500,
+      binderCostFcfa: 15000,
+      laborCostFcfa: 5000,
+      energyCostFcfa: 2500,
+      operatorId: 'seed-user-production',
+    },
+  });
+
+  // BatchMaterialUsage : deux lots pour le batch multi-lots
+  await prisma.batchMaterialUsage.upsert({
+    where: { batchId_lotCoquesId: { batchId: 'seed-p2-batch-multi', lotCoquesId: 'seed-p2-lot-daloa' } },
+    update: { kgUsed: 150, estimated: false },
+    create: {
+      id: 'seed-p2-usage-daloa',
+      batchId: 'seed-p2-batch-multi',
+      lotCoquesId: 'seed-p2-lot-daloa',
+      kgUsed: 150,
+      estimated: false,
+    },
+  });
+
+  await prisma.batchMaterialUsage.upsert({
+    where: { batchId_lotCoquesId: { batchId: 'seed-p2-batch-multi', lotCoquesId: 'seed-p2-lot-man' } },
+    update: { kgUsed: 100, estimated: false },
+    create: {
+      id: 'seed-p2-usage-man',
+      batchId: 'seed-p2-batch-multi',
+      lotCoquesId: 'seed-p2-lot-man',
+      kgUsed: 100,
+      estimated: false,
+    },
+  });
+
+  // 2 PackLot pour le batch multi-lots (pack de 50 bols et pack de 100 bols)
+  await prisma.packLot.upsert({
+    where: { id: 'seed-p2-packlot-assiette100' },
+    update: { status: 'libre' },
+    create: {
+      id: 'seed-p2-packlot-assiette100',
+      code: 'PK-20261030-001',
+      batchId: 'seed-p2-batch-multi',
+      packId: 'assiette-plate-pack-100',
+      quantity: 20,
+      status: 'libre',
+      packedAt: daysAgo(5),
+      createdById: 'seed-user-production',
+    },
+  });
+
+  await prisma.packLot.upsert({
+    where: { id: 'seed-p2-packlot-assiette150' },
+    update: { status: 'libre' },
+    create: {
+      id: 'seed-p2-packlot-assiette150',
+      code: 'PK-20261030-002',
+      batchId: 'seed-p2-batch-multi',
+      packId: 'assiette-plate-pack-150',
+      quantity: 10,
+      status: 'libre',
+      packedAt: daysAgo(5),
+      createdById: 'seed-user-production',
+    },
+  });
+
+  // 2 clients + commandes P2 avec allocations
+  await prisma.customer.upsert({
+    where: { id: 'seed-p2-customer-1' },
+    update: { fullName: 'Restaurant Ivoire Palace' },
+    create: {
+      id: 'seed-p2-customer-1',
+      fullName: 'Restaurant Ivoire Palace',
+      phone: '+225 07 01 02 03 04',
+      email: 'contact@ivoirepalace.example.ci',
+    },
+  });
+
+  await prisma.customer.upsert({
+    where: { id: 'seed-p2-customer-2' },
+    update: { fullName: 'Traiteur Koua & Fils' },
+    create: {
+      id: 'seed-p2-customer-2',
+      fullName: 'Traiteur Koua & Fils',
+      phone: '+225 05 11 22 33 44',
+    },
+  });
+
+  await prisma.address.upsert({
+    where: { id: 'seed-p2-addr-1' },
+    update: {},
+    create: { id: 'seed-p2-addr-1', customerId: 'seed-p2-customer-1', city: 'Abidjan', district: 'Plateau' },
+  });
+
+  await prisma.address.upsert({
+    where: { id: 'seed-p2-addr-2' },
+    update: {},
+    create: { id: 'seed-p2-addr-2', customerId: 'seed-p2-customer-2', city: 'Yamoussoukro' },
+  });
+
+  // Commande 1 — livrée, allouée
+  await prisma.order.upsert({
+    where: { id: 'seed-p2-order-1' },
+    update: { status: 'delivered', paymentStatus: 'paid' },
+    create: {
+      id: 'seed-p2-order-1',
+      orderNumber: 'RW-CMD-P2-001',
+      customerId: 'seed-p2-customer-1',
+      deliveryAddressId: 'seed-p2-addr-1',
+      channel: 'direct_sale',
+      status: 'delivered',
+      paymentStatus: 'paid',
+      subtotalAmount: 60000,
+      totalAmount: 60000,
+      deliveredAt: daysAgo(2),
+    },
+  });
+
+  await prisma.orderLine.upsert({
+    where: { id: 'seed-p2-line-1' },
+    update: {},
+    create: {
+      id: 'seed-p2-line-1',
+      orderId: 'seed-p2-order-1',
+      productPackId: 'assiette-plate-pack-100',
+      packNameSnapshot: 'Assiette plate — Pack de 100',
+      packContentSnapshot: { quantity: 100, type: 'assiette' },
+      quantity: 5,
+      unitPriceAmount: 12000,
+      lineTotalAmount: 60000,
+      packQuantity: 100,
+    },
+  });
+
+  await prisma.orderLineAllocation.upsert({
+    where: { orderLineId_packLotId: { orderLineId: 'seed-p2-line-1', packLotId: 'seed-p2-packlot-assiette100' } },
+    update: { quantity: 5 },
+    create: {
+      id: 'seed-p2-alloc-1',
+      orderLineId: 'seed-p2-line-1',
+      packLotId: 'seed-p2-packlot-assiette100',
+      quantity: 5,
+      createdById: 'seed-user-logistique',
+    },
+  });
+
+  // Commande 2 — livrée, allouée
+  await prisma.order.upsert({
+    where: { id: 'seed-p2-order-2' },
+    update: { status: 'delivered', paymentStatus: 'paid' },
+    create: {
+      id: 'seed-p2-order-2',
+      orderNumber: 'RW-CMD-P2-002',
+      customerId: 'seed-p2-customer-2',
+      deliveryAddressId: 'seed-p2-addr-2',
+      channel: 'whatsapp',
+      status: 'delivered',
+      paymentStatus: 'paid',
+      subtotalAmount: 30000,
+      totalAmount: 30000,
+      deliveredAt: daysAgo(1),
+    },
+  });
+
+  await prisma.orderLine.upsert({
+    where: { id: 'seed-p2-line-2' },
+    update: {},
+    create: {
+      id: 'seed-p2-line-2',
+      orderId: 'seed-p2-order-2',
+      productPackId: 'assiette-plate-pack-150',
+      packNameSnapshot: 'Assiette plate — Pack de 150',
+      packContentSnapshot: { quantity: 150, type: 'assiette' },
+      quantity: 3,
+      unitPriceAmount: 10000,
+      lineTotalAmount: 30000,
+      packQuantity: 150,
+    },
+  });
+
+  await prisma.orderLineAllocation.upsert({
+    where: { orderLineId_packLotId: { orderLineId: 'seed-p2-line-2', packLotId: 'seed-p2-packlot-assiette150' } },
+    update: { quantity: 3 },
+    create: {
+      id: 'seed-p2-alloc-2',
+      orderLineId: 'seed-p2-line-2',
+      packLotId: 'seed-p2-packlot-assiette150',
+      quantity: 3,
+      createdById: 'seed-user-logistique',
+    },
+  });
+
+  console.log('✓ Données P2 traçabilité insérées (2 rizeries, 2 lots, 1 batch multi-lots, 2 PackLot, 2 commandes allouées)');
 }
 
 main()
