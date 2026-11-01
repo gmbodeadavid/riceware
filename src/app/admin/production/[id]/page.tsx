@@ -41,6 +41,11 @@ export default async function BatchDetailPage({ params }: PageProps) {
 
   return (
     <div>
+      {batch.deletedAt ? (
+        <div className="mb-4 rounded-control border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">
+          ⚠️ Ce batch a été supprimé le {formatDateTime(batch.deletedAt)} et est en lecture seule.
+        </div>
+      ) : null}
       <PageHeader
         title={batch.code}
         description={`Batch de production du ${formatDateTime(batch.startedAt)} — ${labelOf(PRODUCT_TYPES, batch.productType)}${batch.lot ? ` — lot ${batch.lot.code}` : ''}.`}
@@ -184,7 +189,7 @@ export default async function BatchDetailPage({ params }: PageProps) {
       </div>
 
       <div className="mt-6 space-y-5">
-        {canQualityWrite ? (
+        {canQualityWrite && !batch.deletedAt ? (
           <>
             <ProductForm batches={[{ id: batch.id, code: batch.code }]} defaultBatchId={batch.id} />
             <TestForm
@@ -197,7 +202,7 @@ export default async function BatchDetailPage({ params }: PageProps) {
           </>
         ) : null}
 
-        {canWrite ? (
+        {canWrite && !batch.deletedAt ? (
           <BatchForm
             lots={lots.map((lot) => ({ id: lot.id, code: lot.code }))}
             defaultLotId={batch.lotId ?? undefined}

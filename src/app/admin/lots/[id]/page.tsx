@@ -21,6 +21,11 @@ export default async function LotDetailPage({ params }: PageProps) {
 
   return (
     <div>
+      {lot.deletedAt ? (
+        <div className="mb-4 rounded-control border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">
+          ⚠️ Ce lot a été supprimé le {formatDateTime(lot.deletedAt)} et est en lecture seule.
+        </div>
+      ) : null}
       <PageHeader
         title={lot.code}
         description={`Lot réceptionné le ${formatDateTime(lot.receivedAt)} — ${lot.rizerie.name}, ${lot.rizerie.location}.`}
@@ -91,7 +96,7 @@ export default async function LotDetailPage({ params }: PageProps) {
         </Section>
       </div>
 
-      {canWrite ? (
+      {canWrite && !lot.deletedAt ? (
         <div className="mt-6">
           <LotForm
             rizeries={rizeries.map((rizerie) => ({ id: rizerie.id, name: rizerie.name }))}

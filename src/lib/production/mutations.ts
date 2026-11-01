@@ -139,6 +139,9 @@ export async function createRizerie(input: RizerieInput, actor?: Actor) {
 }
 
 export async function updateRizerie(id: string, input: RizerieInput, actor?: Actor) {
+  const existing = await prisma.rizerie.findUnique({ where: { id } });
+  if (!existing) throw new ProductionError('Rizerie introuvable.', { status: 404 });
+  if (existing.deletedAt) throw new ProductionError('Cette rizerie a été supprimée et ne peut plus être modifiée.', { status: 409 });
   const rizerie = await prisma.rizerie.update({ where: { id }, data: input });
   await recordAudit({
     ...actorFields(actor),
@@ -163,6 +166,10 @@ export async function deleteRizerie(id: string, actor?: Actor) {
 // ─── Lots de coques ────────────────────────────────────────────────────────
 
 export async function createLot(input: LotInput, actor?: Actor) {
+  const rizerie = await prisma.rizerie.findUnique({ where: { id: input.rizerieId } });
+  if (!rizerie) throw new ProductionError('Rizerie introuvable.', { status: 404 });
+  if (rizerie.deletedAt) throw new ProductionError('Impossible de créer un lot pour une rizerie supprimée.', { status: 409 });
+
   const code = await nextTraceabilityCode(input.receivedAt);
 
   const lot = await prisma.$transaction(async (tx) => {
@@ -208,6 +215,7 @@ export async function createLot(input: LotInput, actor?: Actor) {
 export async function updateLot(id: string, input: LotInput, actor?: Actor) {
   const previous = await prisma.lotCoques.findUnique({ where: { id } });
   if (!previous) throw new ProductionError('Lot introuvable.', { status: 404 });
+  if (previous.deletedAt) throw new ProductionError('Ce lot a été supprimé et ne peut plus être modifié.', { status: 409 });
 
   const lot = await prisma.$transaction(async (tx) => {
     const updated = await tx.lotCoques.update({
@@ -274,6 +282,11 @@ export async function deleteLot(id: string, actor?: Actor) {
 // ─── Batches ───────────────────────────────────────────────────────────────
 
 export async function createBatch(input: BatchInput, actor?: Actor) {
+  if (input.lotId) {
+    const lot = await prisma.lotCoques.findUnique({ where: { id: input.lotId } });
+    if (!lot) throw new ProductionError('Lot introuvable.', { status: 404 });
+    if (lot.deletedAt) throw new ProductionError('Impossible de créer un batch pour un lot supprimé.', { status: 409 });
+  }
   const code = await nextBatchCode(input.startedAt);
   const validPieces = Math.max(0, input.piecesProduced - input.rejects);
 
@@ -341,6 +354,7 @@ export async function createBatch(input: BatchInput, actor?: Actor) {
 export async function updateBatch(id: string, input: BatchInput, actor?: Actor) {
   const previous = await prisma.batchProduction.findUnique({ where: { id } });
   if (!previous) throw new ProductionError('Batch introuvable.', { status: 404 });
+  if (previous.deletedAt) throw new ProductionError('Ce batch a été supprimé et ne peut plus être modifié.', { status: 409 });
 
   const previousValid = Math.max(0, previous.piecesProduced - previous.rejects);
   const nextValid = Math.max(0, input.piecesProduced - input.rejects);
@@ -495,6 +509,9 @@ export async function createProduitFini(input: ProduitFiniInput, actor?: Actor) 
 }
 
 export async function updateProduitFini(id: string, input: ProduitFiniInput, actor?: Actor) {
+  const existing = await prisma.produitFini.findUnique({ where: { id } });
+  if (!existing) throw new ProductionError('Produit fini introuvable.', { status: 404 });
+  if (existing.deletedAt) throw new ProductionError('Ce produit fini a été supprimé et ne peut plus être modifié.', { status: 409 });
   const product = await prisma.produitFini.update({
     where: { id },
     data: {
@@ -592,6 +609,9 @@ export async function updateStock(
   input: Pick<StockInput, 'label' | 'minThreshold' | 'location' | 'unit'>,
   actor?: Actor,
 ) {
+  const existing = await prisma.stock.findUnique({ where: { id } });
+  if (!existing) throw new ProductionError('Stock introuvable.', { status: 404 });
+  if (existing.deletedAt) throw new ProductionError('Ce stock a été supprimé et ne peut plus être modifié.', { status: 409 });
   const stock = await prisma.stock.update({
     where: { id },
     data: {
@@ -670,6 +690,9 @@ export async function createPartner(input: PartnerInput, actor?: Actor) {
 }
 
 export async function updatePartner(id: string, input: PartnerInput, actor?: Actor) {
+  const existing = await prisma.partner.findUnique({ where: { id } });
+  if (!existing) throw new ProductionError('Partenaire introuvable.', { status: 404 });
+  if (existing.deletedAt) throw new ProductionError('Ce partenaire a été supprimé et ne peut plus être modifié.', { status: 409 });
   const partner = await prisma.partner.update({ where: { id }, data: input });
   await recordAudit({ ...actorFields(actor), action: 'update', entityType: 'partner', entityId: id });
   return partner;

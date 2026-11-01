@@ -100,6 +100,7 @@ export async function getLot(id: string) {
       rizerie: true,
       createdBy: { select: { id: true, name: true } },
       batches: {
+        where: { deletedAt: null },
         orderBy: { startedAt: 'desc' },
         include: {
           operator: { select: { id: true, name: true } },
