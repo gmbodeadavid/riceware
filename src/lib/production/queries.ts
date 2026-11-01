@@ -111,22 +111,26 @@ export async function getLot(id: string) {
 }
 
 export async function getLotByCode(code: string) {
-  return prisma.lotCoques.findUnique({
+  const lot = await prisma.lotCoques.findUnique({
     where: { code },
     include: {
       rizerie: { select: { name: true, location: true, contractType: true } },
       batches: {
+        where: { deletedAt: null }, // N'exposer que les batches actifs sur la page publique
         orderBy: { startedAt: 'asc' },
         select: {
           code: true,
           startedAt: true,
           piecesProduced: true,
           rejects: true,
-          products: { select: { type: true, status: true } },
+          products: { where: { deletedAt: null }, select: { type: true, status: true } },
         },
       },
     },
   });
+  // Ne pas exposer un lot supprimé via la page publique de traçabilité
+  if (lot?.deletedAt) return null;
+  return lot;
 }
 
 // ─── Batches ───────────────────────────────────────────────────────────────
@@ -580,7 +584,7 @@ export async function getAnalyticsData(days: AnalyticsRange = 90) {
     activeGoal,
   ] = await Promise.all([
     prisma.batchProduction.findMany({
-      where: { startedAt: { gte: from } },
+      where: { deletedAt: null, startedAt: { gte: from } },
       orderBy: { startedAt: 'asc' },
       select: {
         id: true,
@@ -599,7 +603,7 @@ export async function getAnalyticsData(days: AnalyticsRange = 90) {
       },
     }),
     prisma.batchProduction.findMany({
-      where: { startedAt: { gte: previousFrom, lt: from } },
+      where: { deletedAt: null, startedAt: { gte: previousFrom, lt: from } },
       select: {
         piecesProduced: true,
         rejects: true,
@@ -610,7 +614,7 @@ export async function getAnalyticsData(days: AnalyticsRange = 90) {
       },
     }),
     prisma.lotCoques.findMany({
-      where: { receivedAt: { gte: from } },
+      where: { deletedAt: null, receivedAt: { gte: from } },
       orderBy: { receivedAt: 'asc' },
       select: {
         id: true,
@@ -623,7 +627,7 @@ export async function getAnalyticsData(days: AnalyticsRange = 90) {
       },
     }),
     prisma.lotCoques.findMany({
-      where: { receivedAt: { gte: previousFrom, lt: from } },
+      where: { deletedAt: null, receivedAt: { gte: previousFrom, lt: from } },
       select: { netWeightKg: true, status: true },
     }),
     prisma.testQualite.findMany({
@@ -635,16 +639,16 @@ export async function getAnalyticsData(days: AnalyticsRange = 90) {
       select: { result: true },
     }),
     prisma.order.findMany({
-      where: { createdAt: { gte: from } },
+      where: { deletedAt: null, createdAt: { gte: from } },
       select: { status: true, paymentStatus: true, totalAmount: true, createdAt: true },
     }),
     prisma.order.findMany({
-      where: { createdAt: { gte: previousFrom, lt: from } },
+      where: { deletedAt: null, createdAt: { gte: previousFrom, lt: from } },
       select: { paymentStatus: true, totalAmount: true },
     }),
-    prisma.stock.findMany({ orderBy: [{ itemType: 'asc' }, { label: 'asc' }] }),
-    prisma.partner.count({ where: { active: true } }),
-    prisma.rizerie.count({ where: { active: true } }),
+    prisma.stock.findMany({ where: { deletedAt: null }, orderBy: [{ itemType: 'asc' }, { label: 'asc' }] }),
+    prisma.partner.count({ where: { active: true, deletedAt: null } }),
+    prisma.rizerie.count({ where: { active: true, deletedAt: null } }),
     prisma.goal.findFirst({ where: { status: 'active' }, orderBy: { createdAt: 'desc' } }),
   ]);
 

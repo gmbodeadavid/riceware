@@ -17,6 +17,7 @@ import {
   LuChartBar,
   LuUserCog,
   LuSettings,
+  LuTrash2,
   LuX,
 } from 'react-icons/lu';
 
@@ -68,6 +69,7 @@ const NAV_GROUPS: Array<{ group: string; items: NavItem[] }> = [
     items: [
       { href: '/admin/utilisateurs', label: 'Utilisateurs', icon: LuUserCog, permission: 'users:manage' },
       { href: '/admin/parametres', label: 'Paramètres', icon: LuSettings, permission: 'settings:manage' },
+      { href: '/admin/administration/corbeille', label: 'Éléments supprimés', icon: LuTrash2, permission: 'trash:manage' },
     ],
   },
 ];

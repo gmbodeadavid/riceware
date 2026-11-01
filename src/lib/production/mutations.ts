@@ -198,7 +198,7 @@ export async function createLot(input: LotInput, actor?: Actor) {
   });
 
   if (lot.status === 'accepted') {
-    const stocks = await prisma.stock.findMany({ where: { itemType: 'coques' } });
+    const stocks = await prisma.stock.findMany({ where: { itemType: 'coques', deletedAt: null } });
     await Promise.all(stocks.map((stock) => alertIfStockLow(stock)));
   }
 
@@ -615,6 +615,7 @@ export async function deleteStock(id: string, actor?: Actor) {
 export async function createStockMovement(input: StockMovementInput, actor?: Actor) {
   const stock = await prisma.stock.findUnique({ where: { id: input.stockId } });
   if (!stock) throw new ProductionError('Stock introuvable.', { status: 404 });
+  if (stock.deletedAt) throw new ProductionError('Ce stock a été supprimé et ne peut plus recevoir de mouvements.', { status: 409 });
 
   const resulting =
     input.type === 'ajustement'

@@ -57,7 +57,8 @@ const READ_ONLY: Permission[] = [
 ];
 
 export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
-  admin: [...PERMISSIONS],
+  // admin a toutes les permissions, y compris trash:manage (explicite ici pour la lisibilité).
+  admin: [...PERMISSIONS] as Permission[],
   production: [
     'dashboard:view',
     'lots:view',
