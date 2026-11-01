@@ -39,6 +39,7 @@ export const PERMISSIONS = [
   'settings:manage',
   'content:manage',
   'catalog:manage',
+  'trash:manage', // P1 — restaurer les éléments soft-deletés (admin uniquement par défaut)
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];

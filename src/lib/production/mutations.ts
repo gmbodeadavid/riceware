@@ -10,7 +10,9 @@ import {
 } from '@/lib/production/notifications';
 import { getSettings, settingNumber } from '@/lib/production/settings';
 import { DEFAULT_SETTINGS } from '@/lib/production/settings';
-import { removeProductionFile } from '@/lib/production/storage';
+// removeProductionFile : utilisé uniquement lors de suppression physique de documents (P7).
+// Conservé pour les futures suppressions admin explicites.
+// import { removeProductionFile } from '@/lib/production/storage';
 import {
   computeRejectRate,
   productTypeLabel,
@@ -149,12 +151,13 @@ export async function updateRizerie(id: string, input: RizerieInput, actor?: Act
 }
 
 export async function deleteRizerie(id: string, actor?: Actor) {
-  const lots = await prisma.lotCoques.count({ where: { rizerieId: id } });
+  const lots = await prisma.lotCoques.count({ where: { rizerieId: id, deletedAt: null } });
   if (lots > 0) {
-    throw new ProductionError('Impossible de supprimer une rizerie qui possède des lots. Désactivez-la plutôt.');
+    throw new ProductionError('Impossible de supprimer une rizerie qui possède des lots actifs. Désactivez-la plutôt.');
   }
-  await prisma.rizerie.delete({ where: { id } });
-  await recordAudit({ ...actorFields(actor), action: 'delete', entityType: 'rizerie', entityId: id });
+  const now = new Date();
+  await prisma.rizerie.update({ where: { id }, data: { deletedAt: now, deletedById: actor?.userId ?? null } });
+  await recordAudit({ ...actorFields(actor), action: 'soft_delete', entityType: 'rizerie', entityId: id });
 }
 
 // ─── Lots de coques ────────────────────────────────────────────────────────
@@ -242,29 +245,30 @@ export async function updateLot(id: string, input: LotInput, actor?: Actor) {
 }
 
 export async function deleteLot(id: string, actor?: Actor) {
-  const batchCount = await prisma.batchProduction.count({ where: { lotId: id } });
+  const batchCount = await prisma.batchProduction.count({ where: { lotId: id, deletedAt: null } });
   if (batchCount > 0) {
-    throw new ProductionError('Impossible de supprimer un lot utilisé par des batches de production.');
+    throw new ProductionError('Impossible de supprimer un lot utilisé par des batches de production actifs.');
   }
 
   const lot = await prisma.lotCoques.findUnique({ where: { id } });
   if (!lot) throw new ProductionError('Lot introuvable.', { status: 404 });
 
+  const now = new Date();
   await prisma.$transaction(async (tx) => {
-    await tx.lotCoques.delete({ where: { id } });
+    await tx.lotCoques.update({ where: { id }, data: { deletedAt: now, deletedById: actor?.userId ?? null } });
     if (lot.status === 'accepted') {
       await applyStockDelta(tx, {
         itemType: 'coques',
         delta: -lot.netWeightKg,
         type: 'ajustement',
         reference: lot.code,
-        note: 'Suppression du lot',
+        note: 'Suppression douce du lot',
         actor,
       });
     }
   });
 
-  await recordAudit({ ...actorFields(actor), action: 'delete', entityType: 'lot', entityId: id, details: { code: lot.code } });
+  await recordAudit({ ...actorFields(actor), action: 'soft_delete', entityType: 'lot', entityId: id, details: { code: lot.code } });
 }
 
 // ─── Batches ───────────────────────────────────────────────────────────────
@@ -423,15 +427,19 @@ export async function deleteBatch(id: string, actor?: Actor) {
   const batch = await prisma.batchProduction.findUnique({ where: { id } });
   if (!batch) throw new ProductionError('Batch introuvable.', { status: 404 });
   const valid = Math.max(0, batch.piecesProduced - batch.rejects);
+  const now = new Date();
 
+  // D5 : le soft-delete d'un batch DOIT compenser les stocks (mouvements inverses tracés).
+  // La restauration d'un batch est BLOQUÉE en P1 (voir soft-delete.ts).
   await prisma.$transaction(async (tx) => {
-    await tx.batchProduction.delete({ where: { id } });
+    await tx.batchProduction.update({ where: { id }, data: { deletedAt: now, deletedById: actor?.userId ?? null } });
+    // Remettre la poudre et le liant dans le stock
     await applyStockDelta(tx, {
       itemType: 'poudre',
       delta: batch.powderKg,
       type: 'ajustement',
       reference: batch.code,
-      note: 'Suppression du batch',
+      note: 'Suppression douce du batch — restitution poudre',
       actor,
     });
     if (batch.binderKg > 0) {
@@ -440,10 +448,11 @@ export async function deleteBatch(id: string, actor?: Actor) {
         delta: batch.binderKg,
         type: 'ajustement',
         reference: batch.code,
-        note: 'Suppression du batch',
+        note: 'Suppression douce du batch — restitution liant',
         actor,
       });
     }
+    // Déduire les produits finis du stock (ils n'existent plus)
     if (valid > 0) {
       await applyStockDelta(tx, {
         itemType: 'produit_fini',
@@ -451,13 +460,13 @@ export async function deleteBatch(id: string, actor?: Actor) {
         delta: -valid,
         type: 'ajustement',
         reference: batch.code,
-        note: 'Suppression du batch',
+        note: 'Suppression douce du batch — retrait produits finis',
         actor,
       });
     }
   });
 
-  await recordAudit({ ...actorFields(actor), action: 'delete', entityType: 'batch', entityId: id, details: { code: batch.code } });
+  await recordAudit({ ...actorFields(actor), action: 'soft_delete', entityType: 'batch', entityId: id, details: { code: batch.code } });
 }
 
 // ─── Produits finis ────────────────────────────────────────────────────────
@@ -501,8 +510,9 @@ export async function updateProduitFini(id: string, input: ProduitFiniInput, act
 }
 
 export async function deleteProduitFini(id: string, actor?: Actor) {
-  await prisma.produitFini.delete({ where: { id } });
-  await recordAudit({ ...actorFields(actor), action: 'delete', entityType: 'produit_fini', entityId: id });
+  const now = new Date();
+  await prisma.produitFini.update({ where: { id }, data: { deletedAt: now, deletedById: actor?.userId ?? null } });
+  await recordAudit({ ...actorFields(actor), action: 'soft_delete', entityType: 'produit_fini', entityId: id });
 }
 
 // ─── Tests qualité ─────────────────────────────────────────────────────────
@@ -541,6 +551,7 @@ export async function createTest(input: TestInput, actor?: Actor) {
 }
 
 export async function deleteTest(id: string, actor?: Actor) {
+  // Les tests qualité n'ont pas de deletedAt — suppression physique maintenue (pas d'impact KPI direct).
   await prisma.testQualite.delete({ where: { id } });
   await recordAudit({ ...actorFields(actor), action: 'delete', entityType: 'test', entityId: id });
 }
@@ -549,19 +560,23 @@ export async function deleteTest(id: string, actor?: Actor) {
 
 export async function createStock(input: StockInput, actor?: Actor) {
   try {
-    const stock = await prisma.stock.create({ data: input });
-    if (stock.quantity > 0) {
-      await prisma.stockMovement.create({
-        data: {
-          stockId: stock.id,
-          type: 'entree',
-          quantity: stock.quantity,
-          resultingQuantity: stock.quantity,
-          reference: 'Stock initial',
-          createdById: actor?.userId ?? null,
-        },
-      });
-    }
+    // Atomique : stock + mouvement initial dans la même transaction.
+    const stock = await prisma.$transaction(async (tx) => {
+      const created = await tx.stock.create({ data: input });
+      if (created.quantity > 0) {
+        await tx.stockMovement.create({
+          data: {
+            stockId: created.id,
+            type: 'entree',
+            quantity: created.quantity,
+            resultingQuantity: created.quantity,
+            reference: 'Stock initial',
+            createdById: actor?.userId ?? null,
+          },
+        });
+      }
+      return created;
+    });
     await recordAudit({ ...actorFields(actor), action: 'create', entityType: 'stock', entityId: stock.id });
     return stock;
   } catch (error) {
@@ -591,12 +606,10 @@ export async function updateStock(
 }
 
 export async function deleteStock(id: string, actor?: Actor) {
-  const movements = await prisma.stockMovement.count({ where: { stockId: id } });
-  if (movements > 0) {
-    throw new ProductionError('Impossible de supprimer un stock qui possède des mouvements.');
-  }
-  await prisma.stock.delete({ where: { id } });
-  await recordAudit({ ...actorFields(actor), action: 'delete', entityType: 'stock', entityId: id });
+  // D4 : soft-delete autorisé même avec mouvements historiques.
+  const now = new Date();
+  await prisma.stock.update({ where: { id }, data: { deletedAt: now, deletedById: actor?.userId ?? null } });
+  await recordAudit({ ...actorFields(actor), action: 'soft_delete', entityType: 'stock', entityId: id });
 }
 
 export async function createStockMovement(input: StockMovementInput, actor?: Actor) {
@@ -662,8 +675,9 @@ export async function updatePartner(id: string, input: PartnerInput, actor?: Act
 }
 
 export async function deletePartner(id: string, actor?: Actor) {
-  await prisma.partner.delete({ where: { id } });
-  await recordAudit({ ...actorFields(actor), action: 'delete', entityType: 'partner', entityId: id });
+  const now = new Date();
+  await prisma.partner.update({ where: { id }, data: { deletedAt: now, deletedById: actor?.userId ?? null } });
+  await recordAudit({ ...actorFields(actor), action: 'soft_delete', entityType: 'partner', entityId: id });
 }
 
 // ─── Documents ─────────────────────────────────────────────────────────────
@@ -680,11 +694,10 @@ export async function deleteDocument(id: string, actor?: Actor) {
   const document = await prisma.document.findUnique({ where: { id } });
   if (!document) throw new ProductionError('Document introuvable.', { status: 404 });
 
-  await prisma.document.delete({ where: { id } });
-  if (document.url.startsWith('/media/production/')) {
-    await removeProductionFile(document.url.slice('/media/production/'.length));
-  }
-  await recordAudit({ ...actorFields(actor), action: 'delete', entityType: 'document', entityId: id });
+  // Soft delete : le fichier physique est conservé jusqu'à suppression admin explicite.
+  const now = new Date();
+  await prisma.document.update({ where: { id }, data: { deletedAt: now, deletedById: actor?.userId ?? null } });
+  await recordAudit({ ...actorFields(actor), action: 'soft_delete', entityType: 'document', entityId: id });
 }
 
 // ─── Utilisateurs ──────────────────────────────────────────────────────────

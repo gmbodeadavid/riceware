@@ -56,3 +56,6 @@ next-env.d.ts
 /.commandcode/
 /.kombai/tmp/
 /skip.txt
+
+# backups SQLite (créés par npm run db:backup)
+/backups/

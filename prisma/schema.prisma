@@ -26,8 +26,8 @@ model Product {
   isPublished   Boolean       @default(true)
   isNew         Boolean       @default(false)
   createdAt     DateTime      @default(now())
-  galleryImages Json          @default("'[]'")
-  viewsByColor  Json          @default("'{}'")
+  galleryImages Json          @default("[]")
+  viewsByColor  Json          @default("{}")
   model3dUrl    String?
   packs         ProductPack[]
 }
@@ -163,14 +163,16 @@ model BlogSettings {
 }
 
 model Customer {
-  id        String    @id @default(cuid())
-  fullName  String
-  phone     String
-  email     String?
-  notes     String?
-  createdAt DateTime  @default(now())
-  addresses Address[]
-  orders    Order[]
+  id          String    @id @default(cuid())
+  fullName    String
+  phone       String
+  email       String?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  deletedById String?
+  addresses   Address[]
+  orders      Order[]
 }
 
 model Address {
@@ -205,6 +207,8 @@ model Order {
   preparedAt             DateTime?
   deliveredAt            DateTime?
   cancelledAt            DateTime?
+  deletedAt              DateTime?
+  deletedById            String?
   deliveryAddress        Address     @relation(fields: [deliveryAddressId], references: [id])
   customer               Customer    @relation(fields: [customerId], references: [id])
   lines                  OrderLine[]
@@ -256,6 +260,8 @@ model Rizerie {
   active          Boolean     @default(true)
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
+  deletedAt       DateTime?
+  deletedById     String?
   lots            LotCoques[]
 }
 
@@ -275,6 +281,8 @@ model LotCoques {
   createdById   String?
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
+  deletedAt     DateTime?
+  deletedById   String?
   batches       BatchProduction[] @relation("LotBatches")
   createdBy     User?             @relation("LotCreator", fields: [createdById], references: [id])
   rizerie       Rizerie           @relation(fields: [rizerieId], references: [id])
@@ -307,6 +315,8 @@ model BatchProduction {
   operatorId     String?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
+  deletedAt      DateTime?
+  deletedById    String?
   operator       User?         @relation("BatchOperator", fields: [operatorId], references: [id])
   lot            LotCoques?    @relation("LotBatches", fields: [lotId], references: [id])
   products       ProduitFini[]
@@ -329,6 +339,8 @@ model ProduitFini {
   notes           String?
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
+  deletedAt       DateTime?
+  deletedById     String?
   batch           BatchProduction @relation(fields: [batchId], references: [id], onDelete: Cascade)
   tests           TestQualite[]
 
@@ -374,6 +386,8 @@ model Stock {
   location     String?
   updatedAt    DateTime        @updatedAt
   createdAt    DateTime        @default(now())
+  deletedAt    DateTime?
+  deletedById  String?
   movements    StockMovement[]
 
   @@unique([itemType, productType])
@@ -410,14 +424,16 @@ model Partner {
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+  deletedById  String?
 
   @@index([type])
 }
 
 model Document {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   name         String
-  category     String   @default("autre")
+  category     String    @default("autre")
   url          String
   mimeType     String?
   sizeBytes    Int?
@@ -425,8 +441,10 @@ model Document {
   entityId     String?
   notes        String?
   uploadedById String?
-  createdAt    DateTime @default(now())
-  uploadedBy   User?    @relation("DocumentUploader", fields: [uploadedById], references: [id])
+  createdAt    DateTime  @default(now())
+  deletedAt    DateTime?
+  deletedById  String?
+  uploadedBy   User?     @relation("DocumentUploader", fields: [uploadedById], references: [id])
 
   @@index([category])
   @@index([entityType, entityId])

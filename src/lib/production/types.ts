@@ -46,6 +46,7 @@ export const STOCK_ITEM_TYPES = [
   { value: 'coques', label: 'Coques brutes', unit: 'kg' },
   { value: 'poudre', label: 'Poudre de coques', unit: 'kg' },
   { value: 'liant', label: 'Liant', unit: 'kg' },
+  { value: 'intrant', label: 'Intrant (eau / additif / emballage)', unit: 'kg' }, // P4 : suivi des intrants
   { value: 'produit_fini', label: 'Produits finis', unit: 'unités' },
 ] as const;
 

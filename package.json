@@ -10,6 +10,7 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
     "admin:hash": "node scripts/hash-admin-password.mjs",
+    "db:backup": "node scripts/db-backup.js",
     "postinstall": "prisma generate"
   },
   "prisma": {

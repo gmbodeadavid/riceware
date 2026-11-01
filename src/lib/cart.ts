@@ -1,3 +1,5 @@
+import type { SalesChannel } from '@/lib/enums';
+
 // Minimal product shape needed by createCartItem — compatible with both Product (boutique.ts) and ProductRow (data/products.ts).
 interface CartProduct {
   slug: string;
@@ -42,7 +44,7 @@ export interface CheckoutCustomer {
   district: string;
   addressDetails: string;
   deliveryInstructions: string;
-  channel: 'site' | 'whatsapp' | 'phone' | 'direct_sale' | 'partner';
+  channel: SalesChannel;
 }
 
 export type PaymentPlan = 'comptant' | 'flex';

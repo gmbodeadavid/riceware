@@ -23,7 +23,7 @@ import type { Prisma } from '@prisma/client';
 // ─── Rizeries ──────────────────────────────────────────────────────────────
 
 export async function listRizeries(options: { search?: string; activeOnly?: boolean } = {}) {
-  const where: Prisma.RizerieWhereInput = {};
+  const where: Prisma.RizerieWhereInput = { deletedAt: null };
   if (options.search) {
     where.OR = [
       { name: { contains: options.search } },
@@ -65,7 +65,7 @@ export type LotFilters = {
 };
 
 export async function listLots(filters: LotFilters = {}) {
-  const where: Prisma.LotCoquesWhereInput = {};
+  const where: Prisma.LotCoquesWhereInput = { deletedAt: null };
   if (filters.search) {
     where.OR = [
       { code: { contains: filters.search } },
@@ -140,7 +140,7 @@ export type BatchFilters = {
 };
 
 export async function listBatches(filters: BatchFilters = {}) {
-  const where: Prisma.BatchProductionWhereInput = {};
+  const where: Prisma.BatchProductionWhereInput = { deletedAt: null };
   if (filters.search) {
     where.OR = [
       { code: { contains: filters.search } },
@@ -190,6 +190,7 @@ export async function getBatch(id: string) {
 
 export async function getRecentBatches(limit = 6) {
   return prisma.batchProduction.findMany({
+    where: { deletedAt: null },
     orderBy: { startedAt: 'desc' },
     take: limit,
     include: { lot: { select: { code: true } } },
@@ -199,7 +200,7 @@ export async function getRecentBatches(limit = 6) {
 // ─── Produits finis et tests ───────────────────────────────────────────────
 
 export async function listProduitsFinis(options: { status?: string; batchId?: string; limit?: number } = {}) {
-  const where: Prisma.ProduitFiniWhereInput = {};
+  const where: Prisma.ProduitFiniWhereInput = { deletedAt: null };
   if (options.status) where.status = options.status;
   if (options.batchId) where.batchId = options.batchId;
 
@@ -234,6 +235,7 @@ export async function listTests(options: { typeTest?: string; result?: string; l
 export async function getQualityOverview() {
   const [products, tests, recentTests] = await Promise.all([
     prisma.produitFini.findMany({
+      where: { deletedAt: null },
       include: { batch: { select: { code: true } }, _count: { select: { tests: true } } },
       orderBy: { createdAt: 'desc' },
       take: 100,
@@ -260,6 +262,7 @@ export async function getQualityOverview() {
 
 export async function listStocks() {
   return prisma.stock.findMany({
+    where: { deletedAt: null },
     orderBy: [{ itemType: 'asc' }, { label: 'asc' }],
     include: {
       movements: { orderBy: { createdAt: 'desc' }, take: 3, include: { createdBy: { select: { name: true } } } },
@@ -280,7 +283,7 @@ export async function listStockMovements(limit = 100) {
 
 export async function getStockAlerts() {
   const stocks = await prisma.stock.findMany({
-    where: { minThreshold: { gt: 0 } },
+    where: { deletedAt: null, minThreshold: { gt: 0 } },
     orderBy: { quantity: 'asc' },
   });
   return stocks.filter((stock) => stock.quantity <= stock.minThreshold);
@@ -289,7 +292,7 @@ export async function getStockAlerts() {
 // ─── Partenaires, documents, utilisateurs ──────────────────────────────────
 
 export async function listPartners(options: { type?: string; search?: string } = {}) {
-  const where: Prisma.PartnerWhereInput = {};
+  const where: Prisma.PartnerWhereInput = { deletedAt: null };
   if (options.type) where.type = options.type;
   if (options.search) {
     where.OR = [
@@ -302,7 +305,7 @@ export async function listPartners(options: { type?: string; search?: string } =
 }
 
 export async function listDocuments(options: { category?: string; limit?: number } = {}) {
-  const where: Prisma.DocumentWhereInput = {};
+  const where: Prisma.DocumentWhereInput = { deletedAt: null };
   if (options.category) where.category = options.category;
   return prisma.document.findMany({
     where,
@@ -348,6 +351,26 @@ export async function listAuditLogs(limit = 50) {
   });
 }
 
+// ─── Corbeille ─────────────────────────────────────────────────────────────
+
+/** Retourne les éléments soft-deletés pour la page Administration > Éléments supprimés. */
+export async function listDeletedItems() {
+  const [rizeries, lots, batches, produitsFinis, stocks, partenaires, documents, clients, commandes] =
+    await Promise.all([
+      prisma.rizerie.findMany({ where: { deletedAt: { not: null } }, orderBy: { deletedAt: 'desc' }, take: 50 }),
+      prisma.lotCoques.findMany({ where: { deletedAt: { not: null } }, orderBy: { deletedAt: 'desc' }, take: 50, include: { rizerie: { select: { name: true } } } }),
+      prisma.batchProduction.findMany({ where: { deletedAt: { not: null } }, orderBy: { deletedAt: 'desc' }, take: 50 }),
+      prisma.produitFini.findMany({ where: { deletedAt: { not: null } }, orderBy: { deletedAt: 'desc' }, take: 50 }),
+      prisma.stock.findMany({ where: { deletedAt: { not: null } }, orderBy: { deletedAt: 'desc' }, take: 50 }),
+      prisma.partner.findMany({ where: { deletedAt: { not: null } }, orderBy: { deletedAt: 'desc' }, take: 50 }),
+      prisma.document.findMany({ where: { deletedAt: { not: null } }, orderBy: { deletedAt: 'desc' }, take: 50 }),
+      prisma.customer.findMany({ where: { deletedAt: { not: null } }, orderBy: { deletedAt: 'desc' }, take: 50 }),
+      prisma.order.findMany({ where: { deletedAt: { not: null } }, orderBy: { deletedAt: 'desc' }, take: 50 }),
+    ]);
+
+  return { rizeries, lots, batches, produitsFinis, stocks, partenaires, documents, clients, commandes };
+}
+
 // ─── Dashboard ─────────────────────────────────────────────────────────────
 
 export type DashboardData = Awaited<ReturnType<typeof getDashboardData>>;
@@ -360,25 +383,34 @@ export async function getDashboardData() {
   const eightWeeksAgo = addDays(startOfWeek(now), -7 * 7);
   const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
 
+  // ÉCART P1 : les commandes étaient chargées sans filtre de période (toutes les commandes).
+  // Corrigé : on charge seulement les commandes non supprimées.
+  // Le CA affiché ("CA encaissé") reste le CA total cumulé de toutes les commandes payées non supprimées,
+  // cohérent avec le comportement précédent (il n'y avait pas de filtre temporel).
   const [batches, lots, stocks, notifications, goals, settings, orderRows, testCounts, partnerCount, rizerieCount] =
     await Promise.all([
       prisma.batchProduction.findMany({
-        where: { startedAt: { gte: sixMonthsAgo } },
+        where: { deletedAt: null, startedAt: { gte: sixMonthsAgo } },
         orderBy: { startedAt: 'desc' },
         include: { lot: { select: { code: true } } },
       }),
       prisma.lotCoques.findMany({
-        where: { receivedAt: { gte: sixMonthsAgo } },
+        where: { deletedAt: null, receivedAt: { gte: sixMonthsAgo } },
         orderBy: { receivedAt: 'desc' },
       }),
       listStocks(),
       listNotifications({ limit: 12 }),
       listGoals(),
       getSettings(),
-      prisma.order.findMany({ select: { status: true, paymentStatus: true, totalAmount: true, createdAt: true } }),
+      // Commandes : on exclut les supprimées (soft-deleted). Pas de filtre temporel :
+      // le CA cumulé total est intentionnel (voir docs/kpi-definitions.md section B1).
+      prisma.order.findMany({
+        where: { deletedAt: null },
+        select: { status: true, paymentStatus: true, totalAmount: true, createdAt: true },
+      }),
       prisma.testQualite.groupBy({ by: ['result'], _count: { _all: true } }),
-      prisma.partner.count({ where: { active: true } }),
-      prisma.rizerie.count({ where: { active: true } }),
+      prisma.partner.count({ where: { active: true, deletedAt: null } }),
+      prisma.rizerie.count({ where: { active: true, deletedAt: null } }),
     ]);
 
   const sum = (rows: typeof batches) =>
