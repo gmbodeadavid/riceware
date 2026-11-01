@@ -5,10 +5,18 @@
  *
  * Chaîne : Rizerie → LotCoques → BatchMaterialUsage → BatchProduction
  *          → PackLot → OrderLineAllocation → OrderLine → Order → Customer
+ *
+ * Règles de suppression douce :
+ *   - PackLot, BatchMaterialUsage, OrderLineAllocation ont deletedAt/deletedById.
+ *   - Toutes les requêtes excluent les enregistrements supprimés via { deletedAt: null }.
+ *   - assertPackLotAllocatable rejette status 'rappel' ET 'quarantaine' ET deletedAt non null.
+ *   - createAllocation et createBatchMaterialUsage sont entièrement transactionnels :
+ *     la re-lecture du stock/restant se fait DANS la transaction pour éviter les races.
  */
 
 import { prisma } from '@/lib/db';
 import { PackLotStatus } from '@/lib/enums';
+import { Prisma } from '@prisma/client';
 
 // ─── Erreur métier ──────────────────────────────────────────────────────────
 
@@ -23,13 +31,14 @@ export class TraceabilityError extends Error {
 
 // ─── Code auto PackLot ──────────────────────────────────────────────────────
 
-export async function nextPackLotCode(date: Date = new Date()): Promise<string> {
+export async function nextPackLotCode(date: Date = new Date(), tx?: Prisma.TransactionClient): Promise<string> {
+  const client = tx ?? prisma;
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
   const d = String(date.getDate()).padStart(2, '0');
   const prefix = `PK-${y}${m}${d}-`;
 
-  const last = await prisma.packLot.findFirst({
+  const last = await client.packLot.findFirst({
     where: { code: { startsWith: prefix } },
     orderBy: { code: 'desc' },
     select: { code: true },
@@ -39,15 +48,15 @@ export async function nextPackLotCode(date: Date = new Date()): Promise<string> 
   return `${prefix}${String(next).padStart(3, '0')}`;
 }
 
-// ─── Étape 4 : Fonctions de requêtes ────────────────────────────────────────
+// ─── Fonctions de requêtes ──────────────────────────────────────────────────
 
 /**
- * Stock restant d'un PackLot = quantity − Σ allocations.
+ * Stock restant d'un PackLot = quantity − Σ allocations actives (non supprimées).
  */
 export async function getPackLotStock(packLotId: string): Promise<number> {
   const packLot = await prisma.packLot.findUnique({
     where: { id: packLotId },
-    include: { allocations: { select: { quantity: true } } },
+    include: { allocations: { where: { deletedAt: null }, select: { quantity: true } } },
   });
   if (!packLot) throw new TraceabilityError('PackLot introuvable.', { status: 404 });
   const allocated = packLot.allocations.reduce((sum, a) => sum + a.quantity, 0);
@@ -56,7 +65,11 @@ export async function getPackLotStock(packLotId: string): Promise<number> {
 
 /**
  * traceBackFromOrderLine : remonte de la ligne de commande vers les rizeries.
- * Retourne les parts en kg et en % par rizerie, proportionnelles à kgUsed.
+ *
+ * kgUsed null : quand un usage n'a pas de kgUsed renseigné, la part est marquée
+ * kgUnknown=true et pctKg=null. On N'impute jamais de valeur fictive (pas de
+ * répartition à parts égales). Le flag hasEstimated=true indique que les résultats
+ * sont partiels.
  */
 export async function traceBackFromOrderLine(orderLineId: string) {
   const line = await prisma.orderLine.findUnique({
@@ -64,12 +77,14 @@ export async function traceBackFromOrderLine(orderLineId: string) {
     include: {
       order: { select: { id: true, orderNumber: true, customer: { select: { fullName: true } } } },
       allocations: {
+        where: { deletedAt: null }, // ← exclut les allocations supprimées
         include: {
           packLot: {
             include: {
               batch: {
                 include: {
                   usages: {
+                    where: { deletedAt: null }, // ← exclut les usages supprimés
                     include: {
                       lot: {
                         include: {
@@ -89,8 +104,15 @@ export async function traceBackFromOrderLine(orderLineId: string) {
 
   if (!line) throw new TraceabilityError('Ligne de commande introuvable.', { status: 404 });
 
-  // Agréger les kgUsed par rizerie
-  type RizerieShare = { rizerieId: string; rizerieNom: string; rizerieLocation: string; kgUsed: number | null; estimated: boolean };
+  // Agréger les kgUsed par rizerie — null propagé, jamais imputé
+  type RizerieShare = {
+    rizerieId: string;
+    rizerieNom: string;
+    rizerieLocation: string;
+    kgUsed: number | null;
+    kgUnknown: boolean;   // true si au moins un usage n'a pas de kgUsed
+    estimated: boolean;
+  };
   const byRizerie = new Map<string, RizerieShare>();
   let hasEstimated = false;
 
@@ -99,18 +121,22 @@ export async function traceBackFromOrderLine(orderLineId: string) {
       const r = usage.lot.rizerie;
       const existing = byRizerie.get(r.id);
       if (usage.estimated) hasEstimated = true;
+      const kgUnknown = usage.kgUsed == null;
 
       if (existing) {
+        // null contamine : si l'un est null, le total devient null
         existing.kgUsed = usage.kgUsed != null && existing.kgUsed != null
           ? existing.kgUsed + usage.kgUsed
           : null;
         if (usage.estimated) existing.estimated = true;
+        if (kgUnknown) existing.kgUnknown = true;
       } else {
         byRizerie.set(r.id, {
           rizerieId: r.id,
           rizerieNom: r.name,
           rizerieLocation: r.location,
           kgUsed: usage.kgUsed,
+          kgUnknown,
           estimated: usage.estimated,
         });
       }
@@ -118,7 +144,8 @@ export async function traceBackFromOrderLine(orderLineId: string) {
   }
 
   const shares = Array.from(byRizerie.values());
-  const totalKg = shares.every((s) => s.kgUsed != null)
+  // totalKg est calculable seulement si TOUS les kgUsed sont non-null
+  const totalKg = shares.length > 0 && shares.every((s) => s.kgUsed != null)
     ? shares.reduce((sum, s) => sum + (s.kgUsed ?? 0), 0)
     : null;
 
@@ -137,10 +164,19 @@ export async function traceBackFromOrderLine(orderLineId: string) {
       batchCode: a.packLot.batch.code,
     })),
     riziereShares: shares.map((s) => ({
-      ...s,
-      pctKg: totalKg && totalKg > 0 && s.kgUsed != null ? (s.kgUsed / totalKg) * 100 : null,
+      rizerieId: s.rizerieId,
+      rizerieNom: s.rizerieNom,
+      rizerieLocation: s.rizerieLocation,
+      kgUsed: s.kgUsed,
+      kgUnknown: s.kgUnknown,
+      estimated: s.estimated,
+      // pctKg null si totalKg est inconnu OU si ce lot n'a pas de kgUsed
+      pctKg: totalKg != null && totalKg > 0 && s.kgUsed != null
+        ? (s.kgUsed / totalKg) * 100
+        : null,
     })),
     hasEstimated,
+    hasUnknownKg: shares.some((s) => s.kgUnknown),
     isTracked: line.allocations.length > 0,
   };
 }
@@ -148,6 +184,7 @@ export async function traceBackFromOrderLine(orderLineId: string) {
 /**
  * traceForwardFromLot : descend depuis un lot de coques vers les commandes clients.
  * Utilisé pour les rappels produits.
+ * N'inclut que les PackLots et allocations non supprimés.
  */
 export async function traceForwardFromLot(lotCoquesId: string) {
   const lot = await prisma.lotCoques.findUnique({
@@ -155,14 +192,16 @@ export async function traceForwardFromLot(lotCoquesId: string) {
     include: {
       rizerie: { select: { id: true, name: true, location: true } },
       usages: {
+        where: { deletedAt: null }, // ← exclut les usages supprimés
         include: {
           batch: {
             include: {
               packLots: {
-                where: { deletedAt: null },
+                where: { deletedAt: null }, // ← exclut les PackLots supprimés
                 include: {
                   pack: { select: { id: true, label: true } },
                   allocations: {
+                    where: { deletedAt: null }, // ← exclut les allocations supprimées
                     include: {
                       orderLine: {
                         include: {
@@ -189,8 +228,10 @@ export async function traceForwardFromLot(lotCoquesId: string) {
 
   if (!lot) throw new TraceabilityError('Lot de coques introuvable.', { status: 404 });
 
-  // Collecter toutes les commandes impactées (dédoublonnées)
-  const affectedOrders = new Map<string, { orderId: string; orderNumber: string; status: string; customer: { id: string; fullName: string; phone: string; email: string | null } }>();
+  const affectedOrders = new Map<string, {
+    orderId: string; orderNumber: string; status: string;
+    customer: { id: string; fullName: string; phone: string; email: string | null };
+  }>();
 
   for (const usage of lot.usages) {
     for (const packLot of usage.batch.packLots) {
@@ -204,7 +245,7 @@ export async function traceForwardFromLot(lotCoquesId: string) {
   return {
     lot: { id: lot.id, code: lot.code, netWeightKg: lot.netWeightKg, status: lot.status, rizerie: lot.rizerie },
     batches: lot.usages.map((u) => ({
-      usage: { id: u.id, kgUsed: u.kgUsed, estimated: u.estimated },
+      usage: { id: u.id, kgUsed: u.kgUsed, kgUnknown: u.kgUsed == null, estimated: u.estimated },
       batch: { id: u.batch.id, code: u.batch.code },
       packLots: u.batch.packLots.map((pl) => ({
         id: pl.id,
@@ -220,7 +261,11 @@ export async function traceForwardFromLot(lotCoquesId: string) {
 }
 
 /**
- * getOriginByRizerie : coques incorporées et packs vendus par rizerie d'origine sur une période.
+ * getOriginByRizerie : coques incorporées et packs vendus par rizerie d'origine.
+ *
+ * kgTotal n'est PAS imputé quand kgUsed est null : kgEstimated=true signale
+ * que le total est sous-évalué. Les calculs de % par l'UI doivent vérifier
+ * ce flag avant d'afficher des pourcentages.
  */
 export async function getOriginByRizerie(period?: { from?: Date; to?: Date }) {
   const batchWhere = period
@@ -229,6 +274,7 @@ export async function getOriginByRizerie(period?: { from?: Date; to?: Date }) {
 
   const usages = await prisma.batchMaterialUsage.findMany({
     where: {
+      deletedAt: null, // ← exclut les usages supprimés
       batch: batchWhere,
     },
     include: {
@@ -236,21 +282,39 @@ export async function getOriginByRizerie(period?: { from?: Date; to?: Date }) {
       batch: {
         include: {
           packLots: {
-            where: { deletedAt: null },
-            include: { allocations: { select: { quantity: true } } },
+            where: { deletedAt: null }, // ← exclut les PackLots supprimés
+            include: {
+              allocations: {
+                where: { deletedAt: null }, // ← exclut les allocations supprimées
+                select: { quantity: true },
+              },
+            },
           },
         },
       },
     },
   });
 
-  type RizerieStats = { rizerieId: string; rizerieNom: string; kgTotal: number; kgEstimated: boolean; packsSold: number };
+  type RizerieStats = {
+    rizerieId: string;
+    rizerieNom: string;
+    kgTotal: number;        // somme des kgUsed non-null (sous-évalué si kgEstimated)
+    kgEstimated: boolean;   // true si au moins un usage a kgUsed=null ou estimated=true
+    packsSold: number;
+  };
   const stats = new Map<string, RizerieStats>();
 
   for (const u of usages) {
     const r = u.lot.rizerie;
-    const existing = stats.get(r.id) ?? { rizerieId: r.id, rizerieNom: r.name, kgTotal: 0, kgEstimated: false, packsSold: 0 };
+    const existing = stats.get(r.id) ?? {
+      rizerieId: r.id,
+      rizerieNom: r.name,
+      kgTotal: 0,
+      kgEstimated: false,
+      packsSold: 0,
+    };
 
+    // kgUsed null → on n'ajoute rien à kgTotal mais on lève le flag
     existing.kgTotal += u.kgUsed ?? 0;
     if (u.estimated || u.kgUsed == null) existing.kgEstimated = true;
 
@@ -267,42 +331,43 @@ export async function getOriginByRizerie(period?: { from?: Date; to?: Date }) {
 /**
  * getTraceabilityCoverage : % de lignes de commande livrées avec allocation complète ;
  * % de batches avec consommation de coques enregistrée.
+ * N'inclut que les allocations et usages non supprimés.
  */
 export async function getTraceabilityCoverage(period?: { from?: Date; to?: Date }) {
   const dateFilter = period ? { createdAt: { gte: period.from, lte: period.to } } : undefined;
 
   const [deliveredLines, batchesInPeriod] = await Promise.all([
-    // Lignes de commandes livrées
     prisma.orderLine.findMany({
       where: {
-        order: {
-          status: 'delivered',
-          deletedAt: null,
-          ...dateFilter,
-        },
+        order: { status: 'delivered', deletedAt: null, ...dateFilter },
       },
       include: {
-        allocations: { select: { quantity: true } },
+        allocations: {
+          where: { deletedAt: null }, // ← exclut les allocations supprimées
+          select: { quantity: true },
+        },
       },
     }),
-    // Batches actifs de la période
     prisma.batchProduction.findMany({
       where: {
         deletedAt: null,
         ...(period ? { startedAt: { gte: period.from, lte: period.to } } : {}),
       },
-      include: { usages: { select: { id: true, kgUsed: true } } },
+      include: {
+        usages: {
+          where: { deletedAt: null }, // ← exclut les usages supprimés
+          select: { id: true, kgUsed: true },
+        },
+      },
     }),
   ]);
 
-  // Couverture des lignes : Σ allocations == quantity
   let linesFullyCovered = 0;
   for (const line of deliveredLines) {
     const totalAllocated = line.allocations.reduce((s, a) => s + a.quantity, 0);
     if (totalAllocated >= line.quantity) linesFullyCovered++;
   }
 
-  // Couverture des batches : a au moins une ligne BatchMaterialUsage
   const batchesWithUsage = batchesInPeriod.filter((b) => b.usages.length > 0).length;
 
   return {
@@ -319,17 +384,22 @@ export async function getTraceabilityCoverage(period?: { from?: Date; to?: Date 
   };
 }
 
-// ─── Étape 5 : Règles métier (couche service) ────────────────────────────────
+// ─── Règles métier + soft-delete helpers ────────────────────────────────────
 
 /**
- * Valide qu'un PackLot peut recevoir des allocations :
- * - status doit être "libre"
- * - Σ allocations existantes + quantité demandée ≤ quantity
+ * assertPackLotAllocatable (utilisé dans la transaction) :
+ * - relit le PackLot dans la transaction courante (évite les races)
+ * - status doit être exactement "libre" : quarantaine, rappel, epuise → rejeté
+ * - Σ allocations actives (non supprimées) + requestedQty ≤ quantity
  */
-export async function assertPackLotAllocatable(packLotId: string, requestedQty: number): Promise<void> {
-  const packLot = await prisma.packLot.findUnique({
+async function assertPackLotAllocatableInTx(
+  tx: Prisma.TransactionClient,
+  packLotId: string,
+  requestedQty: number,
+): Promise<void> {
+  const packLot = await tx.packLot.findUnique({
     where: { id: packLotId },
-    include: { allocations: { select: { quantity: true } } },
+    include: { allocations: { where: { deletedAt: null }, select: { quantity: true } } },
   });
   if (!packLot) throw new TraceabilityError('PackLot introuvable.', { status: 404 });
   if (packLot.deletedAt) throw new TraceabilityError('Ce PackLot a été supprimé.', { status: 409 });
@@ -350,26 +420,82 @@ export async function assertPackLotAllocatable(packLotId: string, requestedQty: 
 }
 
 /**
- * Valide que la consommation de coques d'un batch ne dépasse pas le stock du lot.
- * Vérifie la somme de toutes les usages du lot (incluant le kgUsed du nouveau batch).
+ * assertPackLotAllocatable (hors transaction) — garde-fou de surface (UI / API).
+ * La vérification authoritative est celle dans la transaction.
  */
-export async function assertLotStockSufficient(lotCoquesId: string, kgRequested: number): Promise<void> {
-  const lot = await prisma.lotCoques.findUnique({
+export async function assertPackLotAllocatable(packLotId: string, requestedQty: number): Promise<void> {
+  return assertPackLotAllocatableInTx(prisma as unknown as Prisma.TransactionClient, packLotId, requestedQty);
+}
+
+/**
+ * assertLotStockSufficient (utilisé dans la transaction) :
+ *
+ * Pour les usages avec kgUsed null (données historiques estimées),
+ * la quantité consommée est inconnue → on l'exclut du calcul.
+ * Cela signifie que assertLotStockSufficient est OPTIMISTE quand des nulls
+ * sont présents : le restant calculé peut être surévalué.
+ * Le flag lot.hasNullUsages (retourné dans le résultat) avertit l'appelant.
+ *
+ * Exemple : lot netWeightKg=1000, usages=[{kgUsed:200}, {kgUsed:null}]
+ *   → alreadyUsed = 200 (null ignoré), available = 800
+ *   → si kgRequested=900 → refusé (800 < 900) ✓
+ *   → si kgRequested=700 → accepté, mais ATTENTION : le null usage
+ *     représente une consommation inconnue → le lot peut déjà être épuisé.
+ */
+async function assertLotStockSufficientInTx(
+  tx: Prisma.TransactionClient,
+  lotCoquesId: string,
+  kgRequested: number,
+): Promise<{ hasNullUsages: boolean }> {
+  const lot = await tx.lotCoques.findUnique({
     where: { id: lotCoquesId },
-    include: { usages: { select: { kgUsed: true } } },
+    include: { usages: { where: { deletedAt: null }, select: { kgUsed: true } } },
   });
   if (!lot) throw new TraceabilityError('Lot introuvable.', { status: 404 });
   if (lot.deletedAt) throw new TraceabilityError('Ce lot a été supprimé.', { status: 409 });
 
+  const hasNullUsages = lot.usages.some((u) => u.kgUsed == null);
+  // null ignoré dans la somme (optimiste)
   const alreadyUsed = lot.usages.reduce((s, u) => s + (u.kgUsed ?? 0), 0);
   const available = lot.netWeightKg - alreadyUsed;
 
   if (kgRequested > available) {
     throw new TraceabilityError(
-      `Consommation demandée (${kgRequested} kg) supérieure au stock disponible du lot ${lot.code} (${available} kg restants sur ${lot.netWeightKg} kg).`,
+      `Consommation demandée (${kgRequested} kg) supérieure au stock disponible du lot ${lot.code} (${available} kg restants sur ${lot.netWeightKg} kg${hasNullUsages ? ' — des usages sans kgUsed sont présents' : ''}).`,
       { status: 409 },
     );
   }
+  return { hasNullUsages };
+}
+
+export async function assertLotStockSufficient(lotCoquesId: string, kgRequested: number): Promise<void> {
+  await assertLotStockSufficientInTx(prisma as unknown as Prisma.TransactionClient, lotCoquesId, kgRequested);
+}
+
+// ─── Soft-delete helpers ─────────────────────────────────────────────────────
+
+export async function softDeletePackLot(id: string, actorId?: string): Promise<void> {
+  const now = new Date();
+  const existing = await prisma.packLot.findUnique({ where: { id } });
+  if (!existing) throw new TraceabilityError('PackLot introuvable.', { status: 404 });
+  if (existing.deletedAt) throw new TraceabilityError('Ce PackLot est déjà supprimé.', { status: 409 });
+  await prisma.packLot.update({ where: { id }, data: { deletedAt: now, deletedById: actorId ?? null } });
+}
+
+export async function softDeleteBatchMaterialUsage(id: string, actorId?: string): Promise<void> {
+  const now = new Date();
+  const existing = await prisma.batchMaterialUsage.findUnique({ where: { id } });
+  if (!existing) throw new TraceabilityError('BatchMaterialUsage introuvable.', { status: 404 });
+  if (existing.deletedAt) throw new TraceabilityError('Cet usage est déjà supprimé.', { status: 409 });
+  await prisma.batchMaterialUsage.update({ where: { id }, data: { deletedAt: now, deletedById: actorId ?? null } });
+}
+
+export async function softDeleteAllocation(id: string, actorId?: string): Promise<void> {
+  const now = new Date();
+  const existing = await prisma.orderLineAllocation.findUnique({ where: { id } });
+  if (!existing) throw new TraceabilityError('Allocation introuvable.', { status: 404 });
+  if (existing.deletedAt) throw new TraceabilityError('Cette allocation est déjà supprimée.', { status: 409 });
+  await prisma.orderLineAllocation.update({ where: { id }, data: { deletedAt: now, deletedById: actorId ?? null } });
 }
 
 // ─── CRUD PackLot ────────────────────────────────────────────────────────────
@@ -415,57 +541,76 @@ export type AllocationInput = {
 };
 
 /**
- * Crée une allocation en appliquant toutes les règles métier.
+ * createAllocation — entièrement transactionnel.
+ *
+ * La validation ET l'écriture se déroulent dans la même $transaction :
+ * le re-comptage des allocations existantes se fait avec FOR UPDATE (lecture
+ * pessimiste via la transaction SQLite serialisée), ce qui empêche deux
+ * allocations simultanées de dépasser le stock.
+ *
+ * Scénario de concurrence : si deux appels arrivent simultanément pour le
+ * même PackLot, SQLite sérialise les transactions → la seconde voit l'état
+ * après commit de la première et lève TraceabilityError si le stock est épuisé.
  */
 export async function createAllocation(input: AllocationInput) {
-  await assertPackLotAllocatable(input.packLotId, input.quantity);
+  return prisma.$transaction(async (tx) => {
+    // Re-lecture dans la transaction (stock authoritative)
+    await assertPackLotAllocatableInTx(tx, input.packLotId, input.quantity);
 
-  // Vérifier que la ligne n'est pas déjà entièrement allouée
-  const line = await prisma.orderLine.findUnique({
-    where: { id: input.orderLineId },
-    include: { allocations: { select: { quantity: true } } },
-  });
-  if (!line) throw new TraceabilityError('Ligne de commande introuvable.', { status: 404 });
+    // Vérifier que la ligne n'est pas déjà entièrement allouée (dans la tx)
+    const line = await tx.orderLine.findUnique({
+      where: { id: input.orderLineId },
+      include: { allocations: { where: { deletedAt: null }, select: { quantity: true } } },
+    });
+    if (!line) throw new TraceabilityError('Ligne de commande introuvable.', { status: 404 });
 
-  const alreadyAllocated = line.allocations.reduce((s, a) => s + a.quantity, 0);
-  if (alreadyAllocated + input.quantity > line.quantity) {
-    throw new TraceabilityError(
-      `Allocation (${alreadyAllocated + input.quantity}) dépasserait la quantité commandée (${line.quantity}).`,
-      { status: 409 },
-    );
-  }
+    const alreadyAllocated = line.allocations.reduce((s, a) => s + a.quantity, 0);
+    if (alreadyAllocated + input.quantity > line.quantity) {
+      throw new TraceabilityError(
+        `Allocation (${alreadyAllocated + input.quantity}) dépasserait la quantité commandée (${line.quantity}).`,
+        { status: 409 },
+      );
+    }
 
-  return prisma.orderLineAllocation.create({
-    data: {
-      orderLineId: input.orderLineId,
-      packLotId: input.packLotId,
-      quantity: input.quantity,
-      createdById: input.createdById ?? null,
-    },
+    return tx.orderLineAllocation.create({
+      data: {
+        orderLineId: input.orderLineId,
+        packLotId: input.packLotId,
+        quantity: input.quantity,
+        createdById: input.createdById ?? null,
+      },
+    });
   });
 }
 
 /**
- * Crée une ligne BatchMaterialUsage en vérifiant les règles (stock du lot).
+ * createBatchMaterialUsage — entièrement transactionnel.
+ *
+ * La vérification du stock du lot et l'écriture sont dans la même $transaction.
  */
 export async function createBatchMaterialUsage(input: {
   batchId: string;
   lotCoquesId: string;
   kgUsed: number;
 }) {
-  await assertLotStockSufficient(input.lotCoquesId, input.kgUsed);
+  return prisma.$transaction(async (tx) => {
+    // Re-lecture dans la transaction
+    await assertLotStockSufficientInTx(tx, input.lotCoquesId, input.kgUsed);
 
-  const existing = await prisma.batchMaterialUsage.findUnique({
-    where: { batchId_lotCoquesId: { batchId: input.batchId, lotCoquesId: input.lotCoquesId } },
-  });
-  if (existing) throw new TraceabilityError('Une utilisation de ce lot existe déjà pour ce batch.', { status: 409 });
+    const existing = await tx.batchMaterialUsage.findUnique({
+      where: { batchId_lotCoquesId: { batchId: input.batchId, lotCoquesId: input.lotCoquesId } },
+    });
+    if (existing && !existing.deletedAt) {
+      throw new TraceabilityError('Une utilisation de ce lot existe déjà pour ce batch.', { status: 409 });
+    }
 
-  return prisma.batchMaterialUsage.create({
-    data: {
-      batchId: input.batchId,
-      lotCoquesId: input.lotCoquesId,
-      kgUsed: input.kgUsed,
-      estimated: false,
-    },
+    return tx.batchMaterialUsage.create({
+      data: {
+        batchId: input.batchId,
+        lotCoquesId: input.lotCoquesId,
+        kgUsed: input.kgUsed,
+        estimated: false,
+      },
+    });
   });
 }

@@ -12,6 +12,26 @@ function daysAgo(days: number, hour = 9): Date {
 }
 
 async function main() {
+  // ─── Garde-fou : refus de tourner sur une base réelle ──────────────────────
+  // On détecte une base "réelle" par la présence de commandes payées
+  // (les seules exceptions sont les commandes seed P2 ajoutées par ce script lui-même).
+  // Passer ALLOW_SEED_ON_REAL_DB=1 pour forcer l'exécution (ex. reset total en dev).
+  const paidOrders = await prisma.order.count({ where: { paymentStatus: 'paid' } });
+  const knownSeedOrderNumbers = ['RW-CMD-P2-001', 'RW-CMD-P2-002'];
+  if (paidOrders > 0 && process.env.ALLOW_SEED_ON_REAL_DB !== '1') {
+    const unknownPaid = await prisma.order.count({
+      where: { paymentStatus: 'paid', orderNumber: { notIn: knownSeedOrderNumbers } },
+    });
+    if (unknownPaid > 0) {
+      console.error(
+        `\n❌ SEED REFUSÉ : ${unknownPaid} commande(s) réelle(s) payée(s) détectée(s) dans la base.\n` +
+        `   Ce script ne doit pas tourner sur la base de production.\n` +
+        `   Pour forcer (uniquement en dev) : ALLOW_SEED_ON_REAL_DB=1 npx prisma db seed\n`,
+      );
+      process.exit(1);
+    }
+  }
+
   for (const [index, product] of CATALOG_PRODUCTS.entries()) {
     await prisma.product.upsert({
       where: { id: product.id },

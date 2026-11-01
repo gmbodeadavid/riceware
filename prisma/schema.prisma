@@ -41,16 +41,17 @@ model ProductCategory {
 }
 
 model ProductPack {
-  id         String    @id
+  id         String      @id
   productId  String
   packKey    String
   label      String
   quantity   Int
   price      String
-  priceValue Int       @default(0)
+  priceValue Int         @default(0)
   note       String
-  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
   packLots   PackLot[]
+  orderLines OrderLine[]
 
   @@unique([productId, packKey])
 }
@@ -227,6 +228,7 @@ model OrderLine {
   lineTotalAmount     Int
   packQuantity        Int                   @default(1)
   order               Order                 @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productPack         ProductPack?          @relation(fields: [productPackId], references: [id])
   allocations         OrderLineAllocation[]
 }
 
@@ -515,6 +517,8 @@ model BatchMaterialUsage {
   kgUsed      Float?          // null = non renseigné (données historiques sans kgUsed)
   estimated   Boolean         @default(false)
   createdAt   DateTime        @default(now())
+  deletedAt   DateTime?
+  deletedById String?
   batch       BatchProduction @relation(fields: [batchId], references: [id])
   lot         LotCoques       @relation(fields: [lotCoquesId], references: [id])
 
@@ -532,6 +536,7 @@ model PackLot {
   packedAt    DateTime    @default(now())
   createdById String?
   deletedAt   DateTime?
+  deletedById String?
   batch       BatchProduction @relation(fields: [batchId], references: [id])
   pack        ProductPack     @relation(fields: [packId], references: [id])
   allocations OrderLineAllocation[]
@@ -547,6 +552,8 @@ model OrderLineAllocation {
   quantity    Int
   createdAt   DateTime  @default(now())
   createdById String?
+  deletedAt   DateTime?
+  deletedById String?
   orderLine   OrderLine @relation(fields: [orderLineId], references: [id])
   packLot     PackLot   @relation(fields: [packLotId], references: [id])
 
