@@ -7,6 +7,7 @@ import type { Prisma } from '@prisma/client';
 const orderInclude = {
   lines: true,
   customer: true,
+  deliveryAddress: true,
 } satisfies Prisma.OrderInclude;
 
 function parsePrice(value: string): number {
@@ -22,13 +23,14 @@ export async function listCustomers(filters?: {
 }): Promise<{ customers: Customer[]; total: number }> {
   const where: Prisma.CustomerWhereInput = filters?.search
     ? {
+        deletedAt: null,
         OR: [
           { fullName: { contains: filters.search } },
           { phone: { contains: filters.search } },
           { email: { contains: filters.search } },
         ],
       }
-    : {};
+    : { deletedAt: null };
 
   const [total, rows] = await prisma.$transaction([
     prisma.customer.count({ where }),
@@ -62,7 +64,7 @@ export async function listOrders(filters?: {
   limit?: number;
   offset?: number;
 }): Promise<{ orders: MappedOrder[]; total: number }> {
-  const where: Prisma.OrderWhereInput = {};
+  const where: Prisma.OrderWhereInput = { deletedAt: null };
   if (filters?.status) where.status = filters.status;
   if (filters?.paymentStatus) where.paymentStatus = filters.paymentStatus;
   if (filters?.customerId) where.customerId = filters.customerId;
@@ -140,7 +142,7 @@ export async function createCheckoutOrder(payload: CheckoutPayload): Promise<Pub
     return {
       productId: pack.productId,
       productPackId: pack.id,
-      packNameSnapshot: `${pack.product.name} — ${pack.label}`,
+      packNameSnapshot: `${pack.product.name} · ${pack.label}`,
       packContentSnapshot: [
         {
           productId: pack.productId,
@@ -227,11 +229,28 @@ export async function updatePaymentStatusRecord(id: string, paymentStatus: Payme
 }
 
 export async function deleteOrderRecord(id: string): Promise<void> {
-  await prisma.order.delete({ where: { id } });
+  const order = await prisma.order.findUnique({
+    where: { id },
+    select: { id: true, paymentStatus: true, status: true },
+  });
+  if (!order) throw new Error('Commande introuvable.');
+
+  // Interdire la suppression d'une commande payée ou livrée, même pour un admin.
+  // Une telle commande doit être annulée (statut 'cancelled'), jamais effacée.
+  if (order.paymentStatus === 'paid') {
+    throw new Error('Impossible de supprimer une commande payée. Utilisez le statut « Annulée » si nécessaire.');
+  }
+  if (order.status === 'delivered') {
+    throw new Error('Impossible de supprimer une commande livrée. Utilisez le statut « Annulée » si nécessaire.');
+  }
+
+  const now = new Date();
+  await prisma.order.update({ where: { id }, data: { deletedAt: now } });
 }
 
 export async function getOrderStats() {
   const orders = await prisma.order.findMany({
+    where: { deletedAt: null },
     select: { status: true, paymentStatus: true, totalAmount: true },
   });
 

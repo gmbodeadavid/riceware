@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Barquette repas — RiceWare CI</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#f4f1e4;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+canvas{display:block}
+#ui{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:center;gap:10px;padding:16px;pointer-events:none}
+.btn{pointer-events:all;display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:999px;border:none;background:rgba(255,253,246,.92);color:#1c2a20;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(28,42,32,.15);transition:box-shadow .15s,transform .15s,background .15s,color .15s}
+.btn:hover{box-shadow:0 4px 16px rgba(28,42,32,.22);transform:translateY(-1px)}
+.btn.active{background:#2f6b43;color:#fffdf6}
+#label{position:fixed;top:20px;left:24px;pointer-events:none}
+#label h1{font-size:22px;font-weight:700;color:#1c2a20;line-height:1.2}
+#label p{font-size:12px;color:#5a6456;margin-top:3px;font-family:monospace}
+#badge{display:inline-block;margin-top:8px;padding:3px 10px;border-radius:999px;background:#f8ecc2;color:#7f610a;font-size:10px;font-family:monospace;font-weight:600;letter-spacing:.04em}
+</style>
+</head>
+<body>
+<div id="label">
+  <h1>Barquette repas</h1>
+  <p>220 × 150 × 45 mm</p>
+  <span id="badge">Rendu 3D conceptuel</span>
+</div>
+<div id="ui">
+  <button class="btn active" data-opt="perspective">⬡ Perspective</button>
+  <button class="btn" data-opt="top">↑ Dessus</button>
+  <button class="btn" data-opt="closed">⊟ Fermée</button>
+  <button class="btn" data-opt="open">⊡ Ouverte</button>
+</div>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
+
+const lerp=(a,b,t)=>a+(b-a)*t;
+const inOutCubic=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+const outBack=t=>{const c1=1.2,c3=c1+1;return 1+c3*Math.pow(t-1,3)+c1*Math.pow(t-1,2)};
+class Tweens{constructor(){this.items=new Set}add(o){const tw={start:performance.now(),duration:o.duration,ease:o.ease??inOutCubic,update:o.update};this.items.add(tw);return tw}cancel(tw){if(tw)this.items.delete(tw)}run(now){for(const tw of this.items){if(now<tw.start)continue;const t=tw.duration<=0?1:Math.min((now-tw.start)/tw.duration,1);tw.update(tw.ease(t));if(t>=1)this.items.delete(tw)}}}
+const tweens=new Tweens();
+
+function mulberry32(seed){let a=seed;return()=>{a|=0;a=(a+0x6d2b79f5)|0;let t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296}}
+function drawBiocomposite(size){const rnd=mulberry32(2025);const cc=document.createElement('canvas'),hc=document.createElement('canvas');cc.width=cc.height=hc.width=hc.height=size;const c=cc.getContext('2d'),h=hc.getContext('2d');c.fillStyle='#D9B77A';c.fillRect(0,0,size,size);h.fillStyle='#7f7f7f';h.fillRect(0,0,size,size);const wrap=(x,y,m,fn)=>{for(const dx of[-size,0,size])for(const dy of[-size,0,size]){const X=x+dx,Y=y+dy;if(X>-m&&X<size+m&&Y>-m&&Y<size+m)fn(X,Y)}};for(let i=0;i<70;i++){const x=rnd()*size,y=rnd()*size,r=50+rnd()*140,l=rnd()>.5;wrap(x,y,r,(X,Y)=>{const g=c.createRadialGradient(X,Y,0,X,Y,r);g.addColorStop(0,l?'rgba(238,210,155,.14)':'rgba(170,130,75,.11)');g.addColorStop(1,'rgba(0,0,0,0)');c.fillStyle=g;c.fillRect(X-r,Y-r,r*2,r*2)})}for(let i=0;i<6000;i++){const x=rnd()*size,y=rnd()*size,r=.3+rnd()*1.2,l=rnd()>.5;wrap(x,y,3,(X,Y)=>{c.fillStyle=l?'#E8C98A':'#C09A63';c.beginPath();c.arc(X,Y,r,0,Math.PI*2);c.fill();h.fillStyle=l?'#9a9a9a':'#666';h.beginPath();h.arc(X,Y,r,0,Math.PI*2);h.fill()})}c.lineCap='round';h.lineCap='round';for(let i=0;i<800;i++){const x=rnd()*size,y=rnd()*size,len=5+rnd()*18,ang=rnd()*Math.PI*2,lw=1+rnd()*2.5,l=rnd()>.5,ex=Math.cos(ang)*len,ey=Math.sin(ang)*len;wrap(x,y,len+4,(X,Y)=>{c.globalAlpha=.85;c.strokeStyle=l?'#E8C98A':'#B8914F';c.lineWidth=lw;c.beginPath();c.moveTo(X,Y);c.lineTo(X+ex,Y+ey);c.stroke();c.globalAlpha=1;h.strokeStyle=l?'#d0d0d0':'#b0b0b0';h.lineWidth=lw;h.beginPath();h.moveTo(X,Y);h.lineTo(X+ex,Y+ey);h.stroke()})}for(let i=0;i<300;i++){const x=rnd()*size,y=rnd()*size,rx=.8+rnd()*2,ry=.5+rnd(),ang=rnd()*Math.PI;wrap(x,y,5,(X,Y)=>{c.fillStyle='#6B4E2A';c.beginPath();c.ellipse(X,Y,rx,ry,ang,0,Math.PI*2);c.fill();h.fillStyle='#4a4a4a';h.beginPath();h.ellipse(X,Y,rx,ry,ang,0,Math.PI*2);h.fill()})}return{color:cc,height:hc}}
+function heightToNormal(src,strength){const size=src.width,ctx=src.getContext('2d'),pixels=ctx.getImageData(0,0,size,size).data,hs=new Float32Array(size*size);for(let i=0;i<size*size;i++)hs[i]=pixels[i*4]/255;const out=document.createElement('canvas');out.width=out.height=size;const oc=out.getContext('2d'),img=oc.createImageData(size,size),d=img.data;for(let y=0;y<size;y++){const up=((y-1+size)%size)*size,dn=((y+1)%size)*size,row=y*size;for(let x=0;x<size;x++){const l=(x-1+size)%size,r=(x+1)%size,dx=(hs[row+r]-hs[row+l])*strength,dy=(hs[dn+x]-hs[up+x])*strength,inv=1/Math.hypot(dx,dy,1),i=(row+x)*4;d[i]=(-dx*inv*.5+.5)*255;d[i+1]=(dy*inv*.5+.5)*255;d[i+2]=(inv*.5+.5)*255;d[i+3]=255}}oc.putImageData(img,0,0);return out}
+function createMaps(renderer){const{color,height}=drawBiocomposite(1024);const setup=(tex,srgb)=>{tex.wrapS=tex.wrapT=THREE.RepeatWrapping;tex.anisotropy=renderer.capabilities.getMaxAnisotropy();if(srgb)tex.colorSpace=THREE.SRGBColorSpace;return tex};return{map:setup(new THREE.CanvasTexture(color),true),normalMap:setup(new THREE.CanvasTexture(heightToNormal(height,2.5)),false)}}
+function bioMat(maps,ns=0.45,ds=false){return new THREE.MeshStandardMaterial({color:0xffffff,map:maps.map,normalMap:maps.normalMap,normalScale:new THREE.Vector2(ns,ns),roughness:.92,metalness:0,side:ds?THREE.DoubleSide:THREE.FrontSide})}
+
+// ── Tray geometry ─────────────────────────────────────────────────────────────
+const W=.23,D=.15,H=.07,T=.0025,R=.018,HL=.02,FOOT=.0015,HB=H-HL-FOOT,FL=.004,TAPER=.93,OPEN=THREE.MathUtils.degToRad(110),TILE=.14;
+function roundedRect(w,d,r){const s=new THREE.Shape(),x=-w/2,y=-d/2;s.moveTo(x+r,y);s.lineTo(x+w-r,y);s.absarc(x+w-r,y+r,r,-Math.PI/2,0,false);s.lineTo(x+w,y+d-r);s.absarc(x+w-r,y+d-r,r,0,Math.PI/2,false);s.lineTo(x+r,y+d);s.absarc(x+r,y+d-r,r,Math.PI/2,Math.PI,false);s.lineTo(x,y+r);s.absarc(x+r,y+r,r,Math.PI,Math.PI*1.5,false);return s}
+function extrudeUp(shapes,height,bevel){const g=new THREE.ExtrudeGeometry(shapes,{depth:height,bevelEnabled:bevel>0,bevelThickness:bevel,bevelSize:bevel,bevelSegments:3,curveSegments:24});g.rotateX(-Math.PI/2);return g}
+function ringGeo(w,d,r,t,height,bevel=.0006){const s=roundedRect(w,d,r);s.holes.push(roundedRect(w-2*t,d-2*t,Math.max(r-t,.001)));return extrudeUp(s,height,bevel)}
+const slabGeo=(w,d,r,height,bevel=.0006)=>extrudeUp(roundedRect(w,d,r),height,bevel);
+function taper(g,y0,y1,s0,s1){const p=g.attributes.position;for(let i=0;i<p.count;i++){const t=THREE.MathUtils.clamp((p.getY(i)-y0)/(y1-y0),0,1),s=s0+(s1-s0)*t;p.setX(i,p.getX(i)*s);p.setZ(i,p.getZ(i)*s)}return g}
+function scaleUV(g,factor){const uv=g.attributes.uv;for(let i=0;i<uv.count;i++)uv.setXY(i,uv.getX(i)*factor,uv.getY(i)*factor);return g}
+function smooth(g){scaleUV(g,1/TILE);return toCreasedNormals(g,THREE.MathUtils.degToRad(35))}
+
+// ── Scene ─────────────────────────────────────────────────────────────────────
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.1;
+document.body.appendChild(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0xf4f1e4);
+const maps=createMaps(renderer);
+const mat=bioMat(maps,.5);
+const geos=[],group=new THREE.Group(),tray=new THREE.Group();tray.position.y=FOOT;group.add(tray);scene.add(group);
+const add=(g,parent)=>{geos.push(g);const m=new THREE.Mesh(g,mat);m.castShadow=m.receiveShadow=true;parent.add(m);return m};
+add(smooth(taper(ringGeo(W,D,R,T,HB),0,HB,TAPER,1)),tray);
+add(smooth(taper(slabGeo(W,D,R,T),0,HB,TAPER,1)),tray);
+let g=ringGeo(W+2*FL,D+2*FL,R+FL,FL+T,.0016,.0005);g.translate(0,HB-.0016,0);add(smooth(g),tray);
+g=ringGeo(W*TAPER*.9,D*TAPER*.88,R*.8,.003,FOOT,.0004);g.translate(0,-FOOT+.0004,0);add(smooth(g),tray);
+const hinge=new THREE.CylinderGeometry(.0019,.0019,W*.78,24);hinge.rotateZ(Math.PI/2);scaleUV(hinge,1/TILE);add(hinge,tray).position.set(0,HB+.0004,-(D/2+FL)-.0006);
+// Lid
+const LW=W+2*FL,LD=D+2*FL,LR=R+FL;
+const pivot=new THREE.Group();pivot.position.set(0,HB,-(D/2+FL));tray.add(pivot);
+const lid=new THREE.Group();lid.position.z=LD/2;pivot.add(lid);
+add(smooth(taper(ringGeo(LW,LD,LR,T,HL),0,HL,1,.965)),lid);
+g=slabGeo(LW,LD,LR,T);g.translate(0,HL-T,0);add(smooth(taper(g,0,HL,1,.965)),lid);
+g=slabGeo(LW*.965-.026,LD*.965-.026,R*.7,.0008,.0003);g.translate(0,HL,0);add(smooth(g),lid);
+g=slabGeo(.024,.0022,.0009,.01,.0004);g.translate(0,-.0065,LD/2+.0011);add(smooth(g),lid);
+// Shadow + lights
+const sp=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.ShadowMaterial({opacity:.18}));sp.rotation.x=-Math.PI/2;sp.receiveShadow=true;scene.add(sp);
+scene.add(new THREE.AmbientLight(0xfff8e8,.8));
+const sun=new THREE.DirectionalLight(0xfff5d6,2.2);sun.position.set(1.5,3,2);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);sun.shadow.camera.left=sun.shadow.camera.bottom=-.4;sun.shadow.camera.right=sun.shadow.camera.top=.4;scene.add(sun);
+scene.add(Object.assign(new THREE.DirectionalLight(0xd4e8ff,.5),{position:new THREE.Vector3(-1,1,-1)}));
+
+const camera=new THREE.PerspectiveCamera(38,innerWidth/innerHeight,.01,20);
+const DIRS={
+  perspective:new THREE.Vector3(.55,.42,.72).normalize(),
+  top:new THREE.Vector3(0,1,.02).normalize(),
+  closed:new THREE.Vector3(.55,.42,.72).normalize(),
+  open:new THREE.Vector3(.55,.42,.72).normalize()
+};
+let theta=Math.atan2(.55,.72),phi=Math.acos(.42),radius=.155,running=null,lidRunning=null;
+const target=new THREE.Vector3(0,H*.45,0);
+function setDir(dir,r,tgt,animate){const to=dir.clone().normalize(),tt=Math.atan2(to.x,to.z),tp=Math.acos(Math.max(-1,Math.min(1,to.y)));tweens.cancel(running);if(!animate){theta=tt;phi=tp;radius=r;target.copy(tgt);return}const ft=theta,fp=phi,fr=radius,ftgt=target.clone();running=tweens.add({duration:600,update:t=>{theta=lerp(ft,tt,t);phi=lerp(fp,tp,t);radius=lerp(fr,r,t);target.lerpVectors(ftgt,tgt,t)}})}
+function applyOpt(opt,animate){const isOpen=opt==='open',r=isOpen?.17:.155,tgt=new THREE.Vector3(0,isOpen?.085:H*.45,0);setDir(DIRS[opt]??DIRS.perspective,r,tgt,animate);const to=isOpen?-OPEN:0;tweens.cancel(lidRunning);if(!animate){pivot.rotation.x=to;return}const from=pivot.rotation.x;lidRunning=tweens.add({duration:700,ease:isOpen?outBack:inOutCubic,update:t=>{pivot.rotation.x=lerp(from,to,t)}})}
+applyOpt('perspective',false);
+function updateCam(){const x=target.x+radius*Math.sin(phi)*Math.sin(theta),y=target.y+radius*Math.cos(phi),z=target.z+radius*Math.sin(phi)*Math.cos(theta);camera.position.set(x,y,z);camera.lookAt(target)}
+let drag=false,lx=0,ly=0;
+renderer.domElement.addEventListener('pointerdown',e=>{drag=true;lx=e.clientX;ly=e.clientY;renderer.domElement.setPointerCapture(e.pointerId)});
+renderer.domElement.addEventListener('pointermove',e=>{if(!drag)return;theta-=(e.clientX-lx)*.007;phi=Math.max(.06,Math.min(THREE.MathUtils.degToRad(84),phi+(e.clientY-ly)*.007));lx=e.clientX;ly=e.clientY});
+renderer.domElement.addEventListener('pointerup',()=>drag=false);
+renderer.domElement.addEventListener('wheel',e=>{radius=Math.max(.15,Math.min(.8,radius+e.deltaY*.0002))},{passive:true});
+document.querySelectorAll('.btn').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');applyOpt(btn.dataset.opt,true)}));
+window.addEventListener('resize',()=>{renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix()});
+(function loop(now=0){requestAnimationFrame(loop);tweens.run(now);updateCam();renderer.render(scene,camera)})(0);
+</script>
+</body>
+</html>

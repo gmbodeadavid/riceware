@@ -4,7 +4,8 @@ import Footer from '@/components/Footer';
 import RiceWareNav from '@/components/RiceWareNav';
 import SectionLabel from '@/components/SectionLabel';
 import type { ProductCategory } from '@/lib/boutique';
-import { CATEGORY_OPTIONS, getCategoryLabel, getFilteredProducts } from '@/lib/boutique';
+import { CATEGORY_OPTIONS, getCategoryLabel } from '@/lib/boutique';
+import { listProducts } from '@/lib/data/products';
 import BoutiqueCatalogClient from '@/components/BoutiqueCatalogClient';
 
 export const metadata: Metadata = {
@@ -40,7 +41,11 @@ export default async function BoutiquePage({
     ? (categoryParam as ProductCategory)
     : 'toutes';
   const query = queryParam ?? '';
-  const filteredProducts = getFilteredProducts(selectedCategory, query);
+  const filteredProducts = await listProducts({
+    isPublished: true,
+    category: selectedCategory !== 'toutes' ? selectedCategory : undefined,
+    search: query || undefined,
+  });
   const selectedProduct = filteredProducts.find((product) => product.slug === productParam) ?? null;
 
   return (

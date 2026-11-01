@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
 const inputBase =
   'w-full rounded-control border border-line px-3 py-2.5 text-base text-ink outline-hidden transition-colors placeholder:text-ink-muted/60 focus:border-paddy focus:ring-2 focus:ring-paddy/20 disabled:opacity-60 sm:text-sm';
@@ -8,6 +8,25 @@ export const inputClassName = `${inputBase} bg-ground`;
 
 /** Champ posé sur un fond `bg-ground` (blocs de contenu). */
 export const inputOnGroundClassName = `${inputBase} bg-surface`;
+
+// Flèche SVG paddy encodée en base64 pour background-image
+const SELECT_ARROW =
+  `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%232f6b43' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`;
+
+/**
+ * Classes pour les `<select>` du back-office.
+ * Applique `appearance-none` + flèche SVG paddy + même base visuelle que les inputs.
+ */
+export const selectClassName =
+  `${inputBase} bg-ground appearance-none cursor-pointer pr-9` as const;
+
+/** Style inline pour injecter la flèche SVG (ne peut pas être fait en Tailwind pur). */
+export const selectStyle: CSSProperties = {
+  backgroundImage: SELECT_ARROW,
+  backgroundRepeat: 'no-repeat',
+  backgroundPosition: 'right 0.6rem center',
+  backgroundSize: '1rem 1rem',
+};
 
 const buttonBase =
   'inline-flex min-h-10 items-center justify-center gap-2 rounded-control px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-paddy disabled:cursor-not-allowed disabled:opacity-50';

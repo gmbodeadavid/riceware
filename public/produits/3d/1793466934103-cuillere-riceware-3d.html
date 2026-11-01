@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RiceWare · Cuillère 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F4F1E4; --ink:#1C2A20; --green:#2F6B43; --green-d:#255535;
+    --gold:#D3A61F; --yellow:#F2C12E; --cream:#FFFDF6; --line:#DDD6BF;
+    --ease:cubic-bezier(.2,.8,.2,1);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
+    font-family:'IBM Plex Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased;user-select:none}
+
+  #webgl-container{position:fixed;inset:0}
+  #webgl-container canvas{display:block;width:100%;height:100%;outline:none;touch-action:none;cursor:grab}
+  #webgl-container canvas:active{cursor:grabbing}
+  #vignette{position:fixed;inset:0;pointer-events:none;z-index:1;
+    background:radial-gradient(ellipse 80% 70% at 50% 48%,transparent 55%,rgba(120,96,40,.10) 100%)}
+
+  .reveal{opacity:0;transform:translateY(14px)}
+  body.ready .reveal{animation:rise .9s var(--ease) forwards;animation-delay:var(--d,0s)}
+  @keyframes rise{to{opacity:1;transform:none}}
+
+  /* En-tête */
+  #ui-header{position:absolute;top:24px;left:24px;display:flex;flex-direction:column;gap:8px;max-width:340px;z-index:10;pointer-events:none}
+  h1{margin:0;font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:28px;line-height:1.05;letter-spacing:-.01em}
+  .specs{margin:0;font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:14px;opacity:.8}
+  .badge{display:inline-flex;width:fit-content;align-items:center;gap:8px;padding:6px 12px;background:#F8ECC2;color:#7F610A;border-radius:999px;font-weight:600;font-size:12px}
+  .badge i{width:7px;height:7px;border-radius:50%;background:var(--gold);animation:ping 2s ease-out infinite}
+  @keyframes ping{0%{box-shadow:0 0 0 0 rgba(211,166,31,.6)}100%{box-shadow:0 0 0 8px rgba(211,166,31,0)}}
+
+  /* Contrôles de vue */
+  #view-controls{position:absolute;top:24px;right:24px;display:flex;gap:6px;z-index:10;padding:6px;
+    background:rgba(255,253,246,.6);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-radius:999px;box-shadow:0 6px 24px rgba(60,45,10,.07)}
+  .btn{position:relative;display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 16px;border-radius:999px;border:1px solid transparent;
+    background:transparent;color:var(--ink);font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;-webkit-appearance:none;appearance:none;
+    transition:background-color .25s,color .25s,transform .2s var(--ease),box-shadow .25s}
+  .btn:hover{background:rgba(28,42,32,.06)}
+  .btn:active{transform:scale(.96)}
+  .btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+  .btn.primary{background:var(--green);color:var(--cream);box-shadow:0 4px 14px rgba(47,107,67,.25)}
+  .btn.primary:hover{background:var(--green-d)}
+  .btn[aria-pressed="true"]:not(.primary){background:var(--cream);border-color:var(--line);box-shadow:0 2px 8px rgba(60,45,10,.08)}
+  .btn svg{width:16px;height:16px;transition:transform .5s var(--ease)}
+  .btn.primary:hover svg{transform:rotate(-180deg)}
+
+  /* Hotspots */
+  .hotspot{position:absolute;left:0;top:0;width:30px;height:30px;padding:0;border:0;background:transparent;cursor:pointer;z-index:12;
+    transition:opacity .4s;will-change:transform;-webkit-tap-highlight-color:transparent}
+  .hotspot .dot{position:absolute;inset:9px;border-radius:50%;background:var(--cream);border:2px solid var(--gold);
+    box-shadow:0 0 10px rgba(211,166,31,.35);transition:transform .25s var(--ease),background-color .25s}
+  .hotspot::before{content:"";position:absolute;inset:5px;border-radius:50%;border:2px solid var(--gold);opacity:0;animation:pulse 2.4s ease-out infinite}
+  @keyframes pulse{0%{transform:scale(.55);opacity:.8}100%{transform:scale(1.7);opacity:0}}
+  .hotspot:hover .dot,.hotspot:focus-visible .dot,.hotspot.active .dot{transform:scale(1.35);background:var(--gold)}
+  .hotspot:focus-visible{outline:none}
+  .hotspot:focus-visible .dot{outline:2px solid var(--gold);outline-offset:4px}
+  .tooltip{position:absolute;bottom:100%;left:50%;width:max-content;max-width:210px;padding:8px 12px;margin-bottom:6px;
+    background:rgba(255,253,246,.94);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);color:var(--ink);font-size:13px;font-weight:500;
+    border-radius:8px;border:1px solid var(--line);box-shadow:0 4px 16px rgba(60,45,10,.1);text-align:center;
+    transform:translateX(-50%) translateY(6px) scale(.94);opacity:0;pointer-events:none;transition:transform .25s var(--ease),opacity .25s}
+  .hotspot:hover .tooltip,.hotspot:focus-visible .tooltip,.hotspot.active .tooltip{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}
+  .hotspot.hidden-behind{opacity:0;pointer-events:none}
+
+  /* Aide */
+  #hint{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);margin:0;font-size:13px;z-index:10;pointer-events:none;
+    background:rgba(255,253,246,.7);padding:9px 18px;border-radius:999px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    white-space:nowrap;transition:opacity .8s}
+  #hint.faded{opacity:0!important}
+
+  /* Chargement */
+  #loader{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;
+    z-index:100;transition:opacity .7s var(--ease),visibility .7s}
+  #loader.done{opacity:0;visibility:hidden}
+  #loader .brand{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:22px}
+  #loader .brand b{color:var(--green)}
+  #loader-label{font-size:13px;opacity:.7;font-weight:500}
+  .loader-track{width:200px;height:4px;background:var(--line);border-radius:4px;overflow:hidden}
+  .loader-bar{width:0;height:100%;background:var(--yellow);border-radius:4px;transition:width .25s var(--ease)}
+  #webgl-error{display:none;max-width:340px;padding:0 20px;text-align:center;line-height:1.5}
+  #webgl-error h3{font-family:'Bricolage Grotesque',sans-serif;margin:0 0 8px}
+
+  @media (max-width:760px){
+    #ui-header{top:16px;left:16px;right:16px;max-width:none}
+    h1{font-size:22px}
+    #view-controls{top:auto;bottom:68px;right:50%;transform:translateX(50%);max-width:calc(100% - 24px)}
+    .btn{padding:0 11px;font-size:12.5px;height:36px}
+    .btn .long{display:none}
+    #hint{bottom:20px;font-size:12px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation:none!important;transition:none!important}
+    .reveal{opacity:1;transform:none}
+  }
+</style>
+</head>
+<body>
+
+<div id="webgl-container" role="img" aria-label="Modèle 3D interactif d'une cuillère en biocomposite à base de balles de riz"></div>
+<div id="vignette"></div>
+
+<header id="ui-header">
+  <span class="badge reveal" style="--d:.05s"><i></i>En développement</span>
+  <h1 class="reveal" style="--d:.15s">Cuillère RiceWare</h1>
+  <p class="specs reveal" style="--d:.25s">Longueur 160 mm · Épaisseur 2,5 mm</p>
+</header>
+
+<nav id="view-controls" class="reveal" style="--d:.3s" aria-label="Vues">
+  <button type="button" class="btn primary" id="btn-reset" title="Raccourci : R">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+    <span>Réinitialiser<span class="long"> la vue</span></span>
+  </button>
+  <button type="button" class="btn" id="btn-top" data-view="top" aria-pressed="false" title="Raccourci : 1">Dessus</button>
+  <button type="button" class="btn" id="btn-profile" data-view="profile" aria-pressed="false" title="Raccourci : 2">Profil</button>
+  <button type="button" class="btn" id="btn-bottom" data-view="bottom" aria-pressed="false" title="Raccourci : 3">Dessous</button>
+</nav>
+
+<button class="hotspot hidden-behind" id="hs-logo" aria-label="Symbole gaufré, sans encre"><span class="dot"></span><span class="tooltip">Symbole gaufré, sans encre</span></button>
+<button class="hotspot hidden-behind" id="hs-bowl" aria-label="Cuilleron lisse"><span class="dot"></span><span class="tooltip">Cuilleron lisse</span></button>
+<button class="hotspot hidden-behind" id="hs-rib" aria-label="Nervure de renfort"><span class="dot"></span><span class="tooltip">Nervure de renfort</span></button>
+
+<p id="hint" class="reveal" style="--d:.5s">Glisser pour tourner · Molette pour zoomer · Double-clic pour recentrer</p>
+
+<div id="loader">
+  <span class="brand">Rice<b>Ware</b> CI</span>
+  <span id="loader-label">Génération du produit…</span>
+  <div class="loader-track" id="loader-track"><div class="loader-bar" id="loader-bar"></div></div>
+  <div id="webgl-error">
+    <h3>WebGL n'est pas supporté</h3>
+    <p>Votre navigateur ou votre carte graphique ne prend pas en charge le rendu 3D nécessaire pour afficher ce contenu.</p>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
+
+/* ================= CONFIG (mètres) =================
+   Axe X = longueur (cuilleron côté +X), Y = haut, Z = largeur. */
+const SHIFT = 0.031;                         // recentre la cuillère (160 mm) sur X = 0
+const X_END = -0.111 + SHIFT, X_TIP = 0.049 + SHIFT;
+const HT = 0.0025 / 2;                       // demi-épaisseur
+const BOWL = { x: 0.025, rx: 0.024, rz: 0.014, depth: 0.006 };
+const TILE = 0.10;                           // échelle des fibres
+const TARGET = new THREE.Vector3(0, 0.007, 0);
+const VIEWS = {
+  initial: new THREE.Vector3(0.35, 0.55, 0.75).normalize(),
+  top:     new THREE.Vector3(0, 1, 0.02).normalize(),
+  profile: new THREE.Vector3(0, 0.12, 1).normalize(),
+  bottom:  new THREE.Vector3(0, -1, 0.02).normalize()
+};
+const RESUME_DELAY = 6000;
+
+/* ================= DOM ================= */
+const $ = id => document.getElementById(id);
+const container = $('webgl-container'), loader = $('loader'), bar = $('loader-bar'), hint = $('hint');
+const viewBtns = [...document.querySelectorAll('[data-view]')];
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+if (matchMedia('(pointer: coarse)').matches) hint.textContent = 'Glisser pour tourner · Pincer pour zoomer · Double-tap pour recentrer';
+
+/* ================= TWEENS ================= */
+const E = {
+  linear: t => t,
+  outCubic: t => 1 - Math.pow(1 - t, 3),
+  inCubic: t => t * t * t,
+  inOutCubic: t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2,
+  outQuart: t => 1 - Math.pow(1 - t, 4)
+};
+const tweens = new Set();
+function tween({ duration, ease = E.inOutCubic, update, done, delay = 0 }) {
+  const tw = { start: performance.now() + (reduce ? 0 : delay), duration: reduce ? 0 : duration, ease, update, done };
+  tweens.add(tw); return tw;
+}
+function runTweens(now) {
+  for (const tw of tweens) {
+    if (now < tw.start) continue;
+    const t = tw.duration <= 0 ? 1 : Math.min((now - tw.start) / tw.duration, 1);
+    tw.update(tw.ease(t));
+    if (t >= 1) { tweens.delete(tw); tw.done && tw.done(); }
+  }
+}
+
+/* ================= ÉTAT ================= */
+let renderer, scene, camera, controls, spin, spoon, rakeLight, contactShadow;
+let restTilt = 0, restY = 0, hotspots = [];
+let introRunning = true, resumeTimer = null, camTween = null;
+
+/* ================= DÉMARRAGE ================= */
+function webglOK() {
+  try { const c = document.createElement('canvas'); return !!(window.WebGLRenderingContext && (c.getContext('webgl2') || c.getContext('webgl'))); }
+  catch { return false; }
+}
+function showFallback(msg) {
+  $('loader-label').style.display = 'none'; $('loader-track').style.display = 'none';
+  const f = $('webgl-error'); if (msg) f.querySelector('p').textContent = msg; f.style.display = 'block';
+}
+const progress = p => { bar.style.width = p + '%'; return new Promise(r => requestAnimationFrame(() => setTimeout(r, 0))); };
+
+if (!webglOK()) showFallback();
+else init().catch(err => { console.error(err); showFallback("Une erreur est survenue lors de la génération du modèle 3D."); });
+
+async function init() {
+  await progress(8);
+  renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(container.clientWidth, container.clientHeight);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  container.appendChild(renderer.domElement);
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xF4F1E4);
+  camera = new THREE.PerspectiveCamera(30, container.clientWidth / container.clientHeight, 0.005, 10);
+  camera.position.copy(VIEWS.initial).multiplyScalar(fitDistance()).add(TARGET);
+
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true; controls.dampingFactor = 0.07;
+  controls.enablePan = false;
+  controls.target.copy(TARGET);
+  controls.minDistance = 0.1;
+  controls.maxDistance = Math.max(0.6, fitDistance() * 1.8);
+  controls.minPolarAngle = 0; controls.maxPolarAngle = Math.PI;   // vue de dessous autorisée
+  controls.autoRotateSpeed = 0.6;
+  controls.update();
+
+  await progress(20); setupLights();
+  await progress(35); const mats = makeMaterials();
+  await progress(75); buildSpoon(mats);
+  await progress(90); buildGround(); setupHotspots();
+  await progress(100);
+
+  bindEvents();
+  renderer.setAnimationLoop(loop);
+  setTimeout(() => { loader.classList.add('done'); document.body.classList.add('ready'); startIntro(); }, 250);
+}
+
+function fitDistance() {
+  const v = THREE.MathUtils.degToRad(camera.fov);
+  const hf = 2 * Math.atan(Math.tan(v / 2) * camera.aspect);
+  return 0.088 / Math.sin(Math.min(v, hf) / 2);
+}
+
+/* ================= LUMIÈRES ================= */
+function setupLights() {
+  const pm = new THREE.PMREMGenerator(renderer);
+  scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+  pm.dispose();
+
+  scene.add(new THREE.HemisphereLight(0xFFF8EC, 0xCDBB90, 0.55));
+
+  const key = new THREE.DirectionalLight(0xFFF6E6, 2.2);
+  key.position.set(-0.3, 0.6, 0.35);
+  key.castShadow = true;
+  key.shadow.mapSize.set(2048, 2048);
+  Object.assign(key.shadow.camera, { left: -0.14, right: 0.14, top: 0.14, bottom: -0.14, near: 0.1, far: 1.5 });
+  key.shadow.bias = -0.0002; key.shadow.normalBias = 0.0003;
+  scene.add(key);
+
+  const rim = new THREE.DirectionalLight(0xFFF5E6, 0.8);
+  rim.position.set(0.5, 0.2, -0.4);
+  scene.add(rim);
+
+  // lumière rasante chaude : révèle fibres, nervure et symbole
+  rakeLight = new THREE.SpotLight(0xFFD58A, reduce ? 0.12 : 0, 1, Math.PI / 5, 0.9, 2);
+  rakeLight.position.set(-0.25, 0.03, 0.12);
+  rakeLight.target.position.set(0, 0.005, 0);
+  scene.add(rakeLight, rakeLight.target);
+}
+
+/* ================= TEXTURES PROCÉDURALES ================= */
+function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+function makeTextures(size = 1024) {
+  const rnd = mulberry32(1609);
+  const col = document.createElement('canvas'), hgt = document.createElement('canvas');
+  col.width = col.height = hgt.width = hgt.height = size;
+  const c = col.getContext('2d'), h = hgt.getContext('2d');
+  c.fillStyle = '#D9B77A'; c.fillRect(0, 0, size, size);
+  h.fillStyle = '#7f7f7f'; h.fillRect(0, 0, size, size);
+  const wrap = (x, y, m, fn) => { for (const dx of [-size, 0, size]) for (const dy of [-size, 0, size]) { const X = x + dx, Y = y + dy; if (X > -m && X < size + m && Y > -m && Y < size + m) fn(X, Y); } };
+
+  for (let i = 0; i < 70; i++) {
+    const x = rnd() * size, y = rnd() * size, r = 50 + rnd() * 140, light = rnd() > .5;
+    wrap(x, y, r, (X, Y) => {
+      const g = c.createRadialGradient(X, Y, 0, X, Y, r);
+      g.addColorStop(0, light ? 'rgba(238,210,155,.28)' : 'rgba(170,130,75,.22)');
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      c.fillStyle = g; c.fillRect(X - r, Y - r, r * 2, r * 2);
+    });
+  }
+  for (let i = 0; i < 6000; i++) {
+    const x = rnd() * size, y = rnd() * size, r = .3 + rnd() * 1.2, light = rnd() > .5;
+    wrap(x, y, 3, (X, Y) => {
+      c.fillStyle = light ? '#E8C98A' : '#C09A63'; c.beginPath(); c.arc(X, Y, r, 0, Math.PI * 2); c.fill();
+      h.fillStyle = light ? '#9a9a9a' : '#666'; h.beginPath(); h.arc(X, Y, r, 0, Math.PI * 2); h.fill();
+    });
+  }
+  c.lineCap = h.lineCap = 'round';
+  for (let i = 0; i < 800; i++) {
+    const x = rnd() * size, y = rnd() * size, len = 4 + rnd() * 16, a = rnd() * Math.PI * 2, w = 1 + rnd() * 2.5, light = rnd() > .5;
+    const ex = Math.cos(a) * len, ey = Math.sin(a) * len;
+    wrap(x, y, len + 4, (X, Y) => {
+      c.globalAlpha = .85; c.strokeStyle = light ? '#E8C98A' : '#B8914F'; c.lineWidth = w;
+      c.beginPath(); c.moveTo(X, Y); c.lineTo(X + ex, Y + ey); c.stroke(); c.globalAlpha = 1;
+      h.strokeStyle = light ? '#d0d0d0' : '#b0b0b0'; h.lineWidth = w;
+      h.beginPath(); h.moveTo(X, Y); h.lineTo(X + ex, Y + ey); h.stroke();
+    });
+  }
+  for (let i = 0; i < 300; i++) {
+    const x = rnd() * size, y = rnd() * size, rx = .8 + rnd() * 2, ry = .5 + rnd(), a = rnd() * Math.PI;
+    wrap(x, y, 5, (X, Y) => {
+      c.fillStyle = '#6B4E2A'; c.beginPath(); c.ellipse(X, Y, rx, ry, a, 0, Math.PI * 2); c.fill();
+      h.fillStyle = '#4a4a4a'; h.beginPath(); h.ellipse(X, Y, rx, ry, a, 0, Math.PI * 2); h.fill();
+    });
+  }
+  return { col, normal: heightToNormal(hgt, 2.5) };
+}
+
+function heightToNormal(cv, k) {
+  const s = cv.width, src = cv.getContext('2d').getImageData(0, 0, s, s).data;
+  const hm = new Float32Array(s * s); for (let i = 0; i < s * s; i++) hm[i] = src[i * 4] / 255;
+  const out = document.createElement('canvas'); out.width = out.height = s;
+  const ctx = out.getContext('2d'), img = ctx.createImageData(s, s), d = img.data;
+  for (let y = 0; y < s; y++) {
+    const ym = ((y - 1 + s) % s) * s, yp = ((y + 1) % s) * s, yr = y * s;
+    for (let x = 0; x < s; x++) {
+      const xm = (x - 1 + s) % s, xp = (x + 1) % s;
+      const dx = (hm[yr + xp] - hm[yr + xm]) * k, dy = (hm[yp + x] - hm[ym + x]) * k;
+      const l = 1 / Math.hypot(dx, dy, 1), i = (yr + x) * 4;
+      d[i] = (-dx * l * .5 + .5) * 255; d[i + 1] = (dy * l * .5 + .5) * 255; d[i + 2] = (l * .5 + .5) * 255; d[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0); return out;
+}
+
+function makeMaterials() {
+  const { col, normal } = makeTextures(1024);
+  const aniso = renderer.capabilities.getMaxAnisotropy();
+  const setup = (tex, srgb) => {
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.anisotropy = aniso;
+    if (srgb) tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  };
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0xFFFFFF,
+    map: setup(new THREE.CanvasTexture(col), true),
+    normalMap: setup(new THREE.CanvasTexture(normal), false),
+    normalScale: new THREE.Vector2(0.45, 0.45),
+    roughness: 0.92, metalness: 0, envMapIntensity: 0.55,
+    side: THREE.DoubleSide
+  });
+  const logoMat = mat.clone();
+  logoMat.color.set(0xE3D2B2);        // ton sur ton, légèrement plus sombre (sans encre)
+  logoMat.roughness = 0.88;
+  logoMat.side = THREE.FrontSide;
+  return { mat, logoMat };
+}
+
+/* ================= GÉOMÉTRIE PARAMÉTRIQUE ================= */
+const clamp01 = v => Math.min(Math.max(v, 0), 1);
+const ss = (e0, e1, v) => { const t = clamp01((v - e0) / (e1 - e0)); return t * t * (3 - 2 * t); };
+function smax(a, b, k) { const h = clamp01(0.5 + 0.5 * (a - b) / k); return b + (a - b) * h + k * h * (1 - h); }
+
+/* demi-largeur de la silhouette (cuilleron elliptique + manche + raccord arrondi) */
+function halfWidth(X) {
+  const x = X - SHIFT;
+  const eb = (x - BOWL.x) / BOWL.rx;
+  const wb = Math.abs(eb) < 1 ? BOWL.rz * Math.sqrt(1 - eb * eb) : 0;
+  let wh = 0;
+  if (x <= 0.02) {
+    if (x >= -0.1065) { const t = clamp01(-x / 0.1065); wh = 0.0055 - 0.001 * t * t; }
+    else { const d = x + 0.1065; wh = Math.sqrt(Math.max(0, 0.0045 * 0.0045 - d * d)); }
+    wh *= 1 - ss(0.008, 0.02, x);
+  }
+  return (x > -0.012 && x < 0.018) ? smax(wb, wh, 0.004) : Math.max(wb, wh);
+}
+/* ligne moyenne : creux du cuilleron + courbe ergonomique du manche */
+function centerY(X, Z) {
+  const x = X - SHIFT; let c = 0;
+  if (x < 0.02) { const n = (0.02 - x) / 0.131; c += n * n * 0.008; }
+  const dx = (x - BOWL.x) / BOWL.rx, dz = Z / BOWL.rz, d2 = dx * dx + dz * dz;
+  if (d2 < 1) c -= BOWL.depth * Math.pow(1 - d2, 1.4);
+  return c;
+}
+/* nervure de renfort sous le manche */
+function rib(X, Z) {
+  const x = X - SHIFT;
+  return 0.0008 * ss(0.005, -0.01, x) * ss(-0.098, -0.085, x) * ss(0.002, 0, Math.abs(Z));
+}
+const halfThick = X => Math.min(HT, halfWidth(X));
+const topY = (X, Z) => centerY(X, Z) + halfThick(X);
+
+function buildSpoonGeometry() {
+  const rows = 300, nT = 44, nA = 12, cols = 2 * nT + 2 * nA;
+  const pos = new Float32Array(rows * cols * 3), uv = new Float32Array(rows * cols * 2), idx = [];
+  for (let r = 0; r < rows; r++) {
+    const s = r / (rows - 1);
+    const X = X_END + (X_TIP - X_END) * (0.5 - 0.5 * Math.cos(Math.PI * s));   // plus dense aux extrémités
+    const w = halfWidth(X), h = Math.min(HT, w), F = Math.max(w - h, 0);
+    for (let k = 0; k < cols; k++) {
+      let z, off;
+      if (k < nT) { z = -F + 2 * F * k / nT; off = h; }                                              // dessus
+      else if (k < nT + nA) { const a = Math.PI / 2 - Math.PI * (k - nT) / nA; z = F + h * Math.cos(a); off = h * Math.sin(a); }   // chant droit
+      else if (k < 2 * nT + nA) { const i = k - nT - nA; z = F - 2 * F * i / nT; off = -h; }        // dessous
+      else { const i = k - 2 * nT - nA; const a = -Math.PI / 2 - Math.PI * i / nA; z = -F + h * Math.cos(a); off = h * Math.sin(a); } // chant gauche
+      let y = centerY(X, z) + off;
+      if (off < 0 && h > 0) y -= rib(X, z) * (-off / h);
+      const v = r * cols + k;
+      pos.set([X, y, z], v * 3);
+      uv.set([X / TILE, z / TILE], v * 2);
+    }
+  }
+  for (let r = 0; r < rows - 1; r++) for (let k = 0; k < cols; k++) {
+    const a = r * cols + k, b = r * cols + (k + 1) % cols, c = (r + 1) * cols + k, d = (r + 1) * cols + (k + 1) % cols;
+    idx.push(a, c, b, b, c, d);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+}
+
+/* symbole gaufré : balle de riz en amande + nervure centrale, épousant le manche */
+function logoGeometry(X0) {
+  const L = 0.011, A = 0.003, s = 0.0008;
+  const outer = new THREE.Shape();
+  outer.moveTo(-L / 2, 0); outer.quadraticCurveTo(0, 2 * A, L / 2, 0); outer.quadraticCurveTo(0, -2 * A, -L / 2, 0);
+  const hole = new THREE.Path(), Li = L / 2 - 0.0012;
+  hole.moveTo(-Li, 0); hole.quadraticCurveTo(0, 2 * (A - s), Li, 0); hole.quadraticCurveTo(0, -2 * (A - s), -Li, 0);
+  outer.holes.push(hole);
+  const barL = L / 2 - 0.0025, bar = new THREE.Shape();
+  bar.moveTo(-barL, -0.0003); bar.lineTo(barL, -0.0003); bar.lineTo(barL, 0.0003); bar.lineTo(-barL, 0.0003); bar.closePath();
+
+  const g = new THREE.ExtrudeGeometry([outer, bar], { depth: 0.0003, bevelEnabled: true, bevelThickness: 0.0001, bevelSize: 0.0001, bevelSegments: 2, curveSegments: 32 });
+  const p = g.attributes.position, uv = g.attributes.uv;
+  for (let i = 0; i < p.count; i++) {
+    const X = X0 + p.getX(i), Z = p.getY(i);
+    p.setXYZ(i, X, topY(X, Z) + p.getZ(i) - 0.00005, Z);
+    uv.setXY(i, uv.getX(i) / TILE, uv.getY(i) / TILE);
+  }
+  return toCreasedNormals(g, THREE.MathUtils.degToRad(40));
+}
+
+const LOGO_X = -0.095 + SHIFT;
+
+function buildSpoon({ mat, logoMat }) {
+  spin = new THREE.Group(); scene.add(spin);
+  spoon = new THREE.Group(); spin.add(spoon);
+  const geo = buildSpoonGeometry();
+  const body = new THREE.Mesh(geo, mat); body.castShadow = body.receiveShadow = true;
+  const logo = new THREE.Mesh(logoGeometry(LOGO_X), logoMat); logo.castShadow = logo.receiveShadow = true;
+  spoon.add(body, logo);
+
+  // pose réaliste : appui sur le dos du cuilleron et le bout du manche
+  const p = geo.attributes.position;
+  let b = { y: Infinity, x: 0 }, e = { y: Infinity, x: 0 };
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), y = p.getY(i);
+    if (x > 0.02 && y < b.y) b = { x, y };
+    if (x < -0.05 && y < e.y) e = { x, y };
+  }
+  restTilt = Math.atan2(e.y - b.y, b.x - e.x);
+  const cs = Math.cos(restTilt), sn = Math.sin(restTilt);
+  let minY = Infinity;
+  for (let i = 0; i < p.count; i++) minY = Math.min(minY, p.getX(i) * sn + p.getY(i) * cs);
+  restY = -minY;
+  spoon.rotation.z = restTilt; spoon.position.y = restY;
+}
+
+function buildGround() {
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShadowMaterial({ opacity: 0.13 }));
+  ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const x = c.getContext('2d'), gr = x.createRadialGradient(128, 128, 0, 128, 128, 128);
+  gr.addColorStop(0, 'rgba(60,45,20,.45)'); gr.addColorStop(.45, 'rgba(60,45,20,.16)'); gr.addColorStop(1, 'rgba(60,45,20,0)');
+  x.fillStyle = gr; x.fillRect(0, 0, 256, 256);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  contactShadow = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.05),
+    new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, toneMapped: false }));
+  contactShadow.rotation.x = -Math.PI / 2; contactShadow.position.y = 0.0003; contactShadow.renderOrder = -1;
+  spin.add(contactShadow);   // tourne avec la cuillère pendant l'intro
+}
+
+/* ================= HOTSPOTS ================= */
+function setupHotspots() {
+  const bowlX = BOWL.x + SHIFT, ribX = -0.04 + SHIFT;
+  hotspots = [
+    { el: $('hs-logo'), pos: new THREE.Vector3(LOGO_X, topY(LOGO_X, 0) + 0.0006, 0), normal: new THREE.Vector3(0, 1, 0) },
+    { el: $('hs-bowl'), pos: new THREE.Vector3(bowlX, topY(bowlX, 0) + 0.0003, 0), normal: new THREE.Vector3(0, 1, 0) },
+    { el: $('hs-rib'), pos: new THREE.Vector3(ribX, centerY(ribX, 0) - halfThick(ribX) - rib(ribX, 0) - 0.0003, 0), normal: new THREE.Vector3(0, -1, 0) }
+  ].map(h => ({ ...h, obj: spoon }));
+  hotspots.forEach(h => h.el.addEventListener('click', e => {
+    e.stopPropagation();
+    const was = h.el.classList.contains('active');
+    hotspots.forEach(o => o.el.classList.remove('active'));
+    if (!was) { h.el.classList.add('active'); focusHotspot(h); }
+  }));
+}
+const _v = new THREE.Vector3(), _n = new THREE.Vector3(), _q = new THREE.Quaternion(), _c = new THREE.Vector3();
+function updateHotspots() {
+  const w = container.clientWidth, h = container.clientHeight;
+  for (const s of hotspots) {
+    s.obj.localToWorld(_v.copy(s.pos));
+    s.obj.getWorldQuaternion(_q); _n.copy(s.normal).applyQuaternion(_q);
+    const facing = _n.dot(_c.copy(camera.position).sub(_v).normalize());
+    _v.project(camera);
+    s.el.style.transform = `translate(${(_v.x * .5 + .5) * w - 15}px, ${(-_v.y * .5 + .5) * h - 15}px)`;
+    const visible = !introRunning && facing > 0.1 && _v.z < 1;
+    s.el.classList.toggle('hidden-behind', !visible);
+    if (!visible) s.el.classList.remove('active');
+  }
+}
+
+/* ================= ANIMATIONS ================= */
+function startIntro() {
+  if (reduce) { introRunning = false; return; }
+  const d = fitDistance(), startDist = d * 1.35;
+  camera.position.copy(VIEWS.initial).multiplyScalar(startDist).add(controls.target);
+  spin.scale.setScalar(0.85);
+  spin.rotation.y = Math.PI * 1.5;
+  spoon.position.y = restY + 0.035;
+  contactShadow.material.opacity = 0;
+
+  // 1. apparition + rotation 270° (3,5 s, easeOutQuart)
+  tween({ duration: 1200, ease: E.outCubic, update: t => spin.scale.setScalar(0.85 + 0.15 * t) });
+  tween({ duration: 3500, ease: E.outQuart, update: t => spin.rotation.y = Math.PI * 1.5 * (1 - t) });
+  camTween = tween({ duration: 1800, ease: E.inOutCubic, update: t => {
+    camera.position.copy(VIEWS.initial).multiplyScalar(startDist + (d - startDist) * t).add(controls.target);
+  }});
+  // 2. la cuillère se pose puis bascule légèrement avant de se stabiliser
+  tween({ duration: 850, delay: 250, ease: E.inCubic, update: t => {
+    spoon.position.y = restY + 0.035 * (1 - t);
+    contactShadow.material.opacity = t;
+  }, done: () => tween({ duration: 1300, ease: E.linear, update: t => {
+    spoon.rotation.z = restTilt + 0.07 * Math.pow(1 - t, 2) * Math.sin(t * Math.PI * 5);
+  }})});
+  // 3. balayage de la lumière rasante
+  tween({ duration: 2600, delay: 600, ease: E.inOutCubic, update: t => {
+    rakeLight.position.x = -0.25 + 0.5 * t;
+    rakeLight.intensity = Math.sin(Math.PI * t) * 0.3 + 0.1 * t;
+  }});
+  setTimeout(() => { introRunning = false; if (!resumeTimer) controls.autoRotate = true; }, 3600);
+}
+
+function pauseAutoRotate() { controls.autoRotate = false; clearTimeout(resumeTimer); resumeTimer = null; }
+function scheduleResume() {
+  clearTimeout(resumeTimer);
+  resumeTimer = setTimeout(() => { resumeTimer = null; if (!reduce) controls.autoRotate = true; }, RESUME_DELAY);
+}
+function setActiveView(name) { viewBtns.forEach(b => b.setAttribute('aria-pressed', b.dataset.view === name)); }
+
+/* déplacement caméra en coordonnées sphériques (ne traverse jamais l'objet) */
+function moveCamera(target, dir, dist, duration = 800) {
+  if (camTween) tweens.delete(camTween);
+  const t0 = controls.target.clone(), t1 = target.clone();
+  const from = new THREE.Spherical().setFromVector3(camera.position.clone().sub(t0));
+  const to = new THREE.Spherical().setFromVector3(dir.clone().multiplyScalar(dist));
+  let dTheta = Math.atan2(Math.sin(to.theta - from.theta), Math.cos(to.theta - from.theta));
+  const s = new THREE.Spherical();
+  camTween = tween({ duration, update: t => {
+    controls.target.lerpVectors(t0, t1, t);
+    s.set(from.radius + (to.radius - from.radius) * t, from.phi + (to.phi - from.phi) * t, from.theta + dTheta * t);
+    s.makeSafe();
+    camera.position.setFromSpherical(s).add(controls.target);
+  }});
+}
+
+function goView(name) {
+  pauseAutoRotate();
+  hotspots.forEach(o => o.el.classList.remove('active'));
+  setActiveView(name === 'initial' ? null : name);
+  moveCamera(TARGET, VIEWS[name], fitDistance(), name === 'initial' ? 600 : 800);
+  hint.classList.add('faded');
+  scheduleResume();
+}
+
+function focusHotspot(h) {
+  pauseAutoRotate(); setActiveView(null);
+  const p = h.obj.localToWorld(h.pos.clone());
+  const n = h.normal.clone().applyQuaternion(h.obj.getWorldQuaternion(new THREE.Quaternion()));
+  const dir = n.add(new THREE.Vector3(0.25, 0, 0.35)).normalize();   // léger 3/4 pour lire le relief
+  moveCamera(p, dir, 0.14, 700);
+  scheduleResume();
+}
+
+function orbitBy(dTheta, dPhi = 0) {
+  pauseAutoRotate(); setActiveView(null);
+  if (camTween) tweens.delete(camTween);
+  const s = new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target));
+  const th0 = s.theta, ph0 = s.phi, ph1 = THREE.MathUtils.clamp(ph0 + dPhi, 0.02, Math.PI - 0.02);
+  camTween = tween({ duration: 400, ease: E.outCubic, update: t => {
+    s.theta = th0 + dTheta * t; s.phi = ph0 + (ph1 - ph0) * t;
+    camera.position.setFromSpherical(s).add(controls.target);
+  }, done: scheduleResume });
+}
+
+/* ================= ÉVÉNEMENTS ================= */
+function bindEvents() {
+  controls.addEventListener('start', () => {
+    pauseAutoRotate(); setActiveView(null);
+    if (camTween) { tweens.delete(camTween); camTween = null; }
+    hint.classList.add('faded');
+  });
+  controls.addEventListener('end', scheduleResume);
+  renderer.domElement.addEventListener('dblclick', () => goView('initial'));
+  renderer.domElement.addEventListener('pointerdown', () => hotspots.forEach(h => h.el.classList.remove('active')));
+  $('btn-reset').addEventListener('click', () => goView('initial'));
+  viewBtns.forEach(b => b.addEventListener('click', () => goView(b.dataset.view)));
+  addEventListener('keydown', e => {
+    if (e.target.closest?.('button') && (e.key === ' ' || e.key === 'Enter')) return;
+    const k = e.key.toLowerCase();
+    if (k === 'r') goView('initial');
+    else if (k === '1') goView('top');
+    else if (k === '2') goView('profile');
+    else if (k === '3') goView('bottom');
+    else if (k === 'arrowleft') { e.preventDefault(); orbitBy(-0.3); }
+    else if (k === 'arrowright') { e.preventDefault(); orbitBy(0.3); }
+    else if (k === 'arrowup') { e.preventDefault(); orbitBy(0, -0.2); }
+    else if (k === 'arrowdown') { e.preventDefault(); orbitBy(0, 0.2); }
+  });
+  new ResizeObserver(() => {
+    const w = container.clientWidth, h = container.clientHeight;
+    if (!w || !h) return;
+    camera.aspect = w / h; camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+    controls.maxDistance = Math.max(0.6, fitDistance() * 1.8);
+  }).observe(container);
+  document.addEventListener('visibilitychange', () => renderer.setAnimationLoop(document.hidden ? null : loop));
+}
+
+function loop() {
+  runTweens(performance.now());
+  controls.update();
+  scene.updateMatrixWorld();
+  camera.updateMatrixWorld();
+  updateHotspots();
+  renderer.render(scene, camera);
+}
+</script>
+</body>
+</html>

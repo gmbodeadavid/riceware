@@ -1,0 +1,864 @@
+Pour RiceWare CI, je vous recommande un back-office KPI construit autour d’une seule chaîne logique :
+
+> Approvisionnement → fabrication → contrôle qualité → stock → vente → utilisation réelle → impact documenté.
+
+L’objectif n’est pas d’afficher beaucoup de chiffres, mais de pouvoir répondre à trois questions : « Est-ce que nous vendons ? », « Est-ce que nous produisons de manière rentable ? » et « Quel bénéfice environnemental pouvons-nous réellement démontrer ? »
+
+Votre page KPI doit être une **synthèse** des données enregistrées dans les autres modules, et non une page où vous saisissez manuellement tous les résultats.
+
+## 1. Les principes à poser avant de développer
+
+### Distinguer les étapes du projet
+
+Comme vous êtes encore en prototypage, le tableau de bord doit distinguer :
+
+| Statut | Ce que cela représente |
+|---|---|
+| Expérimentation | Essais de formulations, prototypes, tests techniques. |
+| Test commercial | Présentations, intentions d’achat, essais encadrés, précommandes. |
+| Commercialisation | Produits autorisés à la vente pour leur usage prévu, commandes et livraisons. |
+
+Un prototype fabriqué n’est pas automatiquement un produit commercialisable. Une intention d’achat n’est pas une vente. Une commande n’est pas nécessairement payée, livrée ou utilisée.
+
+### Distinguer les unités de vente et les unités physiques
+
+Si vous vendez un paquet de 100 gobelets :
+
+- Quantité commerciale : 1 paquet.
+- Quantité physique : 100 gobelets.
+- Prix : prix du paquet.
+- Production, stock et impact : calculés à partir des 100 pièces.
+
+Le nombre d’unités par paquet doit être enregistré sur la ligne de commande au moment de la vente. Une modification ultérieure du conditionnement ne doit pas modifier les commandes anciennes.
+
+### Distinguer les données mesurées des estimations
+
+Chaque indicateur devrait préciser :
+
+- La période.
+- Le produit ou le lot concerné.
+- La source des données.
+- La date de mise à jour.
+- Le statut : mesuré, déclaré par un client ou estimé.
+- Le niveau de couverture des données.
+
+Une valeur inconnue doit apparaître « Non renseignée », pas « 0 ».
+
+## 2. Les 12 KPI à afficher en priorité
+
+Voici la première version que je recommande pour votre page principale.
+
+| Nº | KPI | Pourquoi il est primordial | Origine des données |
+|---:|---|---|---|
+| 1 | Chiffre d’affaires net | Mesurer les ventes réalisées. | Ventes validées, remises et avoirs. |
+| 2 | Encaissements clients | Savoir combien d’argent est réellement entré. | Paiements reçus et rapprochés. |
+| 3 | Marge sur coûts variables | Vérifier si les ventes contribuent à couvrir les charges fixes. | Ventes et coûts des produits vendus. |
+| 4 | Unités livrées nettes | Mesurer les produits effectivement remis aux clients. | Livraisons et retours. |
+| 5 | Clients réacheteurs | Observer si l’offre répond à un besoin récurrent. | Historique des clients et commandes livrées. |
+| 6 | Rendement qualité au premier passage | Suivre la régularité du procédé. | Production et contrôle qualité. |
+| 7 | Coût par pièce conforme | Mesurer le coût réel des produits utilisables, pertes incluses. | Coûts et résultats de chaque lot. |
+| 8 | Stock disponible à la vente | Éviter de vendre des produits indisponibles ou non libérés. | Mouvements de stock et statut qualité. |
+| 9 | Coques incorporées dans les produits conformes | Distinguer les matières reçues des matières réellement valorisées dans un produit. | Consommation matière et bilan des lots. |
+| 10 | Produits plastiques substitués, documentés | Mesurer le remplacement observé, pas simplement les ventes. | Retours d’utilisation des clients. |
+| 11 | Énergie de fabrication par 100 pièces conformes | Suivre une charge économique et une pression environnementale. | Compteurs ou consommation estimée par lot. |
+| 12 | Couverture de traçabilité des produits livrés | Vérifier la fiabilité du suivi commercial et environnemental. | Lien entre livraison, lot de production et matières. |
+
+Le suivi de la contribution, des coûts et de la qualité fait partie des indicateurs de pilotage industriel. Pour éviter les ambiguïtés, nommez précisément votre indicateur financier « marge sur coûts variables », plutôt que de regrouper plusieurs définitions sous « marge brute ». [netsuite.co](https://www.netsuite.co.uk/portal/uk/resource/articles/erp/manufacturing-kpis-metrics.shtml)
+
+## 3. Volet business : définitions et règles de calcul
+
+### 3.1. Chiffre d’affaires net
+
+Formule proposée :
+
+\[
+CA\ net = Ventes\ reconnues - Remises - Avoirs
+\]
+
+Affichez les montants hors taxes lorsque cela s’applique et définissez avec votre comptable l’événement qui déclenche la reconnaissance de la vente.
+
+Ne comptez pas automatiquement comme chiffre d’affaires :
+
+- Les paniers abandonnés.
+- Les commandes annulées.
+- Les intentions d’achat.
+- Les subventions.
+- Les apports des fondateurs.
+
+À afficher : montant du mois, évolution et répartition par produit et segment client.
+
+### 3.2. Encaissements clients et créances
+
+Les encaissements représentent les paiements réellement reçus, pas les montants simplement commandés.
+
+Séparez :
+
+| Indicateur | Signification |
+|---|---|
+| Encaissements clients | Paiements reçus au titre des ventes ou acomptes. |
+| Créances clients | Montants facturés restant à recevoir. |
+| Créances en retard | Montants dont l’échéance est dépassée. |
+
+Un acompte peut être encaissé avant que la vente soit reconnue. Le back-office doit donc conserver séparément les paiements, les ventes et les livraisons.
+
+### 3.3. Marge sur coûts variables
+
+\[
+Marge\ sur\ coûts\ variables =
+CA\ net - Coûts\ variables\ associés\ aux\ ventes
+\]
+
+\[
+Taux\ de\ contribution =
+\frac{Marge\ sur\ coûts\ variables}{CA\ net}\times100
+\]
+
+Les coûts variables peuvent comprendre les matières, consommables, emballages, énergie variable, commissions et livraison à votre charge, selon votre modèle. Cette contribution sert ensuite à couvrir les charges fixes. [netsuite.co](https://www.netsuite.co.uk/portal/uk/resource/articles/erp/manufacturing-kpis-metrics.shtml)
+
+Règle importante : ne soustrayez pas toutes les dépenses de fabrication du mois aux seules ventes du mois si une partie de la production reste en stock. Reliez les produits vendus à leurs lots et à leurs coûts.
+
+### 3.4. Unités livrées nettes
+
+\[
+Unités\ livrées\ nettes =
+Unités\ livrées - Unités\ retournées
+\]
+
+Affichez séparément :
+
+- Unités commandées.
+- Unités expédiées.
+- Unités livrées.
+- Unités retournées.
+- Échantillons gratuits.
+
+Cela évite de présenter 500 échantillons comme 500 ventes.
+
+### 3.5. Clients réacheteurs
+
+Pour une première version simple :
+
+\[
+Part\ de\ clients\ réacheteurs =
+\frac{Clients\ ayant\ au\ moins\ deux\ commandes\ livrées}
+{Clients\ ayant\ au\ moins\ une\ commande\ livrée}\times100
+\]
+
+Indiquez la période d’observation. Les nouveaux clients n’ont pas tous eu le temps de recommander : complétez plus tard par une analyse des cohortes, par exemple le réachat dans les 60 jours suivant une première livraison.
+
+Ne considérez pas automatiquement un client professionnel comme B2C parce qu’il est petit : un vendeur de café qui achète des gobelets pour son activité est un client B2B.
+
+## 4. Production : les KPI qui rendent le business et l’impact cohérents
+
+### 4.1. Rendement qualité au premier passage
+
+\[
+Rendement\ qualité =
+\frac{Pièces\ conformes\ sans\ reprise}
+{Pièces\ produites\ soumises\ au\ contrôle}\times100
+\]
+
+Enregistrez séparément :
+
+- Conformes au premier passage.
+- À reprendre.
+- Rejetées.
+- En attente de contrôle.
+
+Les critères de conformité dépendent du produit et de l’usage prévu. Une pièce « sans fissure visible » n’est pas nécessairement validée pour contenir une boisson chaude.
+
+### 4.2. Coût par pièce conforme
+
+\[
+Coût\ de\ fabrication\ par\ pièce\ conforme =
+\frac{Coût\ de\ fabrication\ du\ lot}
+{Nombre\ final\ de\ pièces\ conformes}
+\]
+
+Le numérateur doit intégrer les matières et ressources consommées par les pièces ratées du lot. Sinon, vous sous-estimez le coût réel.
+
+Pour comparer les recettes, conservez :
+
+- Version de formulation.
+- Quantités réellement utilisées.
+- Temps de travail.
+- Énergie.
+- Nombre de pièces conformes.
+- Masse et dimensions des pièces sèches.
+
+Affichez « Coût variable » et « Coût complet estimé » séparément si vous répartissez également des frais fixes.
+
+### 4.3. Stock disponible à la vente
+
+\[
+Stock\ disponible =
+Stock\ commercialisable - Quantités\ réservées
+\]
+
+Les prototypes, les pièces en quarantaine et les rebuts ne doivent pas apparaître comme disponibles.
+
+La fiche produit décrit le produit ; les mouvements de stock décrivent les quantités. Ce sont deux données différentes.
+
+## 5. Impact environnemental : mesurer sans surestimer
+
+### 5.1. Coques reçues, consommées et incorporées
+
+Créez trois compteurs différents :
+
+| Compteur | Ce qu’il mesure |
+|---|---|
+| Coques reçues | Matière entrée sur le site. |
+| Coques consommées en fabrication | Matière engagée dans les lots. |
+| Coques incorporées dans les produits conformes | Matière effectivement présente dans les pièces conformes. |
+
+Des coques reçues et stockées ne sont pas encore valorisées dans un produit.
+
+Pour chaque lot, suivez le bilan matière, sur une base cohérente :
+
+> Matières entrantes → produits conformes + rebuts + matières récupérées + pertes.
+
+Si vous estimez la masse de coques dans les produits à partir de la formulation, affichez « Estimation selon formulation ». Le pourcentage doit correspondre à la formulation sèche réelle du lot, pas au poids de la pâte contenant de l’eau.
+
+Les rebuts réintroduits ne doivent pas être comptés une deuxième fois comme de nouvelles coques collectées.
+
+### 5.2. Produits plastiques substitués
+
+Ne calculez pas :
+
+> 1 produit RiceWare vendu = 1 plastique évité.
+
+Le client peut remplacer du carton, de la bagasse, de la vaisselle réutilisable ou ne pas encore avoir utilisé le produit.
+
+Prévoyez un formulaire après livraison :
+
+| Information | Réponse à obtenir |
+|---|---|
+| Produit utilisé auparavant | Plastique, carton, bagasse, réutilisable, autre. |
+| Quantité RiceWare réellement utilisée | Nombre de pièces. |
+| Quantité ayant remplacé du plastique | Nombre de pièces. |
+| Période d’utilisation | Dates. |
+| Mode de confirmation | Déclaration client, justificatif, observation. |
+| Référence remplacée | Format, matière et éventuellement masse. |
+
+Affichez le résultat sous l’intitulé :
+
+> « Articles plastiques substitués selon les données clients ».
+
+Ajoutez le taux de couverture : quelle part des livraisons dispose d’un retour d’utilisation ? Les comparaisons environnementales doivent s’appuyer sur le produit réellement susceptible d’être remplacé et sur les usages observés, pas seulement sur une hypothèse favorable. [ghgprotocol](https://ghgprotocol.org/blog/many-companies-inaccurately-estimate-climate-benefits-their-products)
+
+### 5.3. Masse de plastique substituée
+
+Lorsque vous connaissez la masse de la référence remplacée :
+
+\[
+Masse\ de\ plastique\ substituée =
+Quantité\ substituée \times Masse\ plastique\ de\ la\ référence
+\]
+
+Pour un emballage composite, utilisez la masse de plastique, pas nécessairement la masse totale de l’emballage.
+
+Cet indicateur ne signifie ni « plastique retiré de la nature », ni « réduction nette de tous les impacts ».
+
+### 5.4. Énergie par 100 pièces conformes
+
+\[
+Intensité\ énergétique =
+\frac{Électricité\ consommée\ par\ le\ lot}
+{Pièces\ conformes}\times100
+\]
+
+Unité : kWh pour 100 pièces conformes.
+
+Si vous utilisez aussi du gaz ou d’autres combustibles, suivez-les séparément dans leur unité d’origine. Comparez surtout des pièces de même référence : 100 petits gobelets et 100 grandes assiettes ne représentent pas le même service.
+
+Ce KPI relie directement :
+
+> Énergie → coût du lot → coût unitaire → pression environnementale.
+
+### 5.5. CO₂ évité : à réserver à une phase ultérieure
+
+N’ajoutez pas un coefficient arbitraire « X kg de CO₂ évités par assiette ».
+
+Une comparaison climatique doit examiner les cycles de vie, les produits de référence, les usages et la fin de vie. Les émissions évitées doivent être présentées séparément de votre propre bilan d’émissions, sans être déduites automatiquement de celui-ci. [ghgprotocol](https://ghgprotocol.org/sites/default/files/2023-03/18_WP_Comparative-Emissions_final.pdf)
+
+Pour votre première version, affichez :
+
+> « Impact climatique comparatif : non évalué ».
+
+## 6. La structure des données à prévoir
+
+Pour que tout soit lié, votre développeur doit pouvoir suivre ce parcours :
+
+```text
+Fournisseur / rizerie
+    ↓
+Lot de matière reçu
+    ↓
+Consommation dans un lot de fabrication
+    ↓
+Version de formulation + ressources consommées
+    ↓
+Contrôle qualité
+    ↓
+Stock par produit et par lot
+    ↓
+Ligne de commande → livraison → client
+    ↓
+Retour d’utilisation et substitution documentée
+```
+
+### Les objets minimum à enregistrer
+
+| Objet | Principaux champs |
+|---|---|
+| Lot matière | Fournisseur, date, matière, masse, état, coût, transport, justificatif. |
+| Formulation | Version, composants, proportions sur base définie, date. |
+| Lot fabrication | Produit, formulation, matières consommées, temps, énergie, coûts. |
+| Contrôle qualité | Lot, critères, quantité contrôlée, résultats, décision de libération. |
+| Mouvement de stock | Produit, lot, quantité, type de mouvement, motif, date. |
+| Commande | Client, lignes, conditionnement, prix, remises, statut. |
+| Livraison | Commande, lot expédié, quantité, réception, retour éventuel. |
+| Paiement | Commande ou facture, montant, date, moyen, rapprochement. |
+| Retour d’utilisation | Livraison, quantité utilisée, alternative remplacée, preuve, date. |
+| Dépense | Montant, nature, justificatif, rattachement éventuel à un lot. |
+
+Une commande doit pouvoir être livrée à partir de plusieurs lots ; un lot doit pouvoir alimenter plusieurs commandes.
+
+## 7. Exemple du lien entre les données
+
+Pour une livraison de gobelets, le système doit permettre d’ouvrir successivement :
+
+1. La commande et son prix.
+2. Le paiement reçu ou le solde restant.
+3. La livraison effective.
+4. Les lots de gobelets livrés.
+5. Le contrôle qualité de ces lots.
+6. Leur coût de fabrication.
+7. La quantité de coques utilisée.
+8. La provenance de ces coques.
+9. L’énergie consommée.
+10. Le retour client sur l’usage et le remplacement éventuel de plastique.
+
+Vous pourrez alors expliquer au jury :
+
+> « Nos ventes, nos coûts et nos indicateurs environnementaux reposent sur les mêmes lots et livraisons. Nous pouvons retrouver l’origine d’un chiffre et distinguer les mesures des estimations. »
+
+## 8. Organisation recommandée de la page KPI
+
+### Bandeau principal
+
+Six cartes seulement :
+
+- Chiffre d’affaires net.
+- Encaissements clients.
+- Marge sur coûts variables.
+- Unités livrées nettes.
+- Coques incorporées dans les produits conformes.
+- Articles plastiques substitués documentés.
+
+### Onglet 1 — Business
+
+- Ventes par produit et segment.
+- Réachat.
+- Créances et retards.
+- Retours et réclamations.
+- Stock disponible.
+
+### Onglet 2 — Production
+
+- Lots et formulations.
+- Rendement qualité.
+- Coût par pièce conforme.
+- Principales causes de rejet.
+- Statut des essais et validations.
+
+### Onglet 3 — Impact
+
+- Coques reçues et incorporées.
+- Substitution documentée.
+- Énergie et, ensuite, eau.
+- Devenir des rebuts.
+- Couverture des preuves.
+
+### Onglet 4 — Fiabilité des données
+
+- Livraisons reliées à un lot.
+- Lots disposant de pesées.
+- Lots disposant de coûts complets.
+- Livraisons disposant d’un retour d’utilisation.
+- Données manquantes ou estimées.
+
+Chaque carte doit être cliquable pour retrouver les enregistrements qui expliquent son montant.
+
+## 9. Les alertes à mettre en place
+
+Commencez avec des alertes fondées sur des incohérences, avant de fixer des objectifs arbitraires :
+
+- Commande livrée sans lot identifié.
+- Stock négatif.
+- Lot déclaré conforme sans contrôle enregistré.
+- Coût manquant sur un lot vendu.
+- Substitution déclarée supérieure aux quantités livrées nettes correspondantes.
+- Coques attribuées aux produits supérieures à la matière disponible.
+- Formulation modifiée sans nouvelle version.
+- Facture échue non réglée.
+
+Les seuils de coût, de qualité et de consommation seront définis après vos premiers lots mesurés.
+
+## 10. Ce que je vous recommande de développer d’abord
+
+À votre stade, l’ordre le plus utile est :
+
+1. Lots de matières et fournisseurs.
+2. Formulations et lots de fabrication.
+3. Contrôles qualité et coûts des prototypes.
+4. Stock par lot.
+5. Liaison aux commandes, paiements et livraisons existants.
+6. Formulaire de retour client.
+7. Calcul automatique des KPI.
+8. Export d’un rapport mensuel business et impact.
+
+Votre back-office sera ainsi un outil de preuve et de décision, pas seulement un écran de statistiques : vous pourrez identifier quelle formulation fonctionne, quel produit se vend avec une contribution positive et quelle substitution environnementale est réellement documentée.
+
+
+Pour compléter votre back-office, ajoutez deux dimensions distinctes :
+
+- Le volet économique : la richesse créée par RiceWare CI et les dépenses qui bénéficient aux acteurs locaux.
+- Le volet social : les emplois rémunérés, les revenus versés, les compétences développées et les conditions de travail.
+
+L’ensemble doit respecter une règle : **chaque résultat doit pouvoir être expliqué par une donnée source et un justificatif**. Comme vous êtes encore en prototypage, les chiffres ci-dessous sont des exemples de calcul, pas des résultats déjà obtenus par RiceWare CI.
+
+# 1. La chaîne de suivi complète
+
+Votre chaîne principale devient :
+
+> Approvisionnement → fabrication → contrôle qualité → stock → vente → utilisation réelle → impact documenté.
+
+Elle est complétée par deux chaînes transversales :
+
+> Achats → fournisseurs identifiés → factures → paiements → retombées économiques locales.
+
+> Travail effectué → heures enregistrées → rémunérations → formation et sécurité → résultats sociaux.
+
+Ainsi, un même lot de gobelets peut être relié :
+
+- Aux coques utilisées et à leur provenance.
+- Aux coûts de fabrication.
+- Aux personnes ayant travaillé sur le lot.
+- Aux rémunérations correspondantes.
+- Aux commandes livrées.
+- Au remplacement éventuel de produits plastiques.
+
+Il ne faut toutefois pas attribuer automatiquement tous les résultats de l’entreprise à chaque lot : les dépenses générales, les formations et certains emplois doivent rester suivis à l’échelle de l’entreprise.
+
+# 2. Les KPI économiques à ajouter
+
+Ces indicateurs complètent le chiffre d’affaires, les encaissements et la marge déjà prévus.
+
+| Nº | Indicateur | Unité | Ce qu’il permet de comprendre | Source |
+|---:|---|---|---|---|
+| E1 | Résultat d’exploitation | FCFA | L’activité couvre-t-elle ses coûts d’exploitation ? | Comptabilité et coûts des ventes. |
+| E2 | Trésorerie disponible | FCFA | Quelle somme est réellement disponible ? | Banque, mobile money et caisse rapprochés. |
+| E3 | Achats auprès de fournisseurs établis en Côte d’Ivoire | FCFA et % | Quelle part des achats bénéficie à des fournisseurs implantés dans le pays ? | Fournisseurs, factures et avoirs. |
+| E4 | Paiements effectifs aux fournisseurs locaux | FCFA | Combien a réellement été versé pendant la période ? | Paiements rapprochés des factures. |
+| E5 | Paiements aux rizeries pour les coques | FCFA | Quel débouché économique RiceWare crée-t-elle directement pour les fournisseurs de coques ? | Achats de coques et paiements. |
+| E6 | Fournisseurs locaux actifs et rémunérés | Nombre | Combien d’acteurs ont effectivement reçu un paiement ? | Fournisseurs et paiements. |
+| E7 | Paiements fournisseurs réalisés à échéance | % | RiceWare est-elle un partenaire commercial fiable ? | Échéances et dates de règlement. |
+
+La part des achats locaux est un indicateur reconnu de pratiques d’approvisionnement. Le référentiel GRI 204 demande notamment de définir précisément ce que signifie « local » et de calculer la proportion sur une base cohérente, par exemple les factures de la période. [globalreporting](https://www.globalreporting.org/publications/documents/english/gri-204-procurement-practices-2016/)
+
+## 2.1. Résultat d’exploitation
+
+Formule de gestion simplifiée :
+
+\[
+Résultat\ d’exploitation =
+CA\ net - Coût\ des\ ventes - Charges\ d’exploitation
+\]
+
+Le coût des ventes doit correspondre aux produits vendus, et non à toute la production du mois. Ne déduisez pas une seconde fois des charges déjà incluses dans ce coût. Le résultat d’exploitation permet de distinguer contribution positive par produit et rentabilité globale. [netsuite.co](https://www.netsuite.co.uk/portal/uk/resource/articles/erp/manufacturing-kpis-metrics.shtml)
+
+Exemple fictif :
+
+| Élément | Montant |
+|---|---:|
+| Chiffre d’affaires net | 1 200 000 FCFA |
+| Coût des produits vendus | 650 000 FCFA |
+| Autres charges d’exploitation, sans doublon | 400 000 FCFA |
+| Résultat d’exploitation | 150 000 FCFA |
+
+L’intitulé doit préciser « provisoire » tant que les écritures du mois ne sont pas complètes et validées.
+
+## 2.2. Trésorerie disponible
+
+Corrigez la formule utilisée dans certains modules précédents :
+
+\[
+Trésorerie\ de\ clôture =
+Trésorerie\ d’ouverture + Encaissements - Décaissements
+\]
+
+« Encaissements − décaissements » représente la variation de trésorerie, pas nécessairement le solde disponible.
+
+Exemple fictif :
+
+- Trésorerie d’ouverture : 500 000 FCFA.
+- Encaissements : 800 000 FCFA.
+- Décaissements : 950 000 FCFA.
+- Trésorerie de clôture : 350 000 FCFA.
+
+Séparez les encaissements commerciaux, les subventions, les emprunts et les apports des fondateurs.
+
+## 2.3. Part des achats locaux
+
+Je vous propose deux périmètres :
+
+- National : fournisseur établi en Côte d’Ivoire.
+- Proximité du site : fournisseur situé dans une zone géographique définie et enregistrée dans vos paramètres.
+
+\[
+Part\ des\ achats\ locaux =
+\frac{Achats\ auprès\ des\ fournisseurs\ locaux}
+{Total\ des\ achats\ du\ même\ périmètre}\times100
+\]
+
+Exemple fictif :
+
+- Achats totaux : 600 000 FCFA.
+- Achats auprès de fournisseurs établis en Côte d’Ivoire : 450 000 FCFA.
+- Part locale : 75%.
+
+Attention : un fournisseur ivoirien peut revendre des composants importés. « Achat auprès d’un fournisseur local » ne signifie donc pas « matière d’origine ivoirienne ». Conservez ces deux informations séparément. La définition géographique du local doit être explicite. [globalreporting](https://www.globalreporting.org/publications/documents/english/gri-204-procurement-practices-2016/)
+
+## 2.4. Revenus versés aux rizeries
+
+Affichez séparément :
+
+| Indicateur | Exemple fictif |
+|---|---:|
+| Montant facturé pour les coques | 40 000 FCFA |
+| Montant effectivement payé pour les coques | 30 000 FCFA |
+| Reste à payer | 10 000 FCFA |
+
+Si les coques sont données gratuitement :
+
+- Achat de coques : 0 FCFA, si la gratuité est documentée.
+- Transport : enregistré comme prestation distincte.
+- Rizerie partenaire : oui.
+- Rizerie rémunérée pour ses coques : non.
+
+N’affirmez pas que ces paiements constituent un revenu net supplémentaire sans comparer les coûts et revenus antérieurs de la rizerie. L’intitulé prudent est :
+
+> « Montants versés aux rizeries pour l’achat de coques ».
+
+# 3. Les KPI sociaux à ajouter
+
+Le volet social doit mesurer davantage que le nombre de personnes rencontrées. Il faut distinguer participation, emploi, rémunération, formation et sécurité.
+
+| Nº | Indicateur | Unité | Origine des données |
+|---:|---|---|---|
+| S1 | Personnes directement rémunérées | Personnes uniques | Personnel et rémunérations. |
+| S2 | Emploi direct en équivalent temps plein | ETP | Heures enregistrées et référence temps plein. |
+| S3 | Variation nette de l’emploi direct | ETP | Comparaison entre périodes comparables. |
+| S4 | Rémunérations nettes effectivement versées | FCFA | Paie et preuves de paiement. |
+| S5 | Participation des femmes et des jeunes | Personnes, ETP et % | Données déclarées volontairement. |
+| S6 | Personnes formées et heures de formation | Personnes et heures-personnes | Sessions et présence. |
+| S7 | Validation des compétences acquises | Nombre et % | Évaluation pratique documentée. |
+| S8 | Santé et sécurité au travail | Incidents, accidents, jours perdus | Registre de sécurité. |
+| S9 | Paiements des rémunérations à échéance | % | Dates d’échéance et dates de paiement. |
+
+Les cadres de suivi de durabilité distinguent notamment emploi, formation et santé-sécurité. Cela évite de présenter une simple participation à un atelier comme un emploi ou comme une amélioration démontrée des conditions de vie. [ebrd](https://www.ebrd.com/content/dam/ebrd_dxp/assets/pdfs/environment---sustainability/gri-reports/ebrd-gri-report-2024.pdf)
+
+## 3.1. Personnes rémunérées et ETP : deux chiffres différents
+
+### Personnes directement rémunérées
+
+Comptez chaque personne une seule fois sur la période, même si elle travaille sur plusieurs lots.
+
+Séparez :
+
+- Salariés.
+- Travailleurs occasionnels directement engagés.
+- Fondateurs rémunérés.
+- Fondateurs non rémunérés.
+- Stagiaires.
+- Prestataires indépendants.
+
+Ces catégories ne doivent pas être fusionnées sous « salariés ».
+
+### Équivalent temps plein
+
+Pour une mesure de volume de travail :
+
+\[
+ETP\ moyen\ sur\ la\ période =
+\frac{Heures\ de\ travail\ prises\ en\ compte}
+{Heures\ de\ référence\ d’un\ temps\ plein\ sur\ la\ même\ période}
+\]
+
+La référence doit correspondre à votre organisation et au cadre applicable. L’ETP permet de comparer des volumes de travail à temps plein et à temps partiel ; les référentiels d’impact utilisent cette distinction. [iris.thegiin](https://iris.thegiin.org/metric/5.1/pi4874/)
+
+Exemple pédagogique avec une référence choisie de 160 heures mensuelles — ce n’est pas une prescription réglementaire :
+
+| Personne | Heures du mois | ETP |
+|---|---:|---:|
+| Opérateur 1 | 160 h | 1 |
+| Opératrice 2 | 80 h | 0,5 |
+| Aide de production | 40 h | 0,25 |
+| Total | 280 h | 1,75 |
+
+Le bon affichage est :
+
+> « 3 personnes directement rémunérées, représentant 1,75 ETP sur le mois. »
+
+Pas :
+
+> « 3 emplois à temps plein créés. »
+
+## 3.2. Emploi créé : ne pas confondre effectif et création
+
+Affichez :
+
+\[
+Variation\ nette\ d’ETP =
+ETP\ de\ la\ période - ETP\ de\ référence
+\]
+
+Exemple fictif :
+
+- Référence : 1 ETP.
+- Période actuelle : 1,75 ETP.
+- Variation nette : +0,75 ETP.
+
+Cette évolution n’est pas nécessairement un nombre de postes permanents. Conservez aussi les embauches, départs et types de contrats.
+
+Pour les transporteurs et les rizeries, n’estimez pas automatiquement des « emplois indirects créés ». Au démarrage, mesurez plutôt :
+
+> « Prestataires rémunérés » et « Montants versés ».
+
+## 3.3. Revenus et rémunérations
+
+Créez trois champs :
+
+| Champ | Rôle |
+|---|---|
+| Montant dû | Ce que RiceWare doit verser. |
+| Montant payé | Ce qui a été effectivement versé. |
+| Échéance et date de paiement | Permet de suivre les retards. |
+
+Pour les salariés, distinguez également :
+
+- Salaire brut.
+- Net à payer.
+- Net effectivement versé.
+- Cotisations et charges employeur.
+- Remboursements de frais, qui ne sont pas des salaires.
+
+Exemple fictif :
+
+- Net dû : 240 000 FCFA.
+- Net payé : 220 000 FCFA.
+- Solde restant : 20 000 FCFA.
+
+Le tableau de bord social doit afficher les 220 000 FCFA comme rémunérations effectivement versées, sans masquer les 20 000 FCFA restant dus.
+
+## 3.4. Inclusion des femmes et des jeunes
+
+Suivez à la fois la participation et le volume de travail.
+
+\[
+Part\ des\ femmes\ en\ ETP =
+\frac{ETP\ des\ femmes}
+{ETP\ total\ du\ périmètre}\times100
+\]
+
+Même principe pour les jeunes, après avoir défini la tranche d’âge retenue, notamment si le programme de financement impose une définition.
+
+Précautions :
+
+- Une jeune femme peut appartenir aux deux catégories.
+- N’additionnez pas femmes + jeunes pour calculer un total de bénéficiaires.
+- Enregistrez « non renseigné » lorsque la donnée manque.
+- Affichez le taux de couverture des données démographiques.
+
+Par exemple, « 50% des personnes dont le genre est renseigné » n’a pas le même sens que « 50% de tout l’effectif ».
+
+## 3.5. Formation et compétences
+
+Comptez séparément :
+
+1. Les personnes uniques formées.
+2. Les heures-personnes.
+3. Les personnes ayant validé une compétence.
+
+Exemple fictif :
+
+- 4 personnes participent à une formation de 3 heures.
+- Volume : 12 heures-personnes.
+- 3 personnes réussissent l’évaluation pratique.
+- Taux de validation : 75%.
+
+Pour RiceWare CI, les compétences peuvent concerner :
+
+- Préparation et identification des coques.
+- Pesée et suivi des formulations.
+- Moulage.
+- Contrôle qualité.
+- Utilisation sûre des équipements.
+- Enregistrement des lots.
+
+Une présence à une formation ne démontre pas, à elle seule, la maîtrise d’une compétence. Les heures de formation sont un indicateur distinct dans les cadres de suivi social. [ebrd](https://www.ebrd.com/content/dam/ebrd_dxp/assets/pdfs/environment---sustainability/gri-reports/ebrd-gri-report-2024.pdf)
+
+## 3.6. Qualité et sécurité du travail
+
+Pour votre projet, créez un registre simple :
+
+| Indicateur | Mesure |
+|---|---|
+| Accidents enregistrés | Nombre sur la période. |
+| Presqu’accidents signalés | Nombre et description. |
+| Jours de travail perdus | Nombre. |
+| Personnes formées aux risques de leur poste | Nombre et % du personnel concerné. |
+| Actions correctives clôturées | Nombre clôturé / nombre à réaliser. |
+
+Au stade pilote, des nombres absolus sont souvent plus lisibles que des taux calculés sur très peu d’heures.
+
+« Aucun accident enregistré » ne signifie pas automatiquement « aucun risque ». Le suivi doit aussi montrer les signalements et les corrections.
+
+# 4. Un exemple chiffré cohérent entre économie et social
+
+Voici un scénario mensuel fictif, uniquement pour montrer la logique du système.
+
+## 4.1. Achats et paiements
+
+| Poste | Factures du mois | Paiements effectués |
+|---|---:|---:|
+| Coques auprès de rizeries ivoiriennes | 40 000 | 30 000 |
+| Transport local | 60 000 | 60 000 |
+| Autres achats auprès de fournisseurs établis en Côte d’Ivoire | 350 000 | 310 000 |
+| Achats directs auprès de fournisseurs étrangers | 150 000 | 150 000 |
+| Total | 600 000 FCFA | 550 000 FCFA |
+
+Résultats :
+
+- Part des achats auprès de fournisseurs établis en Côte d’Ivoire : 450 000 / 600 000 = 75%.
+- Paiements aux fournisseurs établis en Côte d’Ivoire : 400 000 FCFA.
+- Paiements pour les coques : 30 000 FCFA, déjà inclus dans les 400 000 FCFA.
+- Factures du tableau restant à payer : 50 000 FCFA.
+
+## 4.2. Travail et rémunérations
+
+Supposons, sur le même mois :
+
+- 3 personnes directement rémunérées.
+- 280 heures de travail.
+- 1,75 ETP avec la référence pédagogique précédente.
+- 220 000 FCFA de rémunérations nettes effectivement versées.
+- 4 personnes formées, dont certaines peuvent être les mêmes travailleurs.
+- 12 heures-personnes de formation.
+
+Vous pouvez alors afficher :
+
+> « Sur le mois, RiceWare CI a payé 400 000 FCFA à des fournisseurs établis en Côte d’Ivoire et versé 220 000 FCFA de rémunérations nettes à trois personnes, pour un volume de travail de 1,75 ETP. »
+
+Vous pouvez présenter le total de 620 000 FCFA comme :
+
+> « Paiements aux fournisseurs établis en Côte d’Ivoire et rémunérations nettes versées ».
+
+Mais pas comme « richesse nette créée », « bénéfice social » ou « contribution au PIB ». Il s’agit de flux monétaires, pas d’une mesure complète de valeur ajoutée.
+
+# 5. Les données supplémentaires à enregistrer
+
+Ajoutez les objets suivants à votre structure existante :
+
+| Objet | Champs essentiels | Lien avec le reste |
+|---|---|---|
+| Fiche fournisseur enrichie | Pays d’établissement, zone, type d’acteur, origine connue des produits | Achats, lots matière et paiements. |
+| Achat fournisseur | Facture, lignes, montant, taxes, échéance, avoirs | Coûts et achats locaux. |
+| Paiement fournisseur | Date, montant, facture, preuve | Retombées économiques réellement payées. |
+| Personne / intervenant | Identifiant, statut, dates d’activité | Travail, rémunérations et formation. |
+| Temps de travail | Date, heures, activité, lot éventuel | ETP et coût de main-d’œuvre. |
+| Rémunération | Période, brut, net dû, échéance | Charges et obligations sociales. |
+| Paiement de rémunération | Date, montant, justificatif | Revenus effectivement versés. |
+| Formation | Thème, durée, participants, évaluation | Développement des compétences. |
+| Événement sécurité | Date, gravité, action, responsable, clôture | Conditions de travail. |
+
+Les données individuelles de rémunération et démographiques doivent rester dans un espace à accès restreint. La page KPI affiche des agrégats, pas les salaires ou informations personnelles de chacun.
+
+# 6. Les règles anti-double comptage
+
+Votre back-office doit empêcher les confusions suivantes :
+
+| Confusion | Règle à appliquer |
+|---|---|
+| Un transporteur réalise cinq missions | Compter un prestataire unique, cinq missions et cinq paiements éventuels. |
+| Une rizerie reçoit un paiement | Le montant fait partie des paiements fournisseurs, pas un supplément à ajouter. |
+| Une salariée travaille sur trois lots | Une personne, des heures réparties sur trois lots. |
+| Une personne est jeune et femme | Une personne unique, présente dans deux ventilations. |
+| Un salarié suit plusieurs formations | Une personne unique formée ; additionner ses heures réelles. |
+| Un fondateur travaille gratuitement | Suivre sa contribution séparément, sans inventer de rémunération versée. |
+| Une facture est émise mais non payée | Achat enregistré, paiement non réalisé. |
+| Un fournisseur emploie dix personnes | Ne pas déclarer automatiquement dix emplois créés par RiceWare. |
+
+Le chiffre d’affaires, les achats, les salaires et les paiements peuvent expliquer une même activité sous différents angles. Ils ne doivent pas être additionnés pour produire un « impact total » artificiel.
+
+# 7. Organisation actualisée de votre page KPI
+
+## Bandeau principal
+
+Conservez un affichage limité à huit cartes :
+
+1. Chiffre d’affaires net.
+2. Trésorerie disponible.
+3. Marge sur coûts variables.
+4. Unités livrées nettes.
+5. Coques incorporées dans les produits conformes.
+6. Articles plastiques substitués documentés.
+7. Paiements aux fournisseurs établis en Côte d’Ivoire.
+8. Emploi direct : personnes rémunérées et ETP.
+
+Pour la carte emploi, affichez par exemple :
+
+> 3 personnes rémunérées · 1,75 ETP
+
+Les encaissements clients restent accessibles dans l’onglet Business.
+
+## Onglets recommandés
+
+| Onglet | Contenu |
+|---|---|
+| Business & finances | Ventes, encaissements, marges, résultat, trésorerie, créances. |
+| Production & qualité | Lots, coûts, rendements, stocks et conformité. |
+| Environnement | Matière, substitution, énergie, eau et rebuts. |
+| Économie locale | Achats locaux, paiements, rizeries et prestataires. |
+| Social & conditions de travail | Emploi, rémunérations, inclusion, formation et sécurité. |
+| Fiabilité des données | Justificatifs, couverture, anomalies et estimations. |
+
+Chaque indicateur doit conserver la possibilité d’ouvrir les données sources.
+
+# 8. Les alertes économiques et sociales à ajouter
+
+- Paiement fournisseur sans facture ou justificatif.
+- Fournisseur compté comme local sans localisation renseignée.
+- Rémunération arrivée à échéance et non intégralement payée.
+- Personne comptée en ETP sans heures ou base contractuelle documentée.
+- Même personne enregistrée plusieurs fois.
+- Montants payés supérieurs aux sommes dues sans explication.
+- Formation comptée sans présence enregistrée.
+- Incident de sécurité sans action de suivi.
+- Heures affectées aux lots incompatibles avec le total enregistré pour la personne.
+- Données personnelles visibles par un utilisateur non autorisé.
+
+Ne fixez pas immédiatement des objectifs arbitraires tels que « dix emplois créés » ou « 80% d’achats locaux ». Enregistrez d’abord la situation de départ, puis définissez des objectifs compatibles avec votre capacité, votre budget et les conditions du pilote.
+
+# 9. Ce que vous pourrez présenter au jury
+
+Votre rapport mensuel pourra suivre cette structure :
+
+> « Sur la période, RiceWare CI a livré [X] produits et réalisé [X] FCFA de chiffre d’affaires net. Les achats auprès de fournisseurs établis en Côte d’Ivoire représentent [X] % des achats du périmètre suivi, et [X] FCFA leur ont effectivement été versés, dont [X] FCFA aux rizeries pour les coques.  
+>   
+> Le projet a directement rémunéré [X] personnes, représentant [X] ETP, et versé [X] FCFA de rémunérations nettes. [X] personnes ont suivi des formations, pour [X] heures-personnes.  
+>   
+> Les produits conformes incorporent [X] kg de coques. Le remplacement de [X] articles plastiques est documenté sur [X] % des quantités livrées. Les résultats non mesurés restent identifiés comme tels. »
+
+Vous aurez ainsi un système qui distingue clairement performance commerciale, retombées économiques, résultats sociaux et impact environnemental, sans transformer automatiquement une dépense, une vente ou une participation en bénéfice démontré.

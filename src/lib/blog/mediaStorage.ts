@@ -32,14 +32,28 @@ const IMAGE_FORMATS: Record<string, ImageFormat> = {
   },
 };
 
+const VIDEO_FORMATS: Record<string, { extension: string; matches: (bytes: Buffer) => boolean }> = {
+  'video/mp4': {
+    extension: '.mp4',
+    matches: (bytes) => bytes.length > 12 && bytes.subarray(4, 8).toString('ascii') === 'ftyp',
+  },
+  'video/webm': {
+    extension: '.webm',
+    matches: (bytes) => bytes.length > 4 && bytes.subarray(0, 4).toString('ascii') === '\x1aE\xdf\xa3',
+  },
+};
+
 const CONTENT_TYPE_BY_EXTENSION: Record<string, string> = Object.fromEntries(
   Object.entries(IMAGE_FORMATS).map(([mimeType, format]) => [format.extension, mimeType]),
 );
 
-const STORED_FILENAME_PATTERN = /^[0-9a-f-]{36}\.(jpg|png|webp|gif)$/;
+const STORED_FILENAME_PATTERN = /^[0-9a-f-]{36}\.(jpg|png|webp|gif|mp4|webm)$/;
 
 function getUploadDir(): string {
-  return path.resolve(process.cwd(), process.env.BLOG_UPLOAD_DIR || path.join('storage', 'uploads', 'blog'));
+  return path.resolve(
+    /*turbopackIgnore: true*/ process.cwd(),
+    process.env.BLOG_UPLOAD_DIR || path.join('storage', 'uploads', 'blog'),
+  );
 }
 
 export type StoredImage = {
@@ -60,7 +74,29 @@ export async function storeImage(file: File): Promise<StoredImage> {
   const filename = `${crypto.randomUUID()}${format.extension}`;
   const uploadDir = getUploadDir();
   await fs.mkdir(uploadDir, { recursive: true });
-  await fs.writeFile(path.join(uploadDir, filename), bytes);
+  await fs.writeFile(path.join(/*turbopackIgnore: true*/ uploadDir, filename), bytes);
+
+  return { filename, mimeType: file.type, sizeBytes: bytes.byteLength, url: `${MEDIA_ROUTE_PREFIX}${filename}` };
+}
+
+export async function storeMedia(file: File): Promise<StoredImage> {
+  const isImage = !!IMAGE_FORMATS[file.type];
+  const isVideo = !!VIDEO_FORMATS[file.type];
+  if (!isImage && !isVideo) {
+    throw new BlogInputError(['Format non pris en charge : JPEG, PNG, WebP, GIF, MP4 ou WebM.']);
+  }
+
+  const maxBytes = isImage ? MAX_IMAGE_BYTES : 50 * 1024 * 1024;
+  if (file.size > maxBytes) throw new BlogInputError([isImage ? 'Image trop lourde (5 Mo maximum).' : 'Vidéo trop lourde (50 Mo maximum).']);
+
+  const format = isImage ? IMAGE_FORMATS[file.type] : VIDEO_FORMATS[file.type];
+  const bytes = Buffer.from(await file.arrayBuffer());
+  if (!format!.matches(bytes)) throw new BlogInputError(['Le contenu du fichier ne correspond pas à un média valide.']);
+
+  const filename = `${crypto.randomUUID()}${format!.extension}`;
+  const uploadDir = getUploadDir();
+  await fs.mkdir(uploadDir, { recursive: true });
+  await fs.writeFile(path.join(/*turbopackIgnore: true*/ uploadDir, filename), bytes);
 
   return { filename, mimeType: file.type, sizeBytes: bytes.byteLength, url: `${MEDIA_ROUTE_PREFIX}${filename}` };
 }
@@ -69,8 +105,8 @@ export async function readStoredImage(filename: string): Promise<{ bytes: Buffer
   if (!STORED_FILENAME_PATTERN.test(filename)) return null;
 
   try {
-    const bytes = await fs.readFile(path.join(getUploadDir(), filename));
-    return { bytes, contentType: CONTENT_TYPE_BY_EXTENSION[path.extname(filename)] };
+    const bytes = await fs.readFile(path.join(/*turbopackIgnore: true*/ getUploadDir(), filename));
+    return { bytes, contentType: CONTENT_TYPE_BY_EXTENSION[path.extname(filename)] ?? 'application/octet-stream' };
   } catch {
     return null;
   }
@@ -78,5 +114,5 @@ export async function readStoredImage(filename: string): Promise<{ bytes: Buffer
 
 export async function removeStoredImage(filename: string): Promise<void> {
   if (!STORED_FILENAME_PATTERN.test(filename)) return;
-  await fs.unlink(path.join(getUploadDir(), filename)).catch(() => undefined);
+  await fs.unlink(path.join(/*turbopackIgnore: true*/ getUploadDir(), filename)).catch(() => undefined);
 }

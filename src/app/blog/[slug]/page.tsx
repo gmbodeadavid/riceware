@@ -91,30 +91,79 @@ export default async function BlogPostDetailPage({
             <div className="max-w-[65ch] space-y-6">
               {post.content.map((block: AnyBlogBlock) => {
                 if (block.type === 'paragraph') {
-                  const content = block.content as { text?: string };
                   return (
-                    <p key={block.id} className="text-base sm:text-lg leading-relaxed text-ink/90 whitespace-pre-line">
-                      {content.text}
-                    </p>
+                    <p
+                      key={block.id}
+                      className="text-base sm:text-lg leading-relaxed text-ink/90 whitespace-pre-line"
+                      dangerouslySetInnerHTML={{ __html: block.content.text.replace(/\n/g, '<br />') }}
+                    />
                   );
                 }
                 if (block.type === 'heading') {
                   const content = block.content as { text?: string; level?: number };
                   const Tag = content.level === 3 ? 'h3' : content.level === 4 ? 'h4' : 'h2';
                   return (
-                    <Tag key={block.id} className="mt-8 mb-4 font-display text-xl font-bold text-ink sm:text-2xl">
-                      {content.text}
-                    </Tag>
+                    <Tag
+                      key={block.id}
+                      className="mt-8 mb-4 font-display text-xl font-bold text-ink sm:text-2xl"
+                      dangerouslySetInnerHTML={{ __html: content.text ?? '' }}
+                    />
                   );
                 }
                 if (block.type === 'quote') {
                   const content = block.content as { text?: string; author?: string };
                   return (
                     <blockquote key={block.id} className="border-l-4 border-paddy pl-4 italic text-ink-muted my-6">
-                      <p>{content.text}</p>
+                      <p dangerouslySetInnerHTML={{ __html: content.text?.replace(/\n/g, '<br />') ?? '' }} />
                       {content.author && <cite className="block not-italic text-sm font-semibold mt-2">— {content.author}</cite>}
                     </blockquote>
                   );
+                }
+                if (block.type === 'callout') {
+                  const content = block.content as { text?: string; variant?: string; title?: string };
+                  return (
+                    <aside key={block.id} className={`rounded border p-4 my-6 text-ink callout callout-${content.variant ?? 'info'}`}>
+                      {content.title && <strong className="block mb-2 font-semibold">{content.title}</strong>}
+                      <p dangerouslySetInnerHTML={{ __html: content.text?.replace(/\n/g, '<br />') ?? '' }} />
+                    </aside>
+                  );
+                }
+                if (block.type === 'image') {
+                  const content = block.content as { mediaId?: string; caption?: string };
+                  const image = post.media[content.mediaId ?? ''];
+                  if (!image) return null;
+                  return (
+                    <figure key={block.id} className="my-6 text-center">
+                      <img
+                        src={image.url}
+                        alt={image.altText ?? ((block.content as { text?: string }).text ?? '')}
+                        loading="lazy"
+                        className="max-w-full h-auto rounded border border-line mx-auto"
+                      />
+                      {content.caption && <figcaption className="mt-2 text-sm text-ink-muted">{content.caption}</figcaption>}
+                    </figure>
+                  );
+                }
+                if (block.type === 'video') {
+                  const content = block.content as { mediaId?: string; caption?: string; autoplay?: boolean; loop?: boolean; muted?: boolean };
+                  const video = post.media[content.mediaId ?? ''];
+                  if (!video) return null;
+                  return (
+                    <figure key={block.id} className="my-6 text-center">
+                      <video
+                        controls
+                        autoPlay={content.autoplay ?? false}
+                        loop={content.loop ?? false}
+                        muted={content.muted ?? true}
+                        src={video.url}
+                        className="max-w-full h-auto rounded border border-line mx-auto"
+                      />
+                      {content.caption && <figcaption className="mt-2 text-sm text-ink-muted">{content.caption}</figcaption>}
+                    </figure>
+                  );
+                }
+                if (block.type === 'divider') {
+                  return <hr key={block.id} className="my-8 border border-line" />;
                 }
                 return null;
               })}

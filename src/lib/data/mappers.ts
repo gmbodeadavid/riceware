@@ -72,6 +72,7 @@ export function mapProductPack(row: ProductPackRow): ProductPack {
     label: row.label,
     quantity: row.quantity,
     price: row.price,
+    priceValue: row.priceValue,
     note: row.note,
   };
 }
@@ -227,10 +228,24 @@ function mapOrderLine(row: OrderLineRow): OrderLine {
   };
 }
 
-export type MappedOrder = Order & { customerName?: string };
+export type DeliveryAddressSnapshot = {
+  city: string;
+  district?: string;
+  details?: string;
+  deliveryInstructions?: string;
+};
+
+export type MappedOrder = Order & {
+  customerName?: string;
+  customerPhone?: string;
+  deliveryAddress?: DeliveryAddressSnapshot;
+  paymentPlan?: string;
+  deliveryOption?: string;
+  preferredPaymentMethod?: string;
+};
 
 export function mapOrder(
-  row: OrderRow & { lines: OrderLineRow[]; customer?: CustomerRow | null },
+  row: OrderRow & { lines: OrderLineRow[]; customer?: CustomerRow | null; deliveryAddress?: AddressRow | null },
 ): MappedOrder {
   return {
     id: row.id,
@@ -251,6 +266,18 @@ export function mapOrder(
     cancelledAt: toIso(row.cancelledAt),
     notes: row.notes ?? undefined,
     customerName: row.customer?.fullName,
+    customerPhone: row.customer?.phone,
+    deliveryAddress: row.deliveryAddress
+      ? {
+          city: row.deliveryAddress.city,
+          district: row.deliveryAddress.district ?? undefined,
+          details: row.deliveryAddress.details ?? undefined,
+          deliveryInstructions: row.deliveryAddress.deliveryInstructions ?? undefined,
+        }
+      : undefined,
+    paymentPlan: row.paymentPlan ?? undefined,
+    deliveryOption: row.deliveryOption ?? undefined,
+    preferredPaymentMethod: row.preferredPaymentMethod ?? undefined,
   };
 }
 
