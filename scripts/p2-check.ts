@@ -17,6 +17,8 @@ import {
   getOriginByRizerie,
   getPackLotStock,
   createAllocation,
+  createBatchMaterialUsage,
+  assertLotStockSufficient,
   softDeletePackLot,
   softDeleteAllocation,
   updatePackLotStatus,
@@ -115,40 +117,38 @@ async function main() {
   }
   assert(deletedRejected, 'PackLot supprimé → allocation rejetée');
 
-  // ─── Test 7 : Concurrence — deux allocations simultanées, stock insuffisant
-  console.log('\n7) Concurrence : deux Promise.all sur même PackLot, stock insuffisant');
-  // PackLot assiette100 a 15 restants. Deux demandes de 10 en parallèle → une seule passe.
-  const results = await Promise.allSettled([
-    createAllocation({ orderLineId: 'seed-p2-line-1', packLotId: 'seed-p2-packlot-assiette100', quantity: 10 }),
-    createAllocation({ orderLineId: 'seed-p2-line-1', packLotId: 'seed-p2-packlot-assiette100', quantity: 10 }),
-  ]);
-  const fulfilled = results.filter(r => r.status === 'fulfilled').length;
-  const rejected = results.filter(r => r.status === 'rejected').length;
-  // Note: seed-p2-line-1 a quantity=5, alreadyAllocated=5, donc 5+10>5 → les deux échoueront
-  // sur le guard "dépasserait la quantité commandée". C'est attendu et démontre la protection.
-  // Testons plutôt avec un nouveau PackLot fraîchement créé et une nouvelle orderLine.
-  console.log(`     Promise.all résultat : ${fulfilled} fulfillé(s), ${rejected} rejeté(s)`);
-  // Les deux sont rejetés car la ligne est déjà allouée (5/5), ce qui est correct.
-  assert(results.every(r => r.status === 'rejected'), 'Les deux rejets attendus (ligne déjà allouée à 5/5)');
-
-  // Concurrence réelle avec une nouvelle ligne + nouveau PackLot
+  // ─── Test 7 : Concurrence — message de rejet = erreur métier (pas SQLITE_BUSY)
+  console.log('\n7) Concurrence : message de rejet = erreur métier, pas SQLITE_BUSY');
+  // Concurrence réelle avec une nouvelle ligne + nouveau PackLot (stock=5)
   const concPl = await prisma.packLot.create({
     data: { code: 'PK-TEST-CONC-001', batchId: 'seed-p2-batch-multi', packId: 'assiette-plate-pack-100', quantity: 5, status: 'libre' },
   });
-  // Créer une commande temporaire avec une ligne de qty=20 pour tester le dépassement
   const concCustomer = await prisma.customer.create({ data: { fullName: 'Test Concurrence', phone: '+2250700000000' } });
   const concAddr = await prisma.address.create({ data: { customerId: concCustomer.id, city: 'Abidjan' } });
   const concOrder = await prisma.order.create({ data: { orderNumber: 'RW-CONC-TEST-001', customerId: concCustomer.id, deliveryAddressId: concAddr.id, channel: 'direct_sale', status: 'confirmed', paymentStatus: 'pending', totalAmount: 0 } });
   const concLine = await prisma.orderLine.create({ data: { orderId: concOrder.id, packNameSnapshot: 'Test', packContentSnapshot: {}, quantity: 20, unitPriceAmount: 0, lineTotalAmount: 0 } });
 
+  // Deux allocations simultanées de 4 sur un PackLot de stock=5 :
+  //   Première réussit (stock restant = 1).
+  //   Deuxième voit stock=1 < 4 → TraceabilityError (pas SQLITE_BUSY).
   const concResults = await Promise.allSettled([
-    createAllocation({ orderLineId: concLine.id, packLotId: concPl.id, quantity: 4 }), // 4 ≤ 5 → OK
-    createAllocation({ orderLineId: concLine.id, packLotId: concPl.id, quantity: 4 }), // 4 ≤ 5 mais après la première → stock=1 → refusé
+    createAllocation({ orderLineId: concLine.id, packLotId: concPl.id, quantity: 4 }),
+    createAllocation({ orderLineId: concLine.id, packLotId: concPl.id, quantity: 4 }),
   ]);
   const concFulfilled = concResults.filter(r => r.status === 'fulfilled').length;
   const concRejected = concResults.filter(r => r.status === 'rejected').length;
   console.log(`     Concurrence réelle : ${concFulfilled} réussi(s), ${concRejected} refusé(s)`);
   assert(concFulfilled === 1 && concRejected === 1, `Exactement 1 réussi et 1 refusé (got ${concFulfilled}F/${concRejected}R)`);
+
+  // Vérifier que le rejet est bien un message métier (pas SQLITE_BUSY / timeout)
+  const rejectedResult = concResults.find(r => r.status === 'rejected') as PromiseRejectedResult | undefined;
+  const rejMsg = rejectedResult?.reason?.message ?? '';
+  console.log(`     Message de rejet : "${rejMsg}"`);
+  assert(rejMsg.includes('supérieure au stock') || rejMsg.includes('PackLot'), `Message métier TraceabilityError (pas SQLITE_BUSY)`);
+  assert(!rejMsg.toLowerCase().includes('busy') && !rejMsg.toLowerCase().includes('timeout'), `Pas de SQLITE_BUSY ni timeout`);
+  // Note PostgreSQL : sous PostgreSQL, il faudrait utiliser SELECT ... FOR UPDATE dans la transaction
+  // pour un verrouillage pessimiste explicite (SQLite sérialise automatiquement les transactions write).
+  // Prisma ne supporte pas FOR UPDATE nativement — utiliser $queryRaw ou SKIP LOCKED.
 
   // Nettoyage données temporaires de concurrence
   await prisma.orderLineAllocation.deleteMany({ where: { orderLineId: concLine.id } });
@@ -173,8 +173,46 @@ async function main() {
     console.log(`     Commande ${realOrder.orderNumber} — ${totalAlloc} allocation(s) → "Non tracé"`);
   }
 
-  // ─── Test 9 : getTraceabilityCoverage — la commande réelle compte dans "non couverte"
-  console.log('\n9) getTraceabilityCoverage — couverture partielle attendue');
+  // ─── Test 9 : assertLotStockSufficient + createBatchMaterialUsage — restantNonRenseigné
+  console.log('\n9) assertLotStockSufficient + createBatchMaterialUsage — restant non renseigné (Point 5)');
+  // seed-lot-niofoin a un BMU estimé (kgUsed=null) créé par migrate-traceability.ts
+  const lotWithNull = await prisma.lotCoques.findUnique({ where: { id: 'seed-lot-niofoin' } });
+  assert(!!lotWithNull, 'Lot niofoin trouvé');
+  if (lotWithNull) {
+    // assertLotStockSufficient doit retourner restantNonRenseigné=true
+    const { restantNonRenseigné } = await assertLotStockSufficient('seed-lot-niofoin', 1);
+    assert(restantNonRenseigné === true, `restantNonRenseigné=true pour lot avec kgUsed=null (got ${restantNonRenseigné})`);
+
+    // createBatchMaterialUsage sans motif → refusé 428
+    let motifRefused = false;
+    try {
+      await createBatchMaterialUsage({ batchId: 'seed-batch-bol', lotCoquesId: 'seed-lot-niofoin', kgUsed: 10 });
+    } catch (e: unknown) {
+      motifRefused = e instanceof Error && (e as any).status === 428 && e.message.includes('motifEstimation');
+    }
+    assert(motifRefused, 'Écriture sans motif refusée avec status 428');
+
+    // createBatchMaterialUsage avec motif → accepté, estimated=true
+    // (utilise seed-batch-gobelet + seed-lot-niofoin pour éviter doublons)
+    let motifAccepted = false;
+    let createdBmu: { id: string; estimated: boolean } | undefined;
+    try {
+      createdBmu = await createBatchMaterialUsage({
+        batchId: 'seed-batch-gobelet',
+        lotCoquesId: 'seed-lot-niofoin',
+        kgUsed: 50,
+        motifEstimation: 'Test closure P2 — données historiques',
+      });
+      motifAccepted = true;
+    } catch (e) { console.error('createBMU error:', (e as Error).message); }
+    assert(motifAccepted, 'Écriture avec motif acceptée');
+    assert(createdBmu?.estimated === true, `estimated=true quand motifEstimation fourni (got ${createdBmu?.estimated})`);
+    // Nettoyage
+    if (createdBmu) await prisma.batchMaterialUsage.delete({ where: { id: createdBmu.id } });
+  }
+
+  // ─── Test 10 : getTraceabilityCoverage — couverture sur la base actuelle (avec seed P2)
+  console.log('\n10) getTraceabilityCoverage — couverture partielle attendue (base actuelle)');
   const coverage = await getTraceabilityCoverage();
   assert(coverage.batches.pct === 100, `100% batches avec usage (got ${coverage.batches.pct.toFixed(0)}%)`);
   assert(coverage.lines.total >= 3, `≥3 lignes livrées (got ${coverage.lines.total})`);
@@ -182,8 +220,8 @@ async function main() {
   assert(coverage.lines.fullyCovered < coverage.lines.total, `Pas 100% de lignes couvertes (réelle non tracée)`);
   console.log(`     Couverture lignes : ${coverage.lines.fullyCovered}/${coverage.lines.total} (${coverage.lines.pct.toFixed(0)}%)`);
 
-  // ─── Test 10 : getOriginByRizerie — kgEstimated=true pour les anciens lots
-  console.log('\n10) getOriginByRizerie — kgEstimated pour usages null');
+  // ─── Test 11 : getOriginByRizerie — kgEstimated=true pour les anciens lots
+  console.log('\n11) getOriginByRizerie — kgEstimated pour usages null');
   const origins = await getOriginByRizerie();
   assert(origins.length >= 2, `≥2 rizeries dans les origines (got ${origins.length})`);
   // Rizeries P1 (anciens lots) ont kgUsed=null → kgEstimated=true
@@ -195,8 +233,8 @@ async function main() {
   const daloaOrig = origins.find(o => o.rizerieNom.includes('Daloa'));
   assert(!!daloaOrig && daloaOrig.kgTotal === 150, `Daloa kgTotal=150 (got ${daloaOrig?.kgTotal})`);
 
-  // ─── Test 11 : soft-delete d'une allocation → getPackLotStock augmente
-  console.log('\n11) Soft-delete allocation → stock récupéré');
+  // ─── Test 12 : soft-delete d'une allocation → getPackLotStock augmente
+  console.log('\n12) Soft-delete allocation → stock récupéré');
   const stockBefore = await getPackLotStock('seed-p2-packlot-assiette100');
   // Trouver l'allocation seed-p2-alloc-1 (qty=5)
   const alloc = await prisma.orderLineAllocation.findUnique({ where: { id: 'seed-p2-alloc-1' } });

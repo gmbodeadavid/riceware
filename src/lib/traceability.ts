@@ -430,23 +430,21 @@ export async function assertPackLotAllocatable(packLotId: string, requestedQty: 
 /**
  * assertLotStockSufficient (utilisé dans la transaction) :
  *
- * Pour les usages avec kgUsed null (données historiques estimées),
- * la quantité consommée est inconnue → on l'exclut du calcul.
- * Cela signifie que assertLotStockSufficient est OPTIMISTE quand des nulls
- * sont présents : le restant calculé peut être surévalué.
- * Le flag lot.hasNullUsages (retourné dans le résultat) avertit l'appelant.
+ * RÈGLE P2 (point 5) : si des usages du lot ont kgUsed=null, le restant est
+ * « non renseigné » — la fonction retourne restantNonRenseigné=true.
+ * L'appelant DOIT alors exiger une confirmation explicite avec motif avant
+ * d'écrire (voir createBatchMaterialUsage). Sans confirmation, l'écriture
+ * est refusée avec le code 428 (Precondition Required).
  *
  * Exemple : lot netWeightKg=1000, usages=[{kgUsed:200}, {kgUsed:null}]
- *   → alreadyUsed = 200 (null ignoré), available = 800
- *   → si kgRequested=900 → refusé (800 < 900) ✓
- *   → si kgRequested=700 → accepté, mais ATTENTION : le null usage
- *     représente une consommation inconnue → le lot peut déjà être épuisé.
+ *   → alreadyUsed=200, available=800 (sous-estimé : consommation null ignorée)
+ *   → restantNonRenseigné=true → écriture refusée sans motif explicite.
  */
 async function assertLotStockSufficientInTx(
   tx: Prisma.TransactionClient,
   lotCoquesId: string,
   kgRequested: number,
-): Promise<{ hasNullUsages: boolean }> {
+): Promise<{ restantNonRenseigné: boolean }> {
   const lot = await tx.lotCoques.findUnique({
     where: { id: lotCoquesId },
     include: { usages: { where: { deletedAt: null }, select: { kgUsed: true } } },
@@ -454,22 +452,24 @@ async function assertLotStockSufficientInTx(
   if (!lot) throw new TraceabilityError('Lot introuvable.', { status: 404 });
   if (lot.deletedAt) throw new TraceabilityError('Ce lot a été supprimé.', { status: 409 });
 
-  const hasNullUsages = lot.usages.some((u) => u.kgUsed == null);
-  // null ignoré dans la somme (optimiste)
+  const restantNonRenseigné = lot.usages.some((u) => u.kgUsed == null);
+  // null ignoré dans la somme — résultat optimiste (restant potentiellement surévalué)
   const alreadyUsed = lot.usages.reduce((s, u) => s + (u.kgUsed ?? 0), 0);
   const available = lot.netWeightKg - alreadyUsed;
 
   if (kgRequested > available) {
     throw new TraceabilityError(
-      `Consommation demandée (${kgRequested} kg) supérieure au stock disponible du lot ${lot.code} (${available} kg restants sur ${lot.netWeightKg} kg${hasNullUsages ? ' — des usages sans kgUsed sont présents' : ''}).`,
+      `Consommation demandée (${kgRequested} kg) supérieure au stock calculé du lot ${lot.code} ` +
+      `(${available} kg restants sur ${lot.netWeightKg} kg` +
+      `${restantNonRenseigné ? ' — restant NON RENSEIGNÉ : des usages sans kgUsed sont présents' : ''}).`,
       { status: 409 },
     );
   }
-  return { hasNullUsages };
+  return { restantNonRenseigné };
 }
 
-export async function assertLotStockSufficient(lotCoquesId: string, kgRequested: number): Promise<void> {
-  await assertLotStockSufficientInTx(prisma as unknown as Prisma.TransactionClient, lotCoquesId, kgRequested);
+export async function assertLotStockSufficient(lotCoquesId: string, kgRequested: number): Promise<{ restantNonRenseigné: boolean }> {
+  return assertLotStockSufficientInTx(prisma as unknown as Prisma.TransactionClient, lotCoquesId, kgRequested);
 }
 
 // ─── Soft-delete helpers ─────────────────────────────────────────────────────
@@ -586,16 +586,30 @@ export async function createAllocation(input: AllocationInput) {
 /**
  * createBatchMaterialUsage — entièrement transactionnel.
  *
- * La vérification du stock du lot et l'écriture sont dans la même $transaction.
+ * Règle P2 (point 5) :
+ * - Si le lot contient des usages avec kgUsed=null (restant non renseigné),
+ *   l'écriture est refusée avec 428 sauf si `motifEstimation` est fourni.
+ * - Quand `motifEstimation` est fourni, l'usage est créé avec estimated=true.
+ * - Sans nulls, `motifEstimation` est ignoré et estimated=false.
  */
 export async function createBatchMaterialUsage(input: {
   batchId: string;
   lotCoquesId: string;
   kgUsed: number;
+  /** Requis si le lot a des usages kgUsed=null (restant non renseigné). */
+  motifEstimation?: string;
 }) {
   return prisma.$transaction(async (tx) => {
-    // Re-lecture dans la transaction
-    await assertLotStockSufficientInTx(tx, input.lotCoquesId, input.kgUsed);
+    const { restantNonRenseigné } = await assertLotStockSufficientInTx(tx, input.lotCoquesId, input.kgUsed);
+
+    // Point 5 : si restant non renseigné, exiger une confirmation explicite
+    if (restantNonRenseigné && !input.motifEstimation) {
+      throw new TraceabilityError(
+        `Le lot contient des usages sans kgUsed renseigné — le restant disponible est INCERTAIN. ` +
+        `Fournissez motifEstimation pour confirmer que vous acceptez d'écrire malgré l'incertitude.`,
+        { status: 428 }, // 428 Precondition Required
+      );
+    }
 
     const existing = await tx.batchMaterialUsage.findUnique({
       where: { batchId_lotCoquesId: { batchId: input.batchId, lotCoquesId: input.lotCoquesId } },
@@ -609,7 +623,8 @@ export async function createBatchMaterialUsage(input: {
         batchId: input.batchId,
         lotCoquesId: input.lotCoquesId,
         kgUsed: input.kgUsed,
-        estimated: false,
+        // estimated=true si le lot avait des nulls (on ne peut pas garantir l'exactitude)
+        estimated: restantNonRenseigné,
       },
     });
   });
