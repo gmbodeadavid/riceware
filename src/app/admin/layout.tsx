@@ -1,44 +1,90 @@
 'use client';
 
-import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import type { AdminRole } from '@/lib/rbac';
+import AdminSidebar from '@/components/admin/AdminSidebar';
+import AdminTopbar from '@/components/admin/AdminTopbar';
 
-export default function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+type Session = {
+  name: string;
+  email?: string;
+  role: AdminRole;
+  roleLabel: string;
+  permissions: string[];
+};
+
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const isLoginPage = pathname === '/admin/login';
+  const [session, setSession] = useState<Session | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    if (isLoginPage) return;
+
+    let active = true;
+    fetch('/api/admin/session')
+      .then(async (response) => {
+        if (response.status === 401) {
+          router.push('/admin/login');
+          return null;
+        }
+        return response.ok ? ((await response.json()) as Session) : null;
+      })
+      .then((data) => {
+        if (active) setSession(data);
+      })
+      .catch(() => undefined);
+
+    return () => {
+      active = false;
+    };
+  }, [isLoginPage, router]);
+
+  // Close sidebar on route change (mobile)
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
+
+  if (isLoginPage) {
+    return <div className="min-h-screen bg-ground font-body text-ink">{children}</div>;
+  }
+
+  async function handleLogout() {
+    await fetch('/api/admin/logout', { method: 'POST' });
+    router.push('/admin/login');
+    router.refresh();
+  }
 
   return (
-    <div className="min-h-screen bg-ground font-body text-ink flex flex-col">
-      {!isLoginPage && (
-        <header className="bg-surface border-b border-line px-4 py-3">
-          <nav className="max-w-page mx-auto flex items-center gap-4">
-            <Link href="/admin/articles" className="font-semibold text-paddy hover:text-paddy-deep">
-              RiceWare Admin
-            </Link>
-            <div className="flex-1" />
-            <Link href="/admin/articles/new" className="px-3 py-1.5 bg-paddy text-white rounded text-sm hover:bg-paddy-deep transition">
-              Nouvel article
-            </Link>
-            <button
-              onClick={async () => {
-                await fetch('/api/admin/logout', { method: 'POST' });
-                router.push('/admin/login');
-              }}
-              className="px-3 py-1.5 border border-line text-sm rounded hover:bg-husk-soft transition"
-            >
-              Déconnexion
-            </button>
-          </nav>
-        </header>
-      )}
-      <main className="flex-1 max-w-page mx-auto w-full px-4 py-8">
-        {children}
-      </main>
+    <div className="flex h-screen overflow-hidden bg-ground font-body text-ink">
+      {/* Sidebar */}
+      <AdminSidebar
+        session={session}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
+
+      {/* Main area */}
+      <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
+        {/* Topbar */}
+        <AdminTopbar
+          session={session}
+          onMenuOpen={() => setSidebarOpen(true)}
+          onLogout={handleLogout}
+        />
+
+        {/* Page content */}
+        <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 sm:py-8">
+          {children}
+        </main>
+
+        <footer className="shrink-0 border-t border-line px-4 py-3 text-center text-xs text-ink-muted">
+          RiceWare CI — back-office interne · données de production confidentielles
+        </footer>
+      </div>
     </div>
   );
 }

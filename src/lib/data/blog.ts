@@ -88,7 +88,7 @@ function toMediaSummary(row: Pick<MediaRow, 'id' | 'url' | 'altText'>): MediaSum
 }
 
 function collectImageMediaIds(blocks: AnyBlogBlock[]): string[] {
-  return [...new Set(blocks.flatMap((block) => (block.type === 'image' ? [block.content.mediaId] : [])))];
+  return [...new Set(blocks.flatMap((block) => (block.type === 'image' || block.type === 'video' ? [block.content.mediaId] : [])))];
 }
 
 async function loadMediaMap(blocks: AnyBlogBlock[]): Promise<Record<string, MediaSummary>> {

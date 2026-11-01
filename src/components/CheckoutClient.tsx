@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { FaWhatsapp } from 'react-icons/fa';
 import { LuArrowLeft, LuCheck, LuMinus, LuPlus, LuTrash2 } from 'react-icons/lu';
+import { PRODUCT_COLORS } from '@/lib/boutique';
 import {
   CART_STORAGE_KEY,
   LAST_ORDER_STORAGE_KEY,
@@ -67,18 +68,32 @@ const DELIVERY_OPTIONS: Array<{
   },
 ];
 
-const PAYMENT_METHODS: Array<{ value: PaymentMethod; label: string }> = [
-  { value: 'wave', label: 'Wave' },
-  { value: 'orange_money', label: 'Orange Money' },
-  { value: 'djamo', label: 'Djamo' },
-  { value: 'mtn_momo', label: 'MTN MoMo' },
-  { value: 'moov_money', label: 'Moov Money' },
+const PAYMENT_METHODS: Array<{
+  value: PaymentMethod;
+  label: string;
+  logo: string;
+  /** tailwind bg color for the card when selected, matches brand */
+  logoBg: string;
+  /** contain or cover */
+  fit: 'contain' | 'cover';
+}> = [
+  { value: 'wave',        label: 'Wave',         logo: '/payment/wave.png',         logoBg: 'bg-white',     fit: 'contain' },
+  { value: 'orange_money',label: 'Orange Money', logo: '/payment/orange-money.png', logoBg: 'bg-white',     fit: 'contain' },
+  { value: 'mtn_momo',    label: 'MTN MoMo',     logo: '/payment/mtn-momo.jpg',     logoBg: 'bg-white',     fit: 'contain' },
+  { value: 'moov_money',  label: 'Moov Money',   logo: '/payment/moov-money.png',   logoBg: 'bg-white',     fit: 'contain' },
+  { value: 'djamo',       label: 'Djamo',        logo: '/payment/djamo.webp',       logoBg: 'bg-white',     fit: 'contain' },
 ];
+
+const DELIVERY_FEE = 2_000; // FCFA — Abidjan livraison standard
 
 const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER?.replace(/\D/g, '');
 const whatsappUrl = whatsappNumber
-  ? `https://wa.me/${whatsappNumber}?text=${encodeURIComponent('Bonjour RiceWare CI, j’ai une question sur ma commande.')}`
+  ? `https://wa.me/${whatsappNumber}?text=${encodeURIComponent("Bonjour RiceWare CI, j\u2019ai une question sur ma commande.")}`
   : null;
+
+function formatFCFA(value: number): string {
+  return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Math.round(value)) + '\u00a0FCFA';
+}
 
 export default function CheckoutClient({
   showHeader = true,
@@ -96,6 +111,7 @@ export default function CheckoutClient({
   const [deliveryOption, setDeliveryOption] = useState<DeliveryOption>('standard');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | ''>('');
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -107,6 +123,13 @@ export default function CheckoutClient({
   }, []);
 
   const totals = useMemo(() => getCartTotals(items), [items]);
+
+  const subtotal = useMemo(
+    () => items.reduce((sum, item) => sum + item.packPriceValue * item.quantity, 0),
+    [items],
+  );
+  const hasAllPrices = subtotal > 0 && items.every((item) => item.packPriceValue > 0);
+  const grandTotal = hasAllPrices ? subtotal + DELIVERY_FEE : null;
 
   function updateCustomer(key: keyof CheckoutCustomer, value: string) {
     setCustomer((current) => ({ ...current, [key]: value }));
@@ -127,7 +150,7 @@ export default function CheckoutClient({
     commitCart(items.filter((item) => item.id !== itemId));
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError('');
 
@@ -141,36 +164,80 @@ export default function CheckoutClient({
       return;
     }
 
+    const rawPhone = customer.phone.replace(/\D/g, '');
+    if (!/^(01|05|07)\d{8}$/.test(rawPhone)) {
+      setError('Le numéro de téléphone doit commencer par 01, 05 ou 07 et contenir exactement 10 chiffres.');
+      return;
+    }
+
     if (!paymentMethod) {
       setError('Choisissez un moyen de paiement préféré.');
       return;
     }
 
-    const nationalPhone = customer.phone.replace(/\D/g, '').replace(/^225/, '');
-    const orderCustomer: CheckoutCustomer = {
-      ...customer,
-      phone: `+225 ${nationalPhone}`,
-    };
-    const order: StoredOrder = {
-      orderNumber: createOrderNumber(),
-      createdAt: new Date().toISOString(),
-      status: 'reçue',
-      paymentStatus: 'à confirmer',
-      customer: orderCustomer,
-      items,
-      totalPacks: totals.totalPacks,
-      totalArticles: totals.totalArticles,
-      paymentPlan,
-      deliveryOption,
-      paymentMethod,
-      commercialNote: 'Demande enregistrée localement. Les prix, les modalités de paiement et la livraison restent à confirmer par RiceWare CI. Aucun paiement n’a été prélevé.',
-    };
+    setSubmitting(true);
 
-    const previousOrders = readJsonStorage<StoredOrder[]>(ORDERS_STORAGE_KEY, []);
-    writeJsonStorage(LAST_ORDER_STORAGE_KEY, order);
-    writeJsonStorage(ORDERS_STORAGE_KEY, [order, ...previousOrders]);
-    writeJsonStorage(CART_STORAGE_KEY, []);
-    router.push(`/commande/confirmation?numero=${order.orderNumber}`);
+    try {
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer: {
+            fullName: customer.fullName.trim(),
+            phone: `+225${rawPhone}`,
+            email: customer.email.trim() || undefined,
+            city: customer.city,
+            district: customer.district.trim() || undefined,
+            addressDetails: customer.addressDetails.trim(),
+            deliveryInstructions: customer.deliveryInstructions.trim() || undefined,
+            channel: 'site',
+          },
+          paymentPlan,
+          deliveryOption,
+          paymentMethod,
+          items: items.map((item) => ({
+            productPackId: item.packId,
+            quantity: item.quantity,
+          })),
+        }),
+      });
+
+      const data = (await response.json()) as { orderNumber?: string; error?: string };
+
+      if (!response.ok) {
+        setError(data.error ?? 'Une erreur est survenue. Veuillez réessayer.');
+        setSubmitting(false);
+        return;
+      }
+
+      const orderNumber = data.orderNumber ?? createOrderNumber();
+
+      // Persist a local snapshot for the confirmation page
+      const orderCustomer: CheckoutCustomer = { ...customer, phone: `+225 ${rawPhone}` };
+      const localOrder: StoredOrder = {
+        orderNumber,
+        createdAt: new Date().toISOString(),
+        status: 'reçue',
+        paymentStatus: 'à confirmer',
+        customer: orderCustomer,
+        items,
+        totalPacks: totals.totalPacks,
+        totalArticles: totals.totalArticles,
+        paymentPlan,
+        deliveryOption,
+        paymentMethod,
+        commercialNote: "Demande enregistrée. Les prix, les modalités de paiement et la livraison restent à confirmer par RiceWare CI. Aucun paiement n\u2019a été prélevé.",
+      };
+      const previousOrders = readJsonStorage<StoredOrder[]>(ORDERS_STORAGE_KEY, []);
+      writeJsonStorage(LAST_ORDER_STORAGE_KEY, localOrder);
+      writeJsonStorage(ORDERS_STORAGE_KEY, [localOrder, ...previousOrders]);
+      writeJsonStorage(CART_STORAGE_KEY, []);
+
+      router.push(`/commande/confirmation?numero=${orderNumber}`);
+    } catch {
+      setError('Impossible de joindre le serveur. Vérifiez votre connexion et réessayez.');
+      setSubmitting(false);
+    }
   }
 
   if (!isLoaded) {
@@ -220,16 +287,28 @@ export default function CheckoutClient({
         <section className="rounded-panel border border-line bg-surface p-4 sm:p-5" aria-labelledby="summary-title">
           <div className="flex items-baseline justify-between gap-3">
             <h2 id="summary-title" className="m-0 font-display text-xl font-bold text-ink">Récapitulatif du panier</h2>
-            <span className="shrink-0 text-xs text-ink-muted">{totals.totalPacks} pack{totals.totalPacks > 1 ? 's' : ''}</span>
+            <div className="text-right shrink-0">
+              <p className="text-xs text-ink-muted">
+                {totals.totalPacks} pack{totals.totalPacks > 1 ? 's' : ''}
+              </p>
+              <p className="text-xs font-semibold text-paddy-deep">
+                {totals.totalArticles} article{totals.totalArticles > 1 ? 's' : ''}
+              </p>
+            </div>
           </div>
 
           <div className="mt-3 divide-y divide-line">
-            {items.map((item) => (
-              <article key={item.id} className="grid grid-cols-[64px_minmax(0,1fr)] gap-3 py-4 first:pt-1 last:pb-1 sm:grid-cols-[76px_minmax(0,1fr)] sm:gap-4">
-                <div className="flex size-16 items-center justify-center overflow-hidden rounded-xl bg-ground sm:size-[76px]">
+            {items.map((item) => {
+              const colorHex = PRODUCT_COLORS.find((c) => c.id === item.productColor)?.value;
+              const totalArticlesLine = item.packQuantity * item.quantity;
+              return (
+              <article key={item.id} className="flex gap-3 py-4 first:pt-1 last:pb-1 sm:gap-4">
+
+                {/* ── Vignette produit ── */}
+                <div className="flex-shrink-0 size-16 sm:size-[76px] overflow-hidden rounded-xl bg-ground flex items-center justify-center">
                   <Image
-                    src={item.productImage}
-                    alt={item.productName}
+                    src={item.productColorImage ?? item.productImage}
+                    alt={`${item.productName}, ${item.productColorLabel}`}
                     width={76}
                     height={76}
                     sizes="(min-width: 640px) 76px, 64px"
@@ -237,68 +316,115 @@ export default function CheckoutClient({
                   />
                 </div>
 
-                <div className="min-w-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <h3 className="m-0 truncate font-display text-base font-semibold text-ink">{item.productName}</h3>
-                      <p className="mt-1 text-xs leading-5 text-ink-muted">
-                        {item.packLabel} · {item.productFormat}
-                      </p>
-                      {item.packNote ? <p className="text-xs leading-5 text-ink-muted">{item.packNote}</p> : null}
-                    </div>
-                  </div>
+                {/* ── Corps : 2 colonnes [infos gauche | prix droite] ── */}
+                <div className="flex flex-1 min-w-0 justify-between gap-3">
 
-                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-sm font-semibold text-ink">{item.packPrice || 'À confirmer'}</span>
-                    <div className="flex shrink-0 items-center gap-1.5">
-                      <div className="flex h-10 items-center rounded-full border border-line bg-ground" aria-label={`Quantité : ${item.quantity}`}>
-                        <button
-                          type="button"
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                          disabled={item.quantity <= 1}
-                          aria-label={`Diminuer la quantité de ${item.productName}`}
-                          className="flex size-10 items-center justify-center rounded-full text-ink-muted transition-colors hover:text-paddy focus-visible:outline-2 focus-visible:outline-paddy disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          <LuMinus size={15} aria-hidden="true" />
-                        </button>
-                        <span className="min-w-6 text-center text-sm font-semibold tabular-nums text-ink" aria-live="polite">{item.quantity}</span>
-                        <button
-                          type="button"
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                          disabled={item.quantity >= 99}
-                          aria-label={`Augmenter la quantité de ${item.productName}`}
-                          className="flex size-10 items-center justify-center rounded-full text-ink-muted transition-colors hover:text-paddy focus-visible:outline-2 focus-visible:outline-paddy disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          <LuPlus size={15} aria-hidden="true" />
-                        </button>
-                      </div>
+                  {/* Colonne gauche : nom + pack + stepper */}
+                  <div className="flex flex-col justify-between min-w-0 gap-2">
+                    {/* Nom + pack label */}
+                    <div className="min-w-0">
+                      <h3 className="m-0 font-display text-sm font-semibold text-ink leading-5">{item.productName}</h3>
+                      <p className="mt-0.5 text-xs leading-4 text-ink-muted">{item.packLabel}</p>
+                      <p className="text-xs leading-4 text-ink-muted">{item.productFormat}</p>
+                      {item.packNote ? <p className="mt-0.5 text-[11px] leading-4 text-ink-muted/70 italic">{item.packNote}</p> : null}
+                    </div>
+
+                    {/* Stepper quantité */}
+                    <div className="flex h-8 w-fit items-center rounded-full border border-line bg-ground" aria-label={`Quantité : ${item.quantity}`}>
                       <button
                         type="button"
-                        onClick={() => removeItem(item.id)}
-                        aria-label={`Retirer ${item.productName} du panier`}
-                        className="flex size-9 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-danger/10 hover:text-danger focus-visible:outline-2 focus-visible:outline-danger"
+                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                        disabled={item.quantity <= 1}
+                        aria-label={`Diminuer la quantité de ${item.productName}`}
+                        className="flex size-8 items-center justify-center rounded-full text-ink-muted transition-colors hover:text-paddy focus-visible:outline-2 focus-visible:outline-paddy disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        <LuTrash2 size={17} aria-hidden="true" />
+                        <LuMinus size={12} aria-hidden="true" />
+                      </button>
+                      <span className="min-w-[1.5rem] text-center text-sm font-semibold tabular-nums text-ink px-1" aria-live="polite">{item.quantity}</span>
+                      <button
+                        type="button"
+                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                        disabled={item.quantity >= 99}
+                        aria-label={`Augmenter la quantité de ${item.productName}`}
+                        className="flex size-8 items-center justify-center rounded-full text-ink-muted transition-colors hover:text-paddy focus-visible:outline-2 focus-visible:outline-paddy disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <LuPlus size={12} aria-hidden="true" />
                       </button>
                     </div>
                   </div>
+
+                  {/* Colonne droite : prix + badges + corbeille */}
+                  <div className="flex-shrink-0 flex flex-col items-end justify-between gap-1.5">
+                    {/* Corbeille en haut */}
+                    <button
+                      type="button"
+                      onClick={() => removeItem(item.id)}
+                      aria-label={`Retirer ${item.productName} du panier`}
+                      className="flex size-7 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-danger/10 hover:text-danger focus-visible:outline-2 focus-visible:outline-danger"
+                    >
+                      <LuTrash2 size={14} aria-hidden="true" />
+                    </button>
+
+                    {/* Prix total ligne */}
+                    <div className="text-right">
+                      {item.packPriceValue > 0 ? (
+                        <>
+                          <p className="text-sm font-bold text-ink leading-5">
+                            {formatFCFA(item.packPriceValue * item.quantity)}
+                          </p>
+                          {item.quantity > 1 && (
+                            <p className="text-[11px] text-ink-muted leading-4">
+                              {item.quantity} × {formatFCFA(item.packPriceValue)}
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-sm font-semibold text-ink">{item.packPrice || 'À confirmer'}</p>
+                      )}
+                    </div>
+
+                    {/* Badges : articles + couleur */}
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="inline-flex items-center rounded-full bg-paddy/8 px-2 py-0.5 text-[11px] font-semibold text-paddy-deep">
+                        {totalArticlesLine} article{totalArticlesLine > 1 ? 's' : ''}
+                      </span>
+                      {colorHex && (
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-2 py-0.5 text-[11px] font-medium text-ink-muted">
+                          <span
+                            className="inline-block size-2.5 rounded-full border border-line/50 flex-shrink-0"
+                            style={{ backgroundColor: colorHex }}
+                            aria-hidden="true"
+                          />
+                          {item.productColorLabel}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
                 </div>
               </article>
-            ))}
+              );
+            })}
           </div>
 
           <dl className="mt-4 grid gap-2 border-t border-line pt-4 text-sm">
             <div className="flex items-center justify-between gap-4">
               <dt className="text-ink-muted">Sous-total</dt>
-              <dd className="m-0 font-medium text-ink">À confirmer</dd>
+              <dd className="m-0 font-medium text-ink">
+                {hasAllPrices ? formatFCFA(subtotal) : 'À confirmer'}
+              </dd>
             </div>
             <div className="flex items-center justify-between gap-4">
               <dt className="text-ink-muted">Livraison Abidjan</dt>
-              <dd className="m-0 font-medium text-ink">À confirmer</dd>
+              <dd className="m-0 font-medium text-ink">
+                {hasAllPrices ? formatFCFA(DELIVERY_FEE) : 'À confirmer'}
+              </dd>
             </div>
             <div className="flex items-center justify-between gap-4 border-t border-line pt-3 text-base">
               <dt className="font-semibold text-ink">Total commande</dt>
-              <dd className="m-0 font-bold text-ink">À confirmer</dd>
+              <dd className="m-0 font-bold text-paddy-deep">
+                {grandTotal !== null ? formatFCFA(grandTotal) : 'À confirmer'}
+              </dd>
             </div>
           </dl>
         </section>
@@ -318,33 +444,33 @@ export default function CheckoutClient({
 
             <div className="grid gap-1.5">
               <label htmlFor="phone" className="text-sm font-medium text-ink">Téléphone</label>
-              <div className="flex min-h-12 overflow-hidden rounded-control border border-line bg-ground transition-colors focus-within:border-paddy focus-within:ring-2 focus-within:ring-paddy/20">
-                <span className="flex items-center border-r border-line px-3 text-sm font-semibold text-ink" aria-label="Indicatif de la Côte d’Ivoire">+225</span>
-                <input
-                  id="phone"
-                  type="tel"
-                  inputMode="tel"
-                  autoComplete="tel-national"
-                  value={customer.phone}
-                  onChange={(event) => updateCustomer('phone', event.target.value.replace(/^\+?225\s*/, '').replace(/[^\d\s]/g, ''))}
-                  placeholder="07 00 00 00 00"
-                  required
-                  className="min-w-0 flex-1 bg-transparent px-3 text-base text-ink outline-hidden placeholder:text-ink-muted/60 sm:text-sm"
-                />
-              </div>
+              <input
+                id="phone"
+                type="tel"
+                inputMode="numeric"
+                autoComplete="tel-national"
+                value={customer.phone}
+                onChange={(event) => {
+                  // Chiffres uniquement, max 10
+                  const digits = event.target.value.replace(/\D/g, '').slice(0, 10);
+                  updateCustomer('phone', digits);
+                }}
+                placeholder="0700000000"
+                maxLength={10}
+                required
+                className="min-h-12 w-full rounded-control border border-line bg-ground px-3 text-base font-normal text-ink outline-hidden transition-colors placeholder:text-ink-muted/60 focus:border-paddy focus:ring-2 focus:ring-paddy/20 sm:text-sm"
+              />
             </div>
 
             <TextField
               id="address"
-              label="Adresse (commune, quartier, repère)"
+              label="Adresse"
               placeholder="Commune, quartier, repère"
               value={customer.addressDetails}
               onChange={(value) => updateCustomer('addressDetails', value)}
               autoComplete="street-address"
               required
             />
-            <p className="-mt-2 text-xs leading-5 text-ink-muted">Un conseiller vous rappelle pour confirmer la livraison.</p>
-
             <label htmlFor="city" className="grid gap-1.5 text-sm font-medium text-ink">
               Ville
               <select
@@ -360,9 +486,9 @@ export default function CheckoutClient({
 
             <TextField
               id="email"
-              label="Email (optionnel)"
+              label="Email"
               type="email"
-              placeholder="Email (optionnel)"
+              placeholder="Email"
               value={customer.email}
               onChange={(value) => updateCustomer('email', value)}
               autoComplete="email"
@@ -409,20 +535,56 @@ export default function CheckoutClient({
 
         <fieldset aria-labelledby="payment-method-title" className="rounded-panel border border-line bg-surface p-4 sm:p-5">
           <h2 id="payment-method-title" className="m-0 font-display text-xl font-bold text-ink">Moyen de paiement</h2>
-          <p className="mt-1 text-sm text-ink-muted">Votre préférence sera confirmée par RiceWare avant tout paiement.</p>
-          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {PAYMENT_METHODS.map((option) => (
-              <RadioCard
-                key={option.value}
-                name="payment-method"
-                value={option.value}
-                selectedValue={paymentMethod}
-                onChange={setPaymentMethod}
-                label={option.label}
-                compact
-                required
-              />
-            ))}
+          <div className="mt-4 grid grid-cols-3 gap-2.5 sm:grid-cols-5">
+            {PAYMENT_METHODS.map((option) => {
+              const isSelected = paymentMethod === option.value;
+              const inputId = `payment-method-${option.value.replaceAll('_', '-')}`;
+              return (
+                <label
+                  key={option.value}
+                  htmlFor={inputId}
+                  className={`relative flex cursor-pointer flex-col items-center gap-2 rounded-2xl border-2 p-3 transition-all focus-within:ring-2 focus-within:ring-paddy/30 ${
+                    isSelected
+                      ? 'border-paddy bg-paddy/5 shadow-sm'
+                      : 'border-line bg-surface hover:border-paddy/40 hover:bg-ground'
+                  }`}
+                >
+                  {/* Radio caché */}
+                  <input
+                    id={inputId}
+                    type="radio"
+                    name="payment-method"
+                    value={option.value}
+                    checked={isSelected}
+                    onChange={() => setPaymentMethod(option.value)}
+                    required
+                    className="sr-only"
+                  />
+
+                  {/* Indicateur sélection */}
+                  {isSelected && (
+                    <span className="absolute right-1.5 top-1.5 flex size-4 items-center justify-center rounded-full bg-paddy" aria-hidden="true">
+                      <LuCheck size={10} className="text-on-paddy" />
+                    </span>
+                  )}
+
+                  {/* Logo */}
+                  <div className={`flex size-12 items-center justify-center overflow-hidden rounded-xl ${option.logoBg}`}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={option.logo}
+                      alt={option.label}
+                      className={`size-full ${option.fit === 'contain' ? 'object-contain p-1' : 'object-cover'}`}
+                    />
+                  </div>
+
+                  {/* Label */}
+                  <span className={`text-center text-[11px] font-semibold leading-tight ${isSelected ? 'text-paddy-deep' : 'text-ink-muted'}`}>
+                    {option.label}
+                  </span>
+                </label>
+              );
+            })}
           </div>
         </fieldset>
 
@@ -447,10 +609,11 @@ export default function CheckoutClient({
             ) : null}
             <button
               type="submit"
+              disabled={submitting}
               className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-paddy px-5 py-3 text-sm font-bold text-on-paddy transition-colors hover:bg-paddy-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-paddy disabled:cursor-not-allowed disabled:opacity-50"
             >
               <LuCheck size={18} aria-hidden="true" />
-              Confirmer ma commande
+              {submitting ? 'Envoi en cours…' : 'Confirmer ma commande'}
             </button>
             <p className="m-0 text-center text-[11px] leading-4 text-ink-muted">
               Aucun paiement prélevé maintenant · Confirmation par RiceWare CI

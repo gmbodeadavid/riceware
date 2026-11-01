@@ -1,9 +1,11 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import SectionLabel from './SectionLabel';
-import { PRODUCTS } from '@/lib/boutique';
+import { listProducts } from '@/lib/data/products';
 
-export default function ProductSection() {
+export default async function ProductSection() {
+  const products = await listProducts({ isPublished: true });
+
   return (
     <section id="produit" className="bg-surface py-section">
       <div className="max-w-page mx-auto px-5 sm:px-8">
@@ -21,7 +23,7 @@ export default function ProductSection() {
         </div>
 
         <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-3 xl:grid-cols-5">
-          {PRODUCTS.map((product) => (
+          {products.map((product) => (
             <Link
               key={product.id}
               href={`/boutique/${product.slug}`}

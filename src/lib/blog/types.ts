@@ -6,6 +6,7 @@ export type MediaSummary = {
   id: string;
   url: string;
   altText?: string;
+  mimeType?: string;
 };
 
 export type TaxonomyOption = {

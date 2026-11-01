@@ -4,15 +4,21 @@ import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import type { Product } from '@/lib/boutique';
+import type { ProductRow } from '@/lib/data/products';
 import { addItemToCart, createCartItem } from '@/lib/cart';
+
+function isRecentProduct(createdAt: Date): boolean {
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  return createdAt > thirtyDaysAgo;
+}
 
 export default function BoutiqueCatalogClient({
   selectedProduct,
   filteredProducts,
 }: {
-  selectedProduct: Product | null;
-  filteredProducts: Product[];
+  selectedProduct: ProductRow | null;
+  filteredProducts: ProductRow[];
 }) {
   const router = useRouter();
   const [packId, setPackId] = useState(selectedProduct?.packs[0]?.id ?? '');
@@ -102,7 +108,14 @@ export default function BoutiqueCatalogClient({
               </div>
 
               <div className="flex flex-1 flex-col p-3 sm:p-4">
-                <h2 className="font-display text-base font-semibold text-ink m-0 sm:text-lg">{product.name}</h2>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="font-display text-base font-semibold text-ink m-0 sm:text-lg">{product.name}</h2>
+                  {(product.isNew || isRecentProduct(product.createdAt)) && (
+                    <span className="inline-flex items-center rounded-full bg-paddy/10 px-2 py-0.5 text-[10px] font-medium text-paddy-deep">
+                      Nouveau
+                    </span>
+                  )}
+                </div>
 
                 <div className="mt-2 border-t border-line pt-2">
                   <span className="text-sm font-semibold text-ink">{product.currentPrice}</span>

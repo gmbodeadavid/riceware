@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { rejectUnlessAdmin } from '@/lib/admin-auth';
+import { rejectUnlessPermission } from '@/lib/admin-auth';
 import { parseArticleInput } from '@/lib/blog/articleInput';
 import { BlogInputError, BlogNotFoundError, blogErrorResponse, readJsonBody } from '@/lib/blog/errors';
 import { revalidateBlogPages } from '@/lib/blog/revalidate';
@@ -9,7 +9,7 @@ import { deletePost, getArticleEditorData, updatePost, updatePostStatus } from '
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function GET(request: NextRequest, { params }: RouteContext) {
-  const rejection = rejectUnlessAdmin(request);
+  const rejection = rejectUnlessPermission(request, 'content:manage');
   if (rejection) return rejection;
 
   try {
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
 }
 
 export async function PUT(request: NextRequest, { params }: RouteContext) {
-  const rejection = rejectUnlessAdmin(request);
+  const rejection = rejectUnlessPermission(request, 'content:manage');
   if (rejection) return rejection;
 
   try {
@@ -39,7 +39,7 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
 
 /** Changement de statut rapide : `{ "status": "draft" | "published" | "archived" }`. */
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
-  const rejection = rejectUnlessAdmin(request);
+  const rejection = rejectUnlessPermission(request, 'content:manage');
   if (rejection) return rejection;
 
   try {
@@ -57,7 +57,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 }
 
 export async function DELETE(request: NextRequest, { params }: RouteContext) {
-  const rejection = rejectUnlessAdmin(request);
+  const rejection = rejectUnlessPermission(request, 'content:manage');
   if (rejection) return rejection;
 
   try {

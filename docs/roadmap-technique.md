@@ -2,6 +2,22 @@
 
 Cette roadmap adapte le document stratégique à la stack actuelle du projet : Next.js, React, TypeScript et Tailwind CSS. Elle ne prévoit pas de migration vers Django.
 
+## État d'implémentation au 25 octobre 2026
+
+Le socle e-commerce et le back-office production sont désormais implémentés dans la stack Next.js + Prisma/SQLite :
+
+- Boutique, panier, demande de commande et page de confirmation.
+- Authentification admin JWT, comptes nominatifs multi-rôles et permissions par module.
+- Lots de coques, rizeries, production, produits finis, tests qualité, stocks et mouvements.
+- Partenaires, documents justificatifs, commandes, objectifs, notifications et journal d'audit.
+- Tableau de bord avec KPI production, qualité, stocks et encaissements.
+- Exports PDF, CSV et Excel-compatibles.
+- Traçabilité publique par code lot : `/tracabilite/[code]`.
+- Stock mis à jour automatiquement à la réception d'un lot, à la création/modification/suppression d'un batch et lors des mouvements manuels.
+- Alertes stock et rebut historisées ; envoi WhatsApp optionnel via variables d'environnement.
+
+La documentation détaillée est dans [back-office-production.md](back-office-production.md).
+
 ## Phase 0 - Stabilisation de l'existant
 
 Objectif : garder le site actuel propre avant d'ajouter le commerce.
@@ -19,9 +35,12 @@ Etat actuel :
 - La boutique existe.
 - Les pages produit existent.
 - La navigation existe.
-- Le panier et la commande n'existent pas encore.
+- Le panier et la commande existent.
+- Le back-office d'administration existe.
 
 ## Phase 1 - Socle métier TypeScript
+
+Statut : **fait**. Les modèles métier et le schéma Prisma couvrent produits, commandes, production, qualité, stocks, partenaires et audit.
 
 Objectif : poser les modèles avant l'interface.
 
@@ -38,6 +57,8 @@ Critère de fin :
 - Ils peuvent être importés par de futures pages, composants ou Server Actions.
 
 ## Phase 2 - Packs e-commerce
+
+Statut : **partiel**. Le catalogue produits est en place ; la structure commerciale des packs reste à valider avec RiceWare.
 
 Objectif : passer du catalogue produit au catalogue de packs.
 
@@ -62,6 +83,8 @@ Critère de fin :
 
 ## Phase 3 - Panier local
 
+Statut : **fait**. Le panier permet d'ajouter, modifier et supprimer des lignes avant la demande de commande.
+
 Objectif : permettre à l'utilisateur de préparer une commande sans paiement.
 
 Livrables :
@@ -84,6 +107,8 @@ Critère de fin :
 
 ## Phase 4 - Commande et devis sans paiement
 
+Statut : **fait**. Les commandes sont persistées via Prisma et suivies dans `/admin/commandes`. Le paiement reste une confirmation manuelle.
+
 Objectif : transformer un panier en demande de commande ou devis.
 
 Livrables :
@@ -97,9 +122,9 @@ Livrables :
 
 Implémentation dans la stack actuelle :
 
-- Server Actions ou Route Handlers Next pour recevoir les données.
-- Stockage temporaire à définir avant production.
-- Tant qu'il n'y a pas de stockage persistant, l'interface doit rester marquée comme demande de devis ou prototype.
+- Route Handlers Next pour recevoir les données.
+- Persistance Prisma/SQLite des commandes, lignes, clients et adresses.
+- Suivi opérationnel dans `/admin/commandes`, sans paiement automatique.
 
 Critère de fin :
 
@@ -107,6 +132,8 @@ Critère de fin :
 - L'équipe RiceWare sait quoi préparer ou confirmer.
 
 ## Phase 5 - Back-office minimal dans Next
+
+Statut : **fait et étendu**. Le back-office couvre les lots, rizeries, batches, produits, tests, stocks, partenaires, documents, commandes, utilisateurs, objectifs et rapports.
 
 Objectif : remplacer les saisies manuelles dispersées par des écrans internes.
 
@@ -124,16 +151,18 @@ Routes possibles :
 - `/admin` ou `/back-office`.
 - Sous-routes par domaine : `commandes`, `stocks`, `production`, `qualite`.
 
-Prérequis :
+Prérequis (tranchés) :
 
-- Décision sur l'authentification.
-- Décision sur le stockage persistant.
+- Authentification JWT multi-rôles.
+- Stockage persistant Prisma/SQLite pour le prototype.
 
 Critère de fin :
 
 - L'équipe peut gérer le flux commande vers préparation sans fichier séparé.
 
 ## Phase 6 - Paiement intégré
+
+Statut : **non démarré**. Les commandes sont des demandes à confirmer, sans débit automatique.
 
 Objectif : connecter un prestataire de paiement seulement après validation commerciale.
 
@@ -158,6 +187,8 @@ Critère de fin :
 
 ## Phase 7 - Stock, production et qualité reliés aux commandes
 
+Statut : **partiel**. Production, qualité et stocks sont reliés entre eux ; la réservation automatique du stock à la confirmation d'une commande reste à faire.
+
 Objectif : connecter commerce et atelier.
 
 Livrables :
@@ -175,6 +206,8 @@ Critère de fin :
 
 ## Phase 8 - KPI et pilotage
 
+Statut : **fait**. Tableau de bord, KPI production/qualité/stocks/encaissements, objectifs et exports PDF, CSV et Excel.
+
 Objectif : rendre les chiffres utiles pour décider.
 
 Livrables :
@@ -190,6 +223,8 @@ Critère de fin :
 - Les KPI proviennent des données opérationnelles, pas de doubles saisies.
 
 ## Phase 9 - Sécurité, exploitation et production
+
+Statut : **partiel**. Authentification, rôles, permissions et secrets par variables d'environnement sont en place ; HTTPS, sauvegardes, monitoring et documents légaux restent à finaliser avant ouverture publique.
 
 Objectif : préparer une vraie ouverture publique.
 
@@ -211,8 +246,8 @@ Critère de fin :
 
 ## Priorité immédiate recommandée
 
-1. Finaliser les modèles TypeScript.
-2. Définir les packs RiceWare réels.
-3. Ajouter panier prototype.
-4. Ajouter demande de commande/devis.
-5. Choisir le mode de stockage avant toute promesse de commande réelle.
+1. Tester les parcours métier avec l'équipe RiceWare sur les données de démonstration.
+2. Remplacer le stockage SQLite local par une base PostgreSQL managée avant mise en production multi-utilisateurs.
+3. Choisir un prestataire de paiement et implémenter webhook, idempotence et rapprochement des commandes.
+4. Mettre en place sauvegardes, supervision, HTTPS et rotation des secrets.
+5. Valider les seuils qualité, les unités de stock et les coûts de production réels avec l'atelier.

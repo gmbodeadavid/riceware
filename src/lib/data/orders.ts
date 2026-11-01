@@ -7,6 +7,7 @@ import type { Prisma } from '@prisma/client';
 const orderInclude = {
   lines: true,
   customer: true,
+  deliveryAddress: true,
 } satisfies Prisma.OrderInclude;
 
 function parsePrice(value: string): number {
@@ -140,7 +141,7 @@ export async function createCheckoutOrder(payload: CheckoutPayload): Promise<Pub
     return {
       productId: pack.productId,
       productPackId: pack.id,
-      packNameSnapshot: `${pack.product.name} — ${pack.label}`,
+      packNameSnapshot: `${pack.product.name} · ${pack.label}`,
       packContentSnapshot: [
         {
           productId: pack.productId,

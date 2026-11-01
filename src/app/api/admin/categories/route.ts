@@ -1,12 +1,12 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { rejectUnlessAdmin } from '@/lib/admin-auth';
+import { rejectUnlessPermission } from '@/lib/admin-auth';
 import { blogErrorResponse, readJsonBody } from '@/lib/blog/errors';
 import { revalidateBlogPages } from '@/lib/blog/revalidate';
 import { findOrCreateCategory } from '@/lib/data/blog';
 
 /** Crée une catégorie : `{ "name": "Actualités" }`. */
 export async function POST(request: NextRequest) {
-  const rejection = rejectUnlessAdmin(request);
+  const rejection = rejectUnlessPermission(request, 'content:manage');
   if (rejection) return rejection;
 
   try {

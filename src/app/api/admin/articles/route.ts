@@ -1,12 +1,12 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { rejectUnlessAdmin } from '@/lib/admin-auth';
+import { rejectUnlessPermission } from '@/lib/admin-auth';
 import { parseArticleInput } from '@/lib/blog/articleInput';
 import { blogErrorResponse, readJsonBody } from '@/lib/blog/errors';
 import { revalidateBlogPages } from '@/lib/blog/revalidate';
 import { createPost, listAdminPosts } from '@/lib/data/blog';
 
 export async function GET(request: NextRequest) {
-  const rejection = rejectUnlessAdmin(request);
+  const rejection = rejectUnlessPermission(request, 'content:manage');
   if (rejection) return rejection;
 
   try {
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const rejection = rejectUnlessAdmin(request);
+  const rejection = rejectUnlessPermission(request, 'content:manage');
   if (rejection) return rejection;
 
   try {

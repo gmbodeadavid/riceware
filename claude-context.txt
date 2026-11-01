@@ -1,0 +1,890 @@
+# RiceWare CI — Vue Technique Globale du Projet
+# Généré le : 2026-11-01 | Lecture seule — ne pas modifier manuellement
+
+================================================================================
+## 1. IDENTITÉ
+================================================================================
+
+Nom          : RiceWare CI
+Slogan       : "From rice husks and straw to better tableware."
+Vision       : Transformer les déchets agricoles de Côte d'Ivoire (coques et paille de riz)
+               en vaisselle biodégradable premium, pour remplacer le plastique jetable.
+Mission      : Produire, commercialiser et tracer des articles de table eco-responsables
+               (assiettes, gobelets, couverts, barquettes) à partir de matière première
+               locale, avec un back-office de production rigoureux.
+Pays         : Côte d'Ivoire (CI)
+Devise       : XOF / FCFA (Franc CFA ouest-africain)
+Langues      : Français uniquement (fr). Champs blog multilingues (en, ko) présents mais non actifs.
+Stade        : Prototype commercial avancé — e-commerce opérationnel, back-office production
+               fonctionnel, paiements Mobile Money non encore intégrés côté code.
+Cibles       :
+  - B2C : particuliers, cantines, hôtels, événementiel (via site e-commerce)
+  - B2B : grossistes, clients pilotes, partenaires institutionnels
+
+Produits (src/lib/production/types.ts) :
+  - Assiette plate (Ø 260 mm)
+  - Bol
+  - Gobelet
+  - Barquette repas
+  - Fourchette
+  - Cuillère
+
+================================================================================
+## 2. STACK & INFRA
+================================================================================
+
+| Couche          | Technologie            | Version       | Source                    |
+|-----------------|------------------------|---------------|---------------------------|
+| Framework       | Next.js (App Router)   | 16.3.7        | package.json              |
+| Runtime UI      | React                  | 19.2.8        | package.json              |
+| Langage         | TypeScript             | ^5            | package.json              |
+| CSS             | Tailwind CSS v4        | ^4            | package.json              |
+| ORM             | Prisma                 | ^6.16.3       | package.json              |
+| Base de données | SQLite                 | (via Prisma)  | prisma/schema.prisma      |
+| Auth back-office| JWT (jsonwebtoken)     | ^9.0.3        | package.json              |
+| Hash passwords  | bcrypt                 | ^6.0.0        | package.json              |
+| PDF generation  | @react-pdf/renderer    | ^4.9.0        | package.json              |
+| PDF export      | Puppeteer              | ^25.16.0      | package.json              |
+| 3D viewer       | Three.js               | ^0.186.1      | package.json              |
+| DnD (blog édit) | @dnd-kit               | ^6.3.1        | package.json              |
+| Icônes          | react-icons (lu)       | ^5.7.0        | package.json              |
+| Graphiques      | SVG custom (maison)    | —             | src/components/admin/charts.tsx |
+| Composants UI   | Maison (aucune lib ext)| —             | src/components/admin/ui.tsx     |
+| État global     | localStorage + events  | —             | src/lib/cart.ts           |
+| Validation form | Natif HTML + server    | —             | src/components/admin/fields.tsx |
+| Stockage fichiers| Système de fichiers    | —             | public/produits/, storage/|
+| Paiements       | Non intégré côté API   | —             | Mentions: Wave, OM, Djamo |
+| Emails/notifs   | WhatsApp API (optionnel)| —            | .env.example              |
+| Hébergement     | Non trouvé (config prod)| —            | Non trouvé                |
+| CI/CD           | Non trouvé             | —             | Non trouvé                |
+
+Variables d'environnement (.env.example) :
+  DATABASE_URL              — Chemin SQLite
+  JWT_SECRET                — Secret signature sessions admin
+  ADMIN_PASSWORD_HASH       — Hash bcrypt mot de passe admin historique
+  NEXT_PUBLIC_WHATSAPP_NUMBER — Numéro WhatsApp checkout
+  BLOG_UPLOAD_DIR           — Dossier uploads blog
+  PRODUCTION_UPLOAD_DIR     — Dossier uploads production
+  SEED_ADMIN_PASSWORD       — MDP comptes de démo (seed)
+  WHATSAPP_API_URL          — URL API WhatsApp (alertes optionnelles)
+  WHATSAPP_API_TOKEN        — Token API WhatsApp
+  WHATSAPP_RECIPIENT        — Destinataire alertes WhatsApp
+  BLOG_ADMIN_PASSWORD       — MDP accès /blog/admin
+  BLOG_ADMIN_SECRET         — Secret sessions /blog/admin
+  INVOICE_EMAIL             — Email pied de facture
+  INVOICE_PHONE             — Téléphone pied de facture
+  INVOICE_RCCM              — Numéro RCCM pied de facture
+
+================================================================================
+## 3. ARCHITECTURE
+================================================================================
+
+### Arborescence commentée (2 niveaux)
+
+```
+riceware/
+├── prisma/
+│   ├── schema.prisma         — Schéma complet (24 modèles)
+│   ├── seed.ts               — Données de démo (produits, users, batches, lots, stocks)
+│   ├── seed-boutique.ts      — Seed catalogue boutique
+│   └── migrations/           — Migrations SQLite versionnées
+│
+├── public/
+│   ├── produits/
+│   │   ├── 3d/               — Fichiers HTML Three.js des viewers 3D produits
+│   │   └── uploads/          — Images produits uploadées via admin
+│   ├── payment/              — Logos Mobile Money (Wave, Orange Money, Djamo, etc.)
+│   ├── process-3d.html       — Viewer 3D du procédé de fabrication (homepage)
+│   └── riceware-process-3d.html
+│
+├── src/
+│   ├── app/                  — Next.js App Router (pages + API routes)
+│   │   ├── layout.tsx        — Root layout (fonts, metadata)
+│   │   ├── page.tsx          — Homepage (landing page)
+│   │   ├── boutique/         — Catalogue + pages produit
+│   │   ├── blog/             — Blog public + /admin
+│   │   ├── panier/           — Panier d'achat
+│   │   ├── commande/         — Checkout + confirmation
+│   │   ├── tracabilite/      — Suivi traçabilité par code lot
+│   │   ├── media/production/ — Accès médias production
+│   │   ├── admin/            — Back-office production (13 sections)
+│   │   └── api/              — Routes API REST
+│   │       ├── admin/        — API back-office production (CRUD + exports)
+│   │       ├── blog-admin/   — API blog admin
+│   │       ├── boutique-admin/ — API admin e-commerce
+│   │       ├── orders/       — API commandes publiques
+│   │       ├── articles/     — API articles blog publics
+│   │       ├── media/        — Serveur de médias blog
+│   │       └── tracabilite/  — API traçabilité publique
+│   │
+│   ├── components/
+│   │   ├── admin/            — Composants back-office (ui, charts, forms, sidebar)
+│   │   ├── blog-admin/       — Composants éditeur blog
+│   │   ├── boutique-admin/   — Composants admin catalogue
+│   │   └── *.tsx             — Composants site public (Nav, Footer, Cart, etc.)
+│   │
+│   └── lib/
+│       ├── admin-auth.ts     — JWT, hash, session admin
+│       ├── admin-guard.ts    — requireAdminPage() guard server-side
+│       ├── blog-admin-auth.ts— Auth blog admin (password simple)
+│       ├── rbac.ts           — Rôles, permissions, can()
+│       ├── cart.ts           — Panier localStorage
+│       ├── boutique.ts       — Catalogue statique/BDD
+│       ├── format.ts         — Formatage dates, monnaies, nombres
+│       ├── site.ts           — NAV_LINKS, FOOTER_LINKS
+│       ├── data/
+│       │   ├── products.ts   — Requêtes produits BDD
+│       │   ├── orders.ts     — CRUD commandes + checkout
+│       │   └── mappers.ts    — Transformation Prisma → types métier
+│       └── production/
+│           ├── queries.ts    — Toutes les requêtes Prisma production
+│           └── types.ts      — Enums, constantes, fonctions calcul
+│
+├── scripts/                  — Scripts utilitaires (hash, debug, seed)
+├── docs/                     — Documentation technique
+└── viewer-*.html             — Viewers 3D standalone (à la racine, dev)
+```
+
+### Découpage front/back/API
+
+| Couche         | Pattern                          | Description                                    |
+|----------------|----------------------------------|------------------------------------------------|
+| Pages publiques| Server Components (async)        | SSR avec Prisma direct, pas d'API route        |
+| Pages admin    | Server Components + Client Forms | requireAdminPage() guard, forms client         |
+| Composants UI  | Client Components ('use client') | Formulaires, modales, sidebar, panier          |
+| API routes     | Next.js Route Handlers           | REST JSON, protégées par rejectUnlessPermission|
+| Auth           | JWT httpOnly cookie              | 7 jours TTL, vérification sur chaque requête   |
+
+### Conventions de nommage
+- Fichiers : kebab-case pour routes, PascalCase pour composants
+- API routes : /api/{domain}/{resource}/[id]/route.ts
+- Fonctions queries : list*, get*, create*, update*, delete* (CRUD explicite)
+- Types : PascalCase, suffixe Row/Mapped/Input selon usage
+- Permissions : domaine:action (ex: lots:write, orders:view)
+
+================================================================================
+## 4. MODÈLE DE DONNÉES
+================================================================================
+
+Source : prisma/schema.prisma
+BDD    : SQLite (fichier local)
+ORM    : Prisma 6.16.3
+
+### Tableau complet des modèles
+
+| Modèle           | Rôle                               | Champs clés                                          | Relations                          |
+|------------------|------------------------------------|------------------------------------------------------|------------------------------------|
+| Product          | Produit catalogue e-commerce       | id(String PK), slug(unique), name, category, status  | → ProductPack[]                    |
+| ProductCategory  | Catégories produits                | id(cuid), slug(unique), name, sortOrder              | —                                  |
+| ProductPack      | Conditionnements par produit       | id, productId(FK), packKey, label, quantity, price   | → Product                          |
+| BlogAuthor       | Auteurs du blog                    | id(cuid), name, slug(unique), bio, avatarUrl         | → BlogPost[]                       |
+| BlogCategory     | Catégories blog                    | id(cuid), slug(unique), name, color, parentId?       | ↔ BlogPost[]                       |
+| BlogTag          | Tags blog                          | id(cuid), slug(unique), name, usageCount             | ↔ BlogPost[]                       |
+| BlogMedia        | Médias blog (images, vidéos)       | id(cuid), filename, mimeType, sizeBytes, url         | → BlogPost[] (featured)            |
+| BlogPost         | Articles de blog                   | id(cuid), slug(unique), title, content(Json), status | → BlogAuthor, BlogMedia, []cat []tag|
+| BlogSettings     | Config globale blog                | id="default", postsPerPage, allowComments…           | —                                  |
+| Customer         | Clients e-commerce                 | id(cuid), fullName, phone, email?                    | → Address[], Order[]               |
+| Address          | Adresses de livraison              | id(cuid), customerId(FK), city, district, details    | → Customer, Order[]                |
+| Order            | Commandes clients                  | id(cuid), orderNumber(unique), status, paymentStatus | → Customer, Address, OrderLine[]   |
+| OrderLine        | Lignes de commande                 | id(cuid), orderId(FK), packNameSnapshot, quantity    | → Order                            |
+| User             | Comptes back-office                | id(cuid), email(unique), passwordHash, role, active  | → Batch, Lot, Test, Doc, StockMvt  |
+| Rizerie          | Fournisseurs coques de riz         | id(cuid), name, location, contactPhone, active       | → LotCoques[]                      |
+| LotCoques        | Lots de coques reçus               | id(cuid), code(unique), rizerieId(FK), netWeightKg   | → Rizerie, BatchProduction[]       |
+| BatchProduction  | Lots de fabrication                | id(cuid), code(unique), lotId(FK), piecesProduced    | → LotCoques, ProduitFini[], Test[] |
+| ProduitFini      | Produits finis individuels         | id(cuid), batchId(FK), type, weightG, status         | → BatchProduction, TestQualite[]   |
+| TestQualite      | Tests qualité                      | id(cuid), batchId/produitFiniId(FK), typeTest, result| → Batch, ProduitFini, User         |
+| Stock            | Stocks matières + produits finis   | id(cuid), itemType, label, quantity, minThreshold    | → StockMovement[]                  |
+| StockMovement    | Mouvements de stock                | id(cuid), stockId(FK), type, quantity, reference     | → Stock, User                      |
+| Partner          | Partenaires (labs, clients pilotes)| id(cuid), name, type, contactName, active            | —                                  |
+| Document         | Fichiers liés à des entités        | id(cuid), name, category, url, entityType, entityId  | → User (uploader)                  |
+| Goal             | Objectifs de production            | id(cuid), label, target, status(active/achieved)     | —                                  |
+| Notification     | Alertes système                    | id(cuid), type, level, title, read                   | —                                  |
+| AuditLog         | Journal d'audit                    | id(cuid), userId(FK), action, entityType, entityId   | → User                             |
+| Setting          | Configuration clé-valeur           | key(String PK), value                                | —                                  |
+
+### Indexes (prisma/schema.prisma)
+- LotCoques     : receivedAt, rizerieId, status
+- BatchProduction: startedAt, lotId
+- ProduitFini   : batchId, status
+- TestQualite   : testedAt, batchId, produitFiniId
+- Stock         : itemType (+ unique itemType+productType)
+- StockMovement : createdAt, stockId
+- Partner       : type
+- Document      : category, (entityType + entityId)
+- Notification  : read, createdAt
+- AuditLog      : createdAt, entityType
+
+### Champs d'audit
+- createdAt (DateTime @default(now())) : tous les modèles
+- updatedAt (DateTime @updatedAt)      : User, Rizerie, LotCoques, BatchProduction, ProduitFini, Partner, Goal
+- createdById (FK → User)             : LotCoques, StockMovement, Document
+- operatorId  (FK → User)             : BatchProduction, TestQualite
+- uploadedById (FK → User)            : Document
+
+### Soft delete : ❌ Non implémenté (suppression physique uniquement)
+
+### Enums (implémentés en String, validés en TypeScript)
+- Order.status        : draft|received|pending_confirmation|confirmed|preparing|shipped|delivered|cancelled
+- Order.paymentStatus : pending|paid|failed|refunded
+- Order.channel       : site|whatsapp|phone|direct_sale|partner
+- LotCoques.status    : accepted|refused
+- LotCoques.visualQuality : conforme|humide|contamine|refuse
+- BatchProduction.productType : assiette|bol|gobelet (+ extensible)
+- ProduitFini.status  : valide|rejete
+- TestQualite.typeTest: charge|etancheite|visuel
+- TestQualite.result  : succes|echec
+- Stock.itemType      : coques|poudre|liant|produit_fini
+- Stock.unit          : kg|unités
+- StockMovement.type  : entree|sortie|rebut|ajustement|transfert
+- Partner.type        : laboratoire|client|fournisseur|institution|autre
+- Document.category   : certificat|contrat|rapport|photo|autre
+- Goal.status         : active|achieved|archived
+- Notification.level  : info|warning|error
+- AuditLog.action     : create|update|delete
+- User.role           : admin|production|logistics|sales|reader
+
+### Diagramme ER (Mermaid)
+
+```mermaid
+erDiagram
+    Product ||--o{ ProductPack : "packs"
+    Customer ||--o{ Address : "addresses"
+    Customer ||--o{ Order : "orders"
+    Address ||--o{ Order : "deliveryAddress"
+    Order ||--o{ OrderLine : "lines"
+    User ||--o{ BatchProduction : "operator"
+    User ||--o{ LotCoques : "createdBy"
+    User ||--o{ TestQualite : "operator"
+    User ||--o{ StockMovement : "createdBy"
+    User ||--o{ Document : "uploadedBy"
+    User ||--o{ AuditLog : "user"
+    Rizerie ||--o{ LotCoques : "lots"
+    LotCoques ||--o{ BatchProduction : "batches"
+    BatchProduction ||--o{ ProduitFini : "products"
+    BatchProduction ||--o{ TestQualite : "tests"
+    ProduitFini ||--o{ TestQualite : "tests"
+    Stock ||--o{ StockMovement : "movements"
+    BlogAuthor ||--o{ BlogPost : "posts"
+    BlogMedia ||--o{ BlogPost : "featuredOn"
+    BlogCategory }|--o{ BlogPost : "posts"
+    BlogTag }|--o{ BlogPost : "posts"
+```
+
+================================================================================
+## 5. AUTHENTIFICATION & RÔLES
+================================================================================
+
+Source : src/lib/rbac.ts, src/lib/admin-auth.ts, src/lib/admin-guard.ts
+
+### Systèmes d'auth distincts
+
+| Système         | Route        | Méthode              | Cookie                      |
+|-----------------|--------------|----------------------|-----------------------------|
+| Admin back-office | /admin      | JWT bcrypt           | riceware_admin_session (7j) |
+| Blog admin      | /blog/admin  | Mot de passe simple  | riceware_blog_session (7j)  |
+| Boutique admin  | /boutique/articles-admin | JWT séparé | riceware_boutique_session |
+
+### Rôles et permissions (src/lib/rbac.ts)
+
+| Rôle        | Label                  | Permissions                                                    |
+|-------------|------------------------|----------------------------------------------------------------|
+| admin       | Administrateur         | TOUTES (20 permissions)                                        |
+| production  | Opérateur production   | dashboard:view, lots:view, production:r/w, quality:r/w, stocks:r/w, documents:view, reports:view |
+| logistics   | Resp. logistique       | dashboard:view, lots:r/w, stocks:r/w, partners:r/w, documents:r/w, reports:view |
+| sales       | Commercial             | dashboard:view, orders:r/w, lots/production/quality/stocks/partners/documents:view, reports:view |
+| reader      | Lecteur seul           | dashboard, orders, lots, production, quality, stocks, partners, documents, reports (view only) |
+
+### Liste complète des permissions (20)
+dashboard:view, orders:view, orders:write, lots:view, lots:write,
+production:view, production:write, quality:view, quality:write,
+stocks:view, stocks:write, partners:view, partners:write,
+documents:view, documents:write, reports:view,
+users:manage, settings:manage, content:manage, catalog:manage
+
+### Guards
+- Server-side : requireAdminPage(permission) dans src/lib/admin-guard.ts
+  → redirige vers /admin/login si non authentifié
+  → redirige vers /admin?refus=1 si permission insuffisante
+- API-side : rejectUnlessPermission(request, permission) dans src/lib/admin-auth.ts
+  → retourne 401 JSON si session invalide
+  → retourne 403 JSON si permission insuffisante
+
+### Session
+- Cookie httpOnly "riceware_admin_session" contenant JWT signé
+- Payload : { userId, role, permissions[], name, email, iat, exp }
+- Expiration : 7 jours
+- Vérification : verifyAdminToken() à chaque requête API
+
+### Compte admin historique
+- Sans email (ADMIN_PASSWORD_HASH dans .env) — hash bcrypt
+- Comptes multi-rôles : email + password (table User)
+- Script de création : scripts/create-admin.ts
+
+================================================================================
+## 6. SITE E-COMMERCE
+================================================================================
+
+### Pages publiques
+
+| Route                        | Fichier                                    | Description                            |
+|------------------------------|--------------------------------------------|----------------------------------------|
+| /                            | src/app/page.tsx                           | Landing page (hero, produits, procédé, témoignages, impact) |
+| /boutique                    | src/app/boutique/page.tsx                  | Catalogue filtrable par catégorie      |
+| /boutique/[slug]             | src/app/boutique/[slug]/page.tsx           | Fiche produit (galerie, packs, 3D)     |
+| /panier                      | src/app/panier/page.tsx                    | Panier localStorage                    |
+| /commande                    | src/app/commande/page.tsx                  | Checkout (infos client + paiement)     |
+| /commande/confirmation       | src/app/commande/confirmation/page.tsx     | Confirmation de commande               |
+| /tracabilite                 | src/app/tracabilite/page.tsx               | Recherche traçabilité par code         |
+
+### Catalogue & Variantes
+- Produits en BDD (table Product) avec slug unique
+- Variantes couleur : imagesByColor (JSON), viewsByColor (JSON)
+- Conditionnements : table ProductPack (packKey, label, quantity, price, priceValue)
+- Vue 3D : model3dUrl → iframe via ProductViewerModal
+- Catégories : table ProductCategory (séparée du product.category string)
+- Source : src/lib/data/products.ts, src/app/boutique/
+
+### Panier (src/lib/cart.ts)
+- Stockage : localStorage (clé "riceware:cart")
+- Structure CartItem : productSlug, packId, packQuantity, packPriceValue, color, quantity
+- Événement : "riceware:cart-updated" (CustomEvent)
+- Pas de panier serveur-side — 100% client
+
+### Checkout (src/lib/data/orders.ts — createCheckoutOrder)
+- Crée Customer + Address + Order + OrderLine dans une transaction Prisma
+- orderNumber généré : RW-CMD-YYYYMMDD-HHMMSS-XXXX
+- Status initial : "received" / paymentStatus : "pending"
+- Note auto ajoutée : "Aucun paiement n'a été prélevé."
+- Canal par défaut : "site"
+
+### Statuts commande (Order.status)
+draft → received → pending_confirmation → confirmed → preparing → shipped → delivered
+                                                                            ↓
+                                                                        cancelled
+
+### Statuts paiement (Order.paymentStatus)
+pending → paid | failed | refunded
+
+### Paiements Mobile Money
+❌ Non intégré côté API — pages de paiement statiques dans /commande
+Logos présents : public/payment/ (Wave, Orange Money, Djamo, MTN MoMo, Moov Money)
+Champs UI : PaymentMethod type dans cart.ts (wave|orange_money|djamo|mtn_momo|moov_money)
+
+### Emails transactionnels
+❌ Non implémenté — aucun envoi d'email dans le code
+
+### Alertes WhatsApp
+🟡 Partiel — infrastructure prête (WHATSAPP_API_URL/TOKEN/RECIPIENT dans .env)
+Route : src/app/api/admin/notifications/route.ts
+
+### Promotions / Réductions
+❌ Non implémenté
+
+### API publiques e-commerce
+
+| Route                          | Méthode | Description                              |
+|--------------------------------|---------|------------------------------------------|
+| /api/orders                    | POST    | Créer commande (checkout)                |
+| /api/orders/[number]           | GET     | Consulter commande par numéro            |
+| /api/tracabilite/[code]        | GET     | Traçabilité lot public                   |
+| /api/articles                  | GET     | Articles blog publics                    |
+| /api/articles/[slug]           | GET     | Article blog par slug                    |
+
+================================================================================
+## 7. BLOG / CONTENU
+================================================================================
+
+### Modèle (prisma/schema.prisma)
+- BlogPost : slug, title, excerpt, content(Json TipTap), status(draft/published/scheduled/archived)
+- BlogAuthor : nom, bio, avatar, réseaux sociaux
+- BlogCategory : hiérarchique (parentId nullable)
+- BlogTag : avec usageCount
+- BlogMedia : images/vidéos avec dimensions, thumbnails
+- BlogSettings : configuration globale (commentaires, RSS, SEO, related posts)
+
+### Éditeur
+- Route : /blog/admin/articles
+- Éditeur riche : TipTap (présumé d'après content: Json)
+- Composants : src/components/blog-admin/
+- Auth : BLOG_ADMIN_PASSWORD (mot de passe unique, pas de multi-user)
+
+### SEO
+- Champs : seoTitle, seoDescription, seoKeywords(Json) par article
+- Multilingue : titreEn/titreKo, extraitEn/extraitKo, contenuHtmlEn/contenuHtmlKo (🟡 non activé)
+
+### Médias
+- Upload : /api/blog-admin/media (POST multipart)
+- Accès : /api/media/blog/[filename]
+- Stockage : BLOG_UPLOAD_DIR (env) ou storage/uploads/blog
+
+### Publication
+- Statuts : draft → published | scheduled | archived
+- scheduledAt : publication différée
+- publishedAt : date effective
+
+### API blog admin (protégées par BLOG_ADMIN_PASSWORD)
+- GET/POST /api/blog-admin/articles
+- GET/PUT/DELETE /api/blog-admin/articles/[id]
+- GET/POST /api/blog-admin/media
+- GET/POST /api/blog-admin/taxonomies
+- POST /api/blog-admin/login|logout, GET /api/blog-admin/session
+
+================================================================================
+## 8. ADMIN / BACK-OFFICE
+================================================================================
+
+### Navigation (AdminSidebar — src/components/admin/AdminSidebar.tsx)
+
+Groupe "Vue générale" :
+  ✅ /admin              — Tableau de bord (KPIs, graphiques, alertes)
+  ✅ /admin/analytics    — Analyses & performance (période sélectionnable)
+
+Groupe "Production" :
+  ✅ /admin/lots         — Lots de coques (réception, traçabilité)
+  ✅ /admin/production   — Batches de production (saisie, coûts)
+  ✅ /admin/qualite      — Qualité (tests charge, étanchéité, visuel)
+  ✅ /admin/stocks       — Stocks (inventaire, mouvements)
+
+Groupe "Commerce" :
+  ✅ /admin/commandes    — Commandes clients (statuts, paiement)
+  ✅ /admin/rizieries    — Rizeries (fournisseurs coques)
+  ✅ /admin/partenaires  — Partenaires (labs, clients pilotes)
+  ✅ /admin/documents    — Documents (certificats, contrats, photos)
+  ✅ /admin/rapports     — Rapports (exports, objectifs, audit)
+
+Groupe "Administration" :
+  ✅ /admin/utilisateurs — Gestion des comptes back-office
+  ✅ /admin/parametres   — Configuration système (WhatsApp, objectifs)
+
+Hors menu (exclu délibérément) :
+  🟡 /admin/_articles   — Gestion articles (blog) préfixé _ = exclu du routeur Next.js
+
+### État de chaque page admin
+
+| Page              | Fichier                              | Statut | Données lues              | Données écrites           |
+|-------------------|--------------------------------------|--------|---------------------------|---------------------------|
+| Tableau de bord   | admin/page.tsx                       | ✅     | getDashboardData()        | —                         |
+| Analyses          | admin/analytics/page.tsx             | ✅     | getAnalyticsData(days)    | —                         |
+| Lots de coques    | admin/lots/page.tsx                  | ✅     | listLots(), listRizeries()| POST/DELETE via API        |
+| Lot [id]          | admin/lots/[id]/page.tsx             | ✅     | getLot(id)                | —                         |
+| Production        | admin/production/page.tsx            | ✅     | listBatches(), listLots() | POST via /api/admin/batches|
+| Batch [id]        | admin/production/[id]/page.tsx       | ✅     | getBatch(id)              | —                         |
+| Qualité           | admin/qualite/page.tsx               | ✅     | getQualityOverview()      | POST via /api/admin/tests  |
+| Stocks            | admin/stocks/page.tsx                | ✅     | listStocks(), listMvts()  | POST mouvements + stocks   |
+| Commandes         | admin/commandes/page.tsx             | ✅     | listOrders()              | PATCH statut/paiement      |
+| Rizeries          | admin/rizieries/page.tsx             | ✅     | listRizeries()            | POST/PUT/DELETE via API    |
+| Partenaires       | admin/partenaires/page.tsx           | ✅     | listPartners()            | POST/PUT via API           |
+| Documents         | admin/documents/page.tsx             | ✅     | listDocuments()           | POST upload, DELETE        |
+| Rapports          | admin/rapports/page.tsx              | ✅     | listGoals(), listAuditLogs() | Exports PDF/CSV/Excel   |
+| Utilisateurs      | admin/utilisateurs/page.tsx          | ✅     | listUsers()               | POST/PATCH/DELETE via API  |
+| Paramètres        | admin/parametres/page.tsx            | ✅     | getSettings()             | PUT via /api/admin/parametres |
+
+### Tableau de bord — KPIs et sources (admin/page.tsx + lib/production/queries.ts)
+
+Groupe "Production" (filtre : mois courant) :
+  - Production du jour / semaine / mois → batchProduction.startedAt
+  - Taux de rebut mois / Rendement → (rejects / piecesProduced) * 100
+  - Coût moyen / pièce → (powderCost + binderCost + laborCost + energyCost) / validPieces
+  - Réussite qualité → testQualite.result = 'succes' count / total
+
+Groupe "Commerce" :
+  - CA encaissé → order.totalAmount WHERE paymentStatus='paid'
+  - Commandes reçues / en attente → order.count par statut
+  - Alertes stock → stock WHERE quantity <= minThreshold AND minThreshold > 0
+  - Partenaires actifs → partner.count WHERE active=true
+
+Graphiques :
+  - Production par semaine (LineChart SVG) → 8 semaines glissantes, batchProduction
+  - Évolution coût de revient (BarChart SVG) → 6 mois glissants, batchProduction
+  - Répartition des rebuts (DonutChart SVG) → 8 semaines, batchProduction.rejectCause
+  - Objectif Greenpreneur (ProgressBar) → goal.target vs cumul piecesProduced
+
+### Composants réutilisables (src/components/admin/)
+
+| Composant           | Fichier         | Usage                                              |
+|---------------------|-----------------|----------------------------------------------------|
+| StatCard            | ui.tsx          | Carte KPI (label, valeur, hint, icon, href, tone)  |
+| Badge               | ui.tsx          | Étiquette colorée (neutral/success/warning/danger) |
+| Section             | ui.tsx          | Conteneur avec titre, description, actions         |
+| PageHeader          | ui.tsx          | En-tête de page (titre, description, actions)      |
+| EmptyState          | ui.tsx          | État vide avec message + action                    |
+| LinkButton          | ui.tsx          | Bouton lien (primary/secondary)                    |
+| ProgressBar         | ui.tsx          | Barre de progression avec label                    |
+| KpiGroupLabel       | ui.tsx          | Séparateur thématique entre groupes KPI            |
+| LineChart           | charts.tsx      | Graphique ligne SVG (tendance temporelle)          |
+| BarChart            | charts.tsx      | Graphique barres SVG (comparaison)                 |
+| DonutChart          | charts.tsx      | Graphique donut SVG (répartition)                  |
+| AdminSidebar        | AdminSidebar.tsx| Sidebar fixe + drawer mobile, nav groupée par icônes|
+| AdminTopbar         | AdminTopbar.tsx | Barre top (hamburger, nom utilisateur, déconnexion)|
+| LotForm             | LotForm.tsx     | Formulaire saisie lot de coques                    |
+| BatchForm           | BatchForm.tsx   | Formulaire saisie batch production                 |
+| StockForm           | StockForm.tsx   | Formulaire mouvement/création stock                |
+| TestForm            | TestForm.tsx    | Formulaire test qualité                            |
+| ProductForm         | ProductForm.tsx | Formulaire produit e-commerce                      |
+| DocumentForm        | DocumentForm.tsx| Formulaire upload document                         |
+| UserForm            | UserForm.tsx    | Formulaire utilisateur back-office                 |
+| PartnerForm         | PartnerForm.tsx | Formulaire partenaire                              |
+| RizerieForm         | RizerieForm.tsx | Formulaire rizerie                                 |
+| GoalForm            | GoalForm.tsx    | Formulaire objectif production                     |
+| SettingsForm        | SettingsForm.tsx| Formulaire paramètres système                      |
+| OrderStatusSelect   | OrderStatusSelect.tsx | Sélecteur statut commande                   |
+| DeleteButton        | DeleteButton.tsx| Bouton suppression avec confirmation               |
+| NotificationsPanel  | NotificationsPanel.tsx | Panel alertes système                      |
+| MediaPicker         | MediaPicker.tsx | Sélecteur de médias                                |
+| charts              | charts.tsx      | LineChart, BarChart, DonutChart (SVG custom)       |
+
+================================================================================
+## 9. MODULES MÉTIER
+================================================================================
+
+| Module                    | Statut | Fichiers principaux                                    |
+|---------------------------|--------|--------------------------------------------------------|
+| Stocks matières/produits  | ✅     | admin/stocks/page.tsx, api/admin/stocks/, lib/production/queries.ts |
+| Lots de coques (réception)| ✅     | admin/lots/, api/admin/lots/, prisma: LotCoques        |
+| Rizeries (fournisseurs)   | ✅     | admin/rizieries/page.tsx, api/admin/rizieries/, prisma: Rizerie |
+| Partenaires               | ✅     | admin/partenaires/page.tsx, api/admin/partenaires/, prisma: Partner |
+| Fournisseurs (autres)     | 🟡     | Couvert par Partner.type='fournisseur'                 |
+| Batches de production     | ✅     | admin/production/, api/admin/batches/, prisma: BatchProduction |
+| Produits finis            | ✅     | api/admin/produits-finis/, prisma: ProduitFini         |
+| Contrôle qualité          | ✅     | admin/qualite/page.tsx, api/admin/tests/, prisma: TestQualite |
+| Formulations/liants       | 🟡     | Champs dans BatchProduction (binderKg, binderCostFcfa) — pas de table dédiée |
+| Documents/fichiers        | ✅     | admin/documents/page.tsx, api/admin/documents/, prisma: Document |
+| Commandes clients         | ✅     | admin/commandes/page.tsx, api/admin/orders/            |
+| Traçabilité publique      | ✅     | app/tracabilite/, api/tracabilite/                     |
+| Objectifs production      | ✅     | Prisma: Goal, admin/rapports/, api/admin/objectifs/    |
+| Notifications/alertes     | ✅     | Prisma: Notification, api/admin/notifications/         |
+| Journal d'audit           | ✅     | Prisma: AuditLog, admin/rapports/page.tsx              |
+| Utilisateurs back-office  | ✅     | admin/utilisateurs/, api/admin/utilisateurs/           |
+| Paramètres système        | ✅     | admin/parametres/, api/admin/parametres/, prisma: Setting |
+| Exports (PDF/CSV/Excel)   | ✅     | api/admin/exports/{dashboard,lots,batches,stocks,tests,orders} |
+| Employés/RH               | ❌     | Non trouvé — aucun modèle Employee/HR                  |
+| Rémunérations/paie        | ❌     | Non trouvé                                             |
+| Formations                | ❌     | Non trouvé                                             |
+| Sécurité/EPI              | ❌     | Non trouvé                                             |
+| Dépenses/achats           | ❌     | Non trouvé — coûts batch seulement                     |
+| Paiements fournisseurs    | ❌     | Non trouvé                                             |
+| Retours clients           | ❌     | Non trouvé                                             |
+| KPI environnement         | 🟡     | Présent via objectif "Greenpreneur" + poids coques reçues |
+| KPI sociaux               | ❌     | Non trouvé                                             |
+
+================================================================================
+## 10. GESTION DES FICHIERS / DOCUMENTS
+================================================================================
+
+### Systèmes de stockage
+
+| Système              | Chemin                          | Entités             | Types                    |
+|----------------------|---------------------------------|---------------------|--------------------------|
+| Produits 3D viewers  | public/produits/3d/             | Product.model3dUrl  | .html (Three.js)         |
+| Images produits      | public/produits/uploads/        | Product.image       | .jpg, .png, .webp        |
+| Médias blog          | storage/uploads/blog/ (env)     | BlogMedia           | images, vidéos           |
+| Documents production | storage/uploads/production/ (env)| Document           | PDF, images, tout type   |
+| Logos paiement       | public/payment/                 | (statique)          | .png, .webp              |
+
+### Liens entité ↔ fichier (Document polymorphe)
+```
+Document.entityType  →  "lot" | "partner" | "rizerie" | "batch" | ...
+Document.entityId    →  ID de l'entité concernée
+```
+Pattern polymorphe simple (entityType + entityId) sans FK contrainte.
+Index composé : @@index([entityType, entityId]) pour requêtes filtrées.
+
+### Limites de fichiers
+- Non trouvé dans le code — pas de limite explicite définie côté API
+
+### API d'upload
+- POST /api/admin/documents/upload — Upload document production (multipart)
+- POST /api/admin/upload           — Upload image produit e-commerce
+- POST /api/blog-admin/media       — Upload média blog (multipart)
+- GET  /api/media/blog/[filename]  — Serveur de médias blog
+
+================================================================================
+## 11. DOCUMENTATION & TESTS
+================================================================================
+
+### Documentation
+
+| Fichier                          | Contenu                                              |
+|----------------------------------|------------------------------------------------------|
+| README.md                        | Instructions démarrage, variables d'env, scripts     |
+| docs/roadmap-technique.md        | Feuille de route fonctionnelle et technique          |
+| docs/back-office-production.md   | Spécification du back-office production              |
+| blog-admin-plan.md               | Plan implémentation blog admin                       |
+| boutique-admin-plan.md           | Plan implémentation admin boutique                   |
+| admin-sidebar-plan.md            | Plan refonte sidebar admin                           |
+| gallery-3d-plan.md               — Plan galerie 3D produits                             |
+| order-detail-invoice-plan.md     | Plan factures commandes                              |
+| order-detail-redesign-plan.md    | Plan redesign page commande                          |
+
+### Tests
+❌ Aucun test automatisé trouvé (pas de Jest, Vitest, Playwright dans les dépendances)
+🟡 Tests manuels via scripts QA : scripts/qa-debug.mjs, scripts/revvo-*.mjs
+
+### Seeds et données de démo
+- prisma/seed.ts          : Données complètes (5 users, 3 rizeries, 3 lots, 3 batches, 6 stocks, 4 partenaires, 6 tests, produits)
+- prisma/seed-boutique.ts : Produits catalogue e-commerce
+- Mot de passe démo : "RiceWare2026!" (si SEED_ADMIN_PASSWORD absent)
+
+### Scripts utilitaires (scripts/)
+- create-admin.ts           : Créer un compte admin
+- hash-admin-password.mjs   : Générer hash bcrypt pour ADMIN_PASSWORD_HASH
+- debug-products.ts         : Debug produits BDD
+- qa-debug.mjs              : Tests QA automatisés headless
+- revvo-*.mjs               : Scripts d'exploration (externe)
+- check-db.js               : Vérification état BDD (généré session)
+- check-dashboard.js        : Simulation calculs dashboard (généré session)
+- qa-admin-login.mjs        : Test login admin headless (généré session)
+- qa-nav-test.mjs           : Test navigation retour arrière (généré session)
+
+================================================================================
+## 12. ÉCARTS PAR RAPPORT AUX OBJECTIFS
+================================================================================
+
+### a) Gestion des stocks
+
+| Fonctionnalité                         | Statut | Notes                                          |
+|----------------------------------------|--------|------------------------------------------------|
+| Stock coques, poudre, liant, produits  | ✅     | 4 types dans STOCK_ITEM_TYPES                  |
+| Mouvements entree/sortie/rebut/ajust   | ✅     | StockMovement avec type et reference           |
+| Seuils d'alerte min                    | ✅     | minThreshold, alertes dans dashboard           |
+| Lot lié à mouvement de stock           | 🟡     | reference (String) — pas de FK vers LotCoques  |
+| Statuts qualité par ligne de stock     | ❌     | Non implémenté — ProduitFini.status séparé     |
+| Valorisation du stock (prix unitaire)  | ❌     | Non implémenté                                 |
+| Inventaire physique / rapprochement    | ❌     | Non implémenté                                 |
+| Traçabilité stock → lot → batch → vente| 🟡     | Liens partiels (lot→batch→produitFini), pas jusqu'à la vente |
+
+### b) Partenaires et rizeries
+
+| Fonctionnalité                         | Statut | Notes                                          |
+|----------------------------------------|--------|------------------------------------------------|
+| Fiche rizerie complète                 | ✅     | Nom, lieu, contact, contract, volume mensuel   |
+| Lien lot ↔ rizerie                     | ✅     | LotCoques.rizerieId → Rizerie                  |
+| Fiche partenaire                       | ✅     | Nom, type, contact, localisation               |
+| "Pack" lié à une rizerie               | ❌     | ProductPack non lié à Rizerie                  |
+| "Pack" lié à un lot de coques          | ❌     | Non implémenté                                 |
+| Géolocalisation / carte                | ❌     | Champ location String seulement                |
+| Portail partenaire (accès externe)     | ❌     | Non implémenté                                 |
+
+### c) Documents liés à entités
+
+| Fonctionnalité                         | Statut | Notes                                          |
+|----------------------------------------|--------|------------------------------------------------|
+| Documents liés à rizerie, partenaire   | ✅     | Document.entityType + entityId polymorphe      |
+| Documents liés à lot, batch            | ✅     | Idem — entityType='lot', 'batch'               |
+| Documents liés à client                | ❌     | Customer non couvert par entityType            |
+| Documents liés à employé              | ❌     | Pas de modèle Employee                         |
+| Contrôle d'accès par document          | 🟡     | Protégé par auth back-office, pas granulaire   |
+| Versionnement documents                | ❌     | Non implémenté                                 |
+| Signature électronique                 | ❌     | Non implémenté                                 |
+
+### d) Tableau de bord KPIs
+
+| Catégorie KPI                          | Statut | Données disponibles                            |
+|----------------------------------------|--------|------------------------------------------------|
+| KPIs production (pièces, rebuts, coût) | ✅     | Calculs temps réel depuis BatchProduction      |
+| KPIs qualité (taux réussite)           | ✅     | TestQualite.result aggregé                     |
+| KPIs commerce (CA, commandes)          | ✅     | Order.totalAmount WHERE paid                   |
+| KPIs sociaux (emplois, formation)      | ❌     | Aucune donnée — modèles inexistants            |
+| KPIs environnement (CO2 évité, déchets)| ❌     | Uniquement poids coques (indirectement)        |
+| KPIs financiers (marge, charges)       | ❌     | Coûts batch disponibles, pas les charges fixes |
+| Tableaux de bord temps réel (WebSocket)| ❌     | SSR statique — rechargement manuel             |
+| Export dashboard Excel                 | ❌     | PDF seulement                                  |
+| Comparaison périodes (N vs N-1)        | ✅     | Dans /admin/analytics (getAnalyticsData)       |
+
+================================================================================
+## 13. DETTE TECHNIQUE & RISQUES
+================================================================================
+
+### Doublons et incohérences
+
+| Problème                                     | Risque  | Localisation                                    |
+|----------------------------------------------|---------|-------------------------------------------------|
+| getDashboardData() existe en 2 versions      | 🔴 Élevé | queries.ts: version courte (30j) + version étendue (6 mois) — incohérence potentielle |
+| Product.category (String) vs ProductCategory | 🟡 Moyen | Deux systèmes de catégorisation non liés        |
+| Order.channel string vs CartItem.channel enum| 🟡 Moyen | Validation non synchronisée                     |
+| Stock.movements include(take:1) vs take:3    | 🟡 Faible | Incohérence entre queries.ts et page stock      |
+| getAnalyticsData n-1 via requêtes séparées   | 🟡 Perf  | N+1 queries potentiel pour comparaisons         |
+
+### Sécurité
+
+| Risque                                       | Gravité | Notes                                           |
+|----------------------------------------------|---------|-------------------------------------------------|
+| SQLite en production                         | 🔴 Élevé | Non adapté multi-utilisateurs concurrents, pas de sauvegarde intégrée |
+| Pas de rate limiting sur /api/admin/login    | 🔴 Élevé | Brute-force possible                            |
+| ADMIN_PASSWORD_HASH dans .env               | 🟡 Moyen | Risque si .env exposé (pas de rotation facile)  |
+| Pas de HTTPS/TLS configuré dans le code      | 🟡 Moyen | Dépend de l'hébergeur                           |
+| Données personnelles clients (RGPD)         | 🟡 Moyen | Customer.phone/email sans chiffrement au repos  |
+| Pas de CSRF protection sur les formulaires  | 🟡 Moyen | Next.js Server Actions fournissent tokens implicites |
+| Mot de passe blog admin en clair (.env)     | 🟡 Moyen | BLOG_ADMIN_PASSWORD non hashé                   |
+| Soft delete absent → suppression définitive | 🟡 Moyen | Risque de perte de données métier               |
+
+### Performances
+
+| Risque                                       | Gravité | Notes                                           |
+|----------------------------------------------|---------|-------------------------------------------------|
+| getDashboardData() : 10 requêtes parallèles  | 🟡 Moyen | Promise.all correct mais SQLite limité          |
+| Pas de cache (Redis/mémoire)                 | 🟡 Moyen | Chaque visite dashboard = 10 requêtes BDD       |
+| Puppeteer pour exports PDF                  | 🟡 Moyen | Processus lourd, risque de timeout              |
+| Images produits sans CDN                    | 🟡 Moyen | Servies depuis public/ — pas de redimensionnement |
+| Three.js viewers via iframe (même origine)  | 🟡 Faible | Résolu par pattern history.pushState            |
+
+### Points bloquants pour évolutions
+
+| Évolution                             | Blocage actuel                                     |
+|---------------------------------------|----------------------------------------------------|
+| Multi-utilisateurs production         | SQLite → migration vers PostgreSQL nécessaire      |
+| Paiements Mobile Money                | Intégration API Wave/Orange Money à faire          |
+| Notifications temps réel              | Pas de WebSocket — polling ou SSE à implémenter    |
+| App mobile                            | Pas d'API REST publique documentée                 |
+| RH / Employés                         | Aucun modèle — à créer entièrement                 |
+| Portail client (suivi commande)       | Uniquement via orderNumber en URL — minimal        |
+
+================================================================================
+## 14. QUESTIONS OUVERTES
+================================================================================
+
+1.  Hébergement cible : VPS (Linux), Vercel, Render, ou autre ? Cela détermine si SQLite est viable.
+2.  Volume de production mensuel prévu : nombre de batches/jour ? (impact performance BDD)
+3.  Paiements : quels prestataires exactement — Wave CI, Orange Money CI, ou API tiers ?
+4.  Emails transactionnels souhaités ? (confirmation commande, alerte stock bas, etc.)
+5.  Les employés/opérateurs doivent-ils avoir des fiches RH complètes ou juste un compte User ?
+6.  La devise XOF est-elle la seule ? Des ventes en EUR ou USD sont-elles prévues ?
+7.  ProductCategory est-il censé remplacer Product.category (String) ou coexister ?
+8.  Le modèle "pack lié à une rizerie" mentionné dans les objectifs : quelle est la logique exacte ?
+9.  Versionnement des documents : nécessaire pour les certificats et contrats ?
+10. Migration SQLite → PostgreSQL prévue avant la mise en production commerciale ?
+11. L'authentification OAuth (Google, LinkedIn) est-elle souhaitée pour le back-office ?
+12. Y a-t-il des règles de livraison (zones, tarifs) à modéliser en BDD ?
+13. Les promotions/codes promo sont-ils prévus pour la boutique ?
+14. Le KPI "CO2 évité" et l'impact environnemental : comment est-il calculé ? (non trouvé)
+15. Y a-t-il des partenaires qui doivent avoir accès à un espace externe limité ?
+16. Les formulations (ratios poudre/liant/eau) doivent-elles être versionnées par produit ?
+17. Multi-sites (plusieurs sites de production) ou toujours un seul atelier ?
+18. Les imports de données (lots, stocks) via CSV sont-ils nécessaires ?
+19. La traçabilité publique (/tracabilite) est-elle destinée aux consommateurs finaux ou aux B2B ?
+20. RCCM, NIF et autres infos légales : où doivent-elles apparaître (factures seulement, ou partout) ?
+
+================================================================================
+## RÉSUMÉ EN 10 LIGNES
+================================================================================
+
+1. RiceWare CI est une startup ivoirienne qui transforme les déchets de coques de riz en vaisselle biodégradable.
+2. Le projet est un monorepo Next.js 16 (App Router) + React 19 + TypeScript + Tailwind v4 + Prisma + SQLite.
+3. Il comprend trois espaces distincts : site e-commerce public, blog, et back-office production.
+4. Le back-office couvre l'intégralité de la chaîne opérationnelle : rizeries → lots → production → qualité → stocks → commandes.
+5. L'authentification est JWT (bcrypt) avec 5 rôles granulaires (admin, production, logistics, sales, reader).
+6. Les données sont 100% réelles — aucun mock — toutes les pages admin utilisent Prisma directement côté serveur.
+7. La base de données SQLite contient 24 modèles couvrant e-commerce, production, qualité et blog.
+8. Les paiements Mobile Money (Wave, Orange Money, etc.) ne sont pas encore intégrés côté API.
+9. Il manque les modules RH, rémunérations, KPIs environnementaux/sociaux, et les emails transactionnels.
+10. La migration vers PostgreSQL sera nécessaire avant une mise en production à charge élevée.
+
+================================================================================
+## TOP 10 DES FICHIERS CLÉS
+================================================================================
+
+1.  prisma/schema.prisma             — Schéma complet de la BDD (24 modèles, source de vérité)
+2.  src/lib/production/queries.ts    — Toutes les requêtes métier (dashboard, analytics, lots, batches)
+3.  src/lib/production/types.ts      — Enums, constantes, fonctions calcul métier
+4.  src/lib/data/orders.ts           — CRUD commandes + checkout complet
+5.  src/lib/rbac.ts                  — Rôles, permissions, can() — contrôle d'accès
+6.  src/app/admin/layout.tsx         — Layout back-office (auth, sidebar, session)
+7.  src/app/admin/page.tsx           — Dashboard (KPIs réels, graphiques, alertes)
+8.  src/components/admin/AdminSidebar.tsx — Navigation admin (groupes, icônes, mobile)
+9.  src/components/admin/ui.tsx      — Design system admin (StatCard, Badge, Section, etc.)
+10. src/lib/admin-auth.ts            — JWT, vérification token, rejectUnlessPermission()
+
+================================================================================
+## INVENTAIRE COMPLET DES ROUTES API
+================================================================================
+
+### /api/admin/* (protégées JWT back-office)
+
+| Route                                    | Méthodes     | Permission requise        |
+|------------------------------------------|--------------|---------------------------|
+| /api/admin/session                       | GET          | auth seulement            |
+| /api/admin/login                         | POST         | public                    |
+| /api/admin/logout                        | POST         | auth seulement            |
+| /api/admin/dashboard                     | GET          | dashboard:view            |
+| /api/admin/lots                          | GET, POST    | lots:view / lots:write    |
+| /api/admin/lots/[id]                     | GET, PUT, DELETE | lots:view / lots:write |
+| /api/admin/batches                       | GET, POST    | production:view / write   |
+| /api/admin/batches/[id]                  | GET, PUT, DELETE | production:view / write|
+| /api/admin/tests                         | GET, POST    | quality:view / write      |
+| /api/admin/tests/[id]                    | GET, PUT, DELETE | quality:view / write  |
+| /api/admin/produits-finis                | GET, POST    | quality:view / write      |
+| /api/admin/produits-finis/[id]           | GET, PUT, DELETE | quality:view / write  |
+| /api/admin/stocks                        | GET, POST    | stocks:view / write       |
+| /api/admin/stocks/[id]                   | GET, PUT, DELETE | stocks:view / write   |
+| /api/admin/stocks/movements              | GET, POST    | stocks:view / write       |
+| /api/admin/orders                        | GET          | orders:view               |
+| /api/admin/orders/[id]                   | GET, PATCH, DELETE | orders:view / write  |
+| /api/admin/rizieries                     | GET, POST    | lots:view / lots:write    |
+| /api/admin/rizieries/[id]                | GET, PUT, DELETE | lots:view / lots:write |
+| /api/admin/partenaires                   | GET, POST    | partners:view / write     |
+| /api/admin/partenaires/[id]              | GET, PUT, DELETE | partners:view / write |
+| /api/admin/documents                     | GET, POST    | documents:view / write    |
+| /api/admin/documents/upload              | POST         | documents:write           |
+| /api/admin/documents/[id]                | GET, DELETE  | documents:view / write    |
+| /api/admin/utilisateurs                  | GET, POST    | users:manage              |
+| /api/admin/utilisateurs/[id]             | GET, PUT, DELETE | users:manage           |
+| /api/admin/objectifs                     | GET, POST    | reports:view / write      |
+| /api/admin/objectifs/[id]                | GET, PUT, DELETE | reports:view / write  |
+| /api/admin/parametres                    | GET, PUT     | settings:manage           |
+| /api/admin/notifications                 | GET, POST    | dashboard:view            |
+| /api/admin/upload                        | POST         | catalog:manage            |
+| /api/admin/articles                      | GET, POST    | content:manage            |
+| /api/admin/articles/[id]                 | GET, PUT, DELETE | content:manage        |
+| /api/admin/categories                    | GET, POST    | content:manage            |
+| /api/admin/tags                          | GET, POST    | content:manage            |
+| /api/admin/taxonomies                    | GET          | content:manage            |
+| /api/admin/exports/dashboard             | GET          | reports:view              |
+| /api/admin/exports/lots                  | GET          | reports:view              |
+| /api/admin/exports/batches               | GET          | reports:view              |
+| /api/admin/exports/stocks                | GET          | reports:view              |
+| /api/admin/exports/tests                 | GET          | reports:view              |
+| /api/admin/exports/orders                | GET          | reports:view              |
+| /api/admin/exports/quality/[id]          | GET          | reports:view              |
+
+### /api/blog-admin/* (protégées BLOG_ADMIN_PASSWORD)
+
+| Route                                    | Méthodes     |
+|------------------------------------------|--------------|
+| /api/blog-admin/session                  | GET          |
+| /api/blog-admin/login                    | POST         |
+| /api/blog-admin/logout                   | POST         |
+| /api/blog-admin/articles                 | GET, POST    |
+| /api/blog-admin/articles/[id]            | GET, PUT, DELETE |
+| /api/blog-admin/taxonomies               | GET          |
+| /api/blog-admin/media                    | GET, POST, DELETE |
+
+### /api/boutique-admin/* (protégées JWT boutique-admin)
+
+| Route                                    | Méthodes     |
+|------------------------------------------|--------------|
+| /api/boutique-admin/session              | GET          |
+| /api/boutique-admin/logout               | POST         |
+| /api/boutique-admin/products             | GET, POST    |
+| /api/boutique-admin/products/[id]        | GET, PUT, DELETE |
+| /api/boutique-admin/categories           | GET, POST    |
+| /api/boutique-admin/orders               | GET          |
+| /api/boutique-admin/orders/[id]          | GET, PATCH   |
+| /api/boutique-admin/orders/[id]/invoice  | GET          |
+| /api/boutique-admin/upload               | POST         |
+
+### API publiques
+
+| Route                                    | Méthodes     | Description                    |
+|------------------------------------------|--------------|--------------------------------|
+| /api/orders                              | POST         | Créer commande (checkout)      |
+| /api/orders/[number]                     | GET          | Consulter commande publique    |
+| /api/articles                            | GET          | Liste articles blog publics    |
+| /api/articles/[slug]                     | GET          | Article blog par slug          |
+| /api/media/blog/[filename]               | GET          | Serveur médias blog            |
+| /api/tracabilite/[code]                  | GET          | Traçabilité lot par code       |
+
+================================================================================
+# FIN DU DOCUMENT
+# Généré à partir du code source — 2026-11-01
+# Pour toute mise à jour : relancer l'analyse depuis le dépôt
+================================================================================

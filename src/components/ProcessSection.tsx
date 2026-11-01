@@ -1,6 +1,18 @@
+'use client';
+
+import { useEffect, useRef } from 'react';
 import SectionLabel from './SectionLabel';
 
 export default function ProcessSection() {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Load via replace() so the iframe does not push a history entry —
+  // this prevents the browser back button from behaving unexpectedly
+  // when users navigate away from the home page.
+  useEffect(() => {
+    iframeRef.current?.contentWindow?.location.replace('/process-3d.html');
+  }, []);
+
   return (
     <section id="procede" className="bg-paddy-deep py-section text-on-paddy">
       <div className="max-w-page mx-auto px-5 sm:px-8">
@@ -17,10 +29,9 @@ export default function ProcessSection() {
           {/* Viewer 3D interactif agrandi pour laisser la scène respirer sous les commandes. */}
           <div className="relative h-[min(68dvh,760px)] min-h-[360px] w-full overflow-hidden rounded-xl border border-line bg-ground shadow-inner sm:min-h-[500px] lg:min-h-[560px]">
             <iframe
-              src="/process-3d.html"
+              ref={iframeRef}
               title="Process de fabrication RiceWare CI — vue 3D interactive"
               className="w-full h-full border-0 block"
-              loading="lazy"
               allow="fullscreen"
             />
           </div>

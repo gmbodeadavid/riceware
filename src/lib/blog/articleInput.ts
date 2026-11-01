@@ -40,6 +40,26 @@ function optionalText(value: unknown, maxLength: number): string | null {
   return cleanText(value, maxLength) || null;
 }
 
+function sanitizeInlineHtml(value: string): string {
+  return value.replace(
+    /<(\/?)(strong|em|b|i|br|\s*a\s)[^>]*>|<a\s+href="([^"]*)"\s*>([\s\S]*?)<\/a>|[^<]+/g,
+    (match, close, tag, href, inner) => {
+      if (tag === 'a' && href !== undefined) {
+        const url = href.replace(/[<>"' ]/g, '');
+        if (!/^https?:\/\//i.test(url)) return escapeText(inner);
+        return `<a href="${url}">${escapeText(inner)}</a>`;
+      }
+      if (tag === 'strong' || tag === 'em' || tag === 'b' || tag === 'i') return `<${close ? '/' : ''}${tag === 'b' ? 'strong' : tag === 'i' ? 'em' : tag}>`;
+      if (tag === 'br') return '<br />';
+      return escapeText(match);
+    },
+  );
+}
+
+function escapeText(text: string): string {
+  return text.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] ?? c));
+}
+
 function cleanIdList(value: unknown, label: string, issues: string[]): string[] {
   if (value === undefined || value === null) return [];
   if (!Array.isArray(value) || value.some((id) => typeof id !== 'string')) {
@@ -61,29 +81,34 @@ function sanitizeBlock(raw: unknown): AnyBlogBlock | null {
 
   switch (raw.type) {
     case 'paragraph': {
-      const text = cleanText(content.text, ARTICLE_LIMITS.blockText);
+      const text = sanitizeInlineHtml(cleanText(content.text, ARTICLE_LIMITS.blockText));
       return text ? { id, type: 'paragraph', order: 0, content: { text } } : null;
     }
     case 'heading': {
-      const text = cleanText(content.text, ARTICLE_LIMITS.shortText);
+      const text = escapeText(cleanText(content.text, ARTICLE_LIMITS.shortText));
       const level = content.level === 3 ? 3 : 2;
       return text ? { id, type: 'heading', order: 0, content: { level, text } } : null;
     }
     case 'quote': {
-      const text = cleanText(content.text, ARTICLE_LIMITS.blockText);
-      const author = cleanText(content.author, ARTICLE_LIMITS.shortText) || undefined;
+      const text = sanitizeInlineHtml(cleanText(content.text, ARTICLE_LIMITS.blockText));
+      const author = escapeText(cleanText(content.author, ARTICLE_LIMITS.shortText)) || undefined;
       return text ? { id, type: 'quote', order: 0, content: { text, author } } : null;
     }
     case 'callout': {
-      const text = cleanText(content.text, ARTICLE_LIMITS.blockText);
+      const text = sanitizeInlineHtml(cleanText(content.text, ARTICLE_LIMITS.blockText));
       const variant = CALLOUT_VARIANTS.find((item) => item === content.variant) ?? 'info';
-      const title = cleanText(content.title, ARTICLE_LIMITS.shortText) || undefined;
+      const title = escapeText(cleanText(content.title, ARTICLE_LIMITS.shortText)) || undefined;
       return text ? { id, type: 'callout', order: 0, content: { variant, title, text } } : null;
     }
     case 'image': {
       const mediaId = cleanText(content.mediaId, 64);
-      const caption = cleanText(content.caption, ARTICLE_LIMITS.shortText) || undefined;
+      const caption = escapeText(cleanText(content.caption, ARTICLE_LIMITS.shortText)) || undefined;
       return mediaId ? { id, type: 'image', order: 0, content: { mediaId, caption } } : null;
+    }
+    case 'video': {
+      const mediaId = cleanText(content.mediaId, 64);
+      const caption = escapeText(cleanText(content.caption, ARTICLE_LIMITS.shortText)) || undefined;
+      return mediaId ? { id, type: 'video', order: 0, content: { mediaId, caption, autoplay: false, loop: false, muted: true } } : null;
     }
     case 'divider':
       return { id, type: 'divider', order: 0, content: {} };

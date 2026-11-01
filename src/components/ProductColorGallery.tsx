@@ -1,12 +1,11 @@
 'use client';
 
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import Image from 'next/image';
 import Product3DTrigger from '@/components/Product3DTrigger';
 import { PRODUCT_COLORS } from '@/lib/boutique';
 import type { ProductColorId } from '@/lib/boutique';
-import type { ProductId } from '@/lib/viewer3d/catalog';
 
 type ProductColorContextValue = {
   selectedColor: ProductColorId;
@@ -16,7 +15,7 @@ type ProductColorContextValue = {
 
 const ProductColorContext = createContext<ProductColorContextValue | null>(null);
 
-function useProductColor() {
+export function useProductColor() {
   const context = useContext(ProductColorContext);
   if (!context) {
     throw new Error('Les composants de couleur doivent être dans ProductColorProvider.');
@@ -65,44 +64,72 @@ export function ProductColorSwatches() {
 
 export function ProductColorGallery({
   productName,
-  viewerId,
+  viewerSrc,
+  viewsByColor,
 }: {
   productName: string;
-  viewerId: ProductId;
+  viewerSrc?: string;
+  viewsByColor?: Record<string, string[]>;
 }) {
   const { selectedColor, imagesByColor } = useProductColor();
   const image = imagesByColor[selectedColor];
   const colorLabel = PRODUCT_COLORS.find((color) => color.id === selectedColor)?.label;
+
+  const [selectedThumb, setSelectedThumb] = useState<number | null>(null);
+
+  useEffect(() => {
+    setSelectedThumb(null);
+  }, [selectedColor]);
+
+  // Use per-color views if available, otherwise fall back to repeating the color image.
+  const colorViews = viewsByColor?.[selectedColor];
+  const thumbnailImages: string[] =
+    colorViews && colorViews.length > 0
+      ? [colorViews[0] ?? image, colorViews[1] ?? image, colorViews[2] ?? image]
+      : [image, image, image];
+
+  const mainImage = selectedThumb !== null ? (thumbnailImages[selectedThumb] ?? image) : image;
 
   return (
     <div className="space-y-4">
       <div className="overflow-hidden rounded-[24px] border border-line bg-surface">
         <div className="relative aspect-[4/3] bg-ground">
           <Image
-            src={image}
+            src={mainImage}
             alt={`${productName}, couleur ${colorLabel}`}
             fill
             sizes="(max-width: 1024px) 100vw, 58vw"
             className="object-contain p-6 sm:p-8"
           />
-          <Product3DTrigger initialId={viewerId} />
+          <Product3DTrigger src={viewerSrc} />
         </div>
       </div>
 
       <div className="grid grid-cols-3 gap-3">
-        {[0, 1, 2].map((index) => (
-          <div key={`${selectedColor}-${index}`} className="overflow-hidden rounded-[16px] border border-line bg-surface">
-            <div className="relative aspect-[4/3] bg-ground">
-              <Image
-                src={image}
-                alt={`${productName}, ${colorLabel}, vue ${index + 1}`}
-                fill
-                sizes="(max-width: 640px) 33vw, (max-width: 1024px) 20vw, 18vw"
-                className="object-contain p-3"
-              />
-            </div>
-          </div>
-        ))}
+        {([0, 1, 2] as const).map((index) => {
+          const thumb = thumbnailImages[index] ?? image;
+          const isActive = selectedThumb === index;
+          return (
+            <button
+              key={`${selectedColor}-${index}`}
+              type="button"
+              onClick={() => setSelectedThumb(index)}
+              className={`overflow-hidden rounded-[16px] border bg-surface cursor-pointer transition-all ${
+                isActive ? 'border-paddy ring-2 ring-paddy ring-offset-2' : 'border-line'
+              }`}
+            >
+              <div className="relative aspect-[4/3] bg-ground">
+                <Image
+                  src={thumb}
+                  alt={`${productName}, ${colorLabel}, vue ${index + 1}`}
+                  fill
+                  sizes="(max-width: 640px) 33vw, (max-width: 1024px) 20vw, 18vw"
+                  className="object-contain p-3"
+                />
+              </div>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

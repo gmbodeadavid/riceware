@@ -3,21 +3,19 @@ import { notFound } from 'next/navigation';
 import Footer from '@/components/Footer';
 import RiceWareNav from '@/components/RiceWareNav';
 import RelatedProductsCarousel from '@/components/RelatedProductsCarousel';
-import { PRODUCTS } from '@/lib/boutique';
-import type { ProductId } from '@/lib/viewer3d/catalog';
+import { listProducts, getProductBySlug } from '@/lib/data/products';
 import { ProductColorGallery, ProductColorProvider, ProductColorSwatches } from '@/components/ProductColorGallery';
 import AddToCartForm from '@/components/AddToCartForm';
 
-const VIEWER_ID_BY_SLUG: Record<string, ProductId> = {
-  'assiette-plate': 'assiette',
-  'barquette-repas': 'barquette',
-  cuillere: 'cuillere',
-  fourchette: 'fourchette',
-  gobelet: 'gobelet',
-};
+function isRecentProduct(createdAt: Date): boolean {
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  return createdAt > thirtyDaysAgo;
+}
 
-export function generateStaticParams() {
-  return PRODUCTS.map((product) => ({ slug: product.slug }));
+export async function generateStaticParams() {
+  const products = await listProducts({ isPublished: true });
+  return products.map((product) => ({ slug: product.slug }));
 }
 
 export default async function ProductDetailPage({
@@ -26,13 +24,16 @@ export default async function ProductDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const product = PRODUCTS.find((item) => item.slug === slug);
+  const product = await getProductBySlug(slug);
 
   if (!product) {
     notFound();
   }
 
-  const relatedProducts = PRODUCTS.filter((item) => item.slug !== product.slug);
+  const allProducts = await listProducts({ isPublished: true });
+  const relatedProducts = allProducts.filter((item) => item.slug !== product.slug);
+  const viewerSrc = product.model3dUrl ?? undefined;
+  const showNewBadge = product.isNew || isRecentProduct(product.createdAt);
 
   return (
     <div className="min-h-screen w-full bg-ground font-body text-ink flex flex-col">
@@ -48,9 +49,13 @@ export default async function ProductDetailPage({
               </Link>
             </div>
 
-            <ProductColorProvider imagesByColor={product.imagesByColor}>
+            <ProductColorProvider imagesByColor={product.imagesByColor as Record<string, string>}>
               <div className="grid gap-8 lg:grid-cols-[1.08fr_0.92fr] lg:items-stretch">
-                <ProductColorGallery productName={product.name} viewerId={VIEWER_ID_BY_SLUG[product.slug]} />
+                <ProductColorGallery
+                  productName={product.name}
+                  viewerSrc={viewerSrc}
+                  viewsByColor={product.viewsByColor}
+                />
 
                 <div className="flex flex-col gap-3 lg:h-full">
                   <div className="space-y-3">
@@ -58,16 +63,14 @@ export default async function ProductDetailPage({
                       <span className="rounded-full border border-line bg-surface px-2.5 py-1 font-mono-brand text-[10px] uppercase tracking-[0.08em] text-ink-muted">
                         {product.category}
                       </span>
+                      {showNewBadge && (
+                        <span className="inline-flex items-center rounded-full bg-paddy/10 px-2.5 py-0.5 text-xs font-medium text-paddy-deep">
+                          Nouveau
+                        </span>
+                      )}
                     </div>
                     <h1 className="font-display text-title font-bold text-ink m-0">{product.name}</h1>
                     <ProductColorSwatches />
-                  </div>
-
-                  <div className="rounded-[18px] border border-line bg-surface p-3 sm:p-4">
-                    <div>
-                      <p className="text-xs text-ink-muted line-through">{product.oldPrice}</p>
-                      <p className="mt-1 text-xl font-bold text-ink">{product.currentPrice}</p>
-                    </div>
                   </div>
 
                   <AddToCartForm product={product} />

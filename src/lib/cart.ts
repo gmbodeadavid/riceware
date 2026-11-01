@@ -1,4 +1,12 @@
-import type { Product } from './boutique';
+// Minimal product shape needed by createCartItem — compatible with both Product (boutique.ts) and ProductRow (data/products.ts).
+interface CartProduct {
+  slug: string;
+  name: string;
+  image: string;
+  format: string;
+  packs: Array<{ id: string; label: string; quantity: number; price: string; priceValue: number; note: string }>;
+  imagesByColor?: Record<string, string>;
+}
 
 export const CART_STORAGE_KEY = 'riceware:cart';
 export const CART_UPDATED_EVENT = 'riceware:cart-updated';
@@ -15,8 +23,15 @@ export interface CartItem {
   packLabel: string;
   packQuantity: number;
   packPrice: string;
+  packPriceValue: number;
   packNote: string;
   quantity: number;
+  /** Color selected at add-to-cart time (e.g. "beige", "vert-sauge") */
+  productColor: string;
+  /** Human-readable color label (e.g. "Beige sable") */
+  productColorLabel: string;
+  /** Image URL for the selected color (snapshot at add time) */
+  productColorImage: string;
 }
 
 export interface CheckoutCustomer {
@@ -49,21 +64,33 @@ export interface StoredOrder {
   commercialNote: string;
 }
 
-export function createCartItem(product: Product, packId: string, quantity: number): CartItem {
+export function createCartItem(
+  product: CartProduct,
+  packId: string,
+  quantity: number,
+  color: string = 'beige',
+  colorLabel: string = 'Beige sable',
+): CartItem {
   const pack = product.packs.find((item) => item.id === packId) ?? product.packs[0];
+  const colorImage = product.imagesByColor?.[color] ?? product.image;
 
   return {
-    id: `${product.slug}:${pack.id}`,
+    // Include color in id so same pack in different colors = separate cart lines
+    id: `${product.slug}:${pack.id}:${color}`,
     productSlug: product.slug,
     productName: product.name,
-    productImage: product.image,
+    productImage: colorImage,
     productFormat: product.format,
     packId: pack.id,
     packLabel: pack.label,
     packQuantity: pack.quantity,
     packPrice: pack.price,
+    packPriceValue: pack.priceValue,
     packNote: pack.note,
     quantity,
+    productColor: color,
+    productColorLabel: colorLabel,
+    productColorImage: colorImage,
   };
 }
 

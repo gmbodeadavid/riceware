@@ -1,8 +1,8 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import type { Product } from '@/lib/boutique';
+import type { ProductRow } from '@/lib/data/products';
 
-export default function RelatedProductsCarousel({ products }: { products: Product[] }) {
+export default function RelatedProductsCarousel({ products }: { products: ProductRow[] }) {
   return (
     <section aria-labelledby="related-products-heading">
       <div className="mb-5">

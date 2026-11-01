@@ -1,12 +1,12 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { rejectUnlessAdmin } from '@/lib/admin-auth';
+import { rejectUnlessPermission } from '@/lib/admin-auth';
 import { BlogInputError, blogErrorResponse } from '@/lib/blog/errors';
 import { storeImage } from '@/lib/blog/mediaStorage';
 import { createMediaRecord } from '@/lib/data/blog';
 
 /** Import d’une image : champ `fichier` (obligatoire) et `alt` (texte alternatif). */
 export async function POST(request: NextRequest) {
-  const rejection = rejectUnlessAdmin(request);
+  const rejection = rejectUnlessPermission(request, 'content:manage');
   if (rejection) return rejection;
 
   try {

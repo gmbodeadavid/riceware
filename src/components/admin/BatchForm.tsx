@@ -1,0 +1,288 @@
+'use client';
+
+import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Field, FormFeedback, buttonClassName, inputClassName, selectClassName, selectStyle } from '@/components/admin/fields';
+import { computeRejectRate, computeYield, PRODUCT_TYPES, REJECT_CAUSES, toNumber } from '@/lib/production/types';
+import { formatCurrency, formatPercent, toDateTimeInputValue } from '@/lib/format';
+
+export type BatchFormInitial = {
+  id: string;
+  code?: string;
+  lotId?: string | null;
+  startedAt: string | Date;
+  productType: string;
+  powderKg: number;
+  binderKg: number;
+  mixHumidityPct: number;
+  pressingTempC: number;
+  pressureMpa: number;
+  cycleTimeMin: number;
+  piecesProduced: number;
+  rejects: number;
+  rejectCause?: string | null;
+  observations?: string | null;
+  powderCostFcfa: number;
+  binderCostFcfa: number;
+  laborCostFcfa: number;
+  energyCostFcfa: number;
+};
+
+export type BatchDefaults = {
+  powderCostPerKg: number;
+  binderCostPerKg: number;
+  laborCostPerBatch: number;
+  energyCostPerBatch: number;
+  rejectAlertPct: number;
+};
+
+export default function BatchForm({
+  lots,
+  initial,
+  defaults,
+  defaultLotId,
+}: {
+  lots: Array<{ id: string; code: string }>;
+  initial?: BatchFormInitial;
+  defaults: BatchDefaults;
+  defaultLotId?: string;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(!initial);
+  const [lotId, setLotId] = useState(initial?.lotId ?? defaultLotId ?? '');
+  const [startedAt, setStartedAt] = useState(toDateTimeInputValue(initial?.startedAt ?? new Date()));
+  const [productType, setProductType] = useState(initial?.productType ?? 'assiette');
+  const [powderKg, setPowderKg] = useState(String(initial?.powderKg ?? ''));
+  const [binderKg, setBinderKg] = useState(String(initial?.binderKg ?? ''));
+  const [mixHumidity, setMixHumidity] = useState(String(initial?.mixHumidityPct ?? ''));
+  const [temperature, setTemperature] = useState(String(initial?.pressingTempC ?? ''));
+  const [pressure, setPressure] = useState(String(initial?.pressureMpa ?? ''));
+  const [cycleTime, setCycleTime] = useState(String(initial?.cycleTimeMin ?? ''));
+  const [pieces, setPieces] = useState(String(initial?.piecesProduced ?? ''));
+  const [rejects, setRejects] = useState(String(initial?.rejects ?? 0));
+  const [rejectCause, setRejectCause] = useState(initial?.rejectCause ?? '');
+  const [observations, setObservations] = useState(initial?.observations ?? '');
+  const [powderCost, setPowderCost] = useState(String(initial?.powderCostFcfa ?? ''));
+  const [binderCost, setBinderCost] = useState(String(initial?.binderCostFcfa ?? ''));
+  const [laborCost, setLaborCost] = useState(String(initial?.laborCostFcfa ?? defaults.laborCostPerBatch));
+  const [energyCost, setEnergyCost] = useState(String(initial?.energyCostFcfa ?? defaults.energyCostPerBatch));
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const numbers = useMemo(() => {
+    const piecesValue = Math.max(0, Math.trunc(toNumber(pieces)));
+    const rejectsValue = Math.max(0, Math.min(piecesValue, Math.trunc(toNumber(rejects))));
+    const powder = Math.max(0, toNumber(powderKg));
+    const binder = Math.max(0, toNumber(binderKg));
+    return {
+      pieces: piecesValue,
+      rejects: rejectsValue,
+      yield: computeYield(piecesValue, rejectsValue),
+      rejectRate: computeRejectRate(piecesValue, rejectsValue),
+      powderCost: Math.max(0, toNumber(powderCost)) || powder * defaults.powderCostPerKg,
+      binderCost: Math.max(0, toNumber(binderCost)) || binder * defaults.binderCostPerKg,
+      totalCost:
+        (Math.max(0, toNumber(powderCost)) || powder * defaults.powderCostPerKg) +
+        (Math.max(0, toNumber(binderCost)) || binder * defaults.binderCostPerKg) +
+        Math.max(0, toNumber(laborCost)) +
+        Math.max(0, toNumber(energyCost)),
+    };
+  }, [pieces, rejects, powderKg, binderKg, powderCost, binderCost, laborCost, energyCost, defaults]);
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await fetch(initial ? `/api/admin/batches/${initial.id}` : '/api/admin/batches', {
+        method: initial ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lotId: lotId || null,
+          startedAt,
+          productType,
+          powderKg: toNumber(powderKg),
+          binderKg: toNumber(binderKg),
+          mixHumidityPct: toNumber(mixHumidity),
+          pressingTempC: toNumber(temperature),
+          pressureMpa: toNumber(pressure),
+          cycleTimeMin: toNumber(cycleTime),
+          piecesProduced: numbers.pieces,
+          rejects: numbers.rejects,
+          rejectCause: rejectCause || null,
+          observations,
+          powderCostFcfa: numbers.powderCost,
+          binderCostFcfa: numbers.binderCost,
+          laborCostFcfa: Math.max(0, toNumber(laborCost)),
+          energyCostFcfa: Math.max(0, toNumber(energyCost)),
+        }),
+      });
+      const data = await response.json();
+      if (response.status === 401) {
+        router.push('/admin/login');
+        return;
+      }
+      if (!response.ok) throw new Error(data.error || 'Enregistrement impossible.');
+
+      setSuccess(initial ? 'Batch mis à jour.' : `Batch ${data.code} enregistré.`);
+      router.refresh();
+      if (!initial) {
+        setOpen(false);
+        setPieces('');
+        setRejects('0');
+        setObservations('');
+        setRejectCause('');
+      }
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : 'Enregistrement impossible.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <section className="rounded-panel border border-line bg-surface">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left"
+        aria-expanded={open}
+      >
+        <span>
+          <span className="font-display text-lg font-semibold text-ink">{initial ? 'Modifier le batch' : 'Saisir un batch de production'}</span>
+          <span className="ml-2 text-xs text-ink-muted">{initial?.code ?? 'Poudre, liant, pressage, séchage'}</span>
+        </span>
+        <span className="text-sm font-semibold text-paddy">{open ? 'Réduire' : 'Ouvrir'}</span>
+      </button>
+
+      {open ? (
+        <form onSubmit={submit} className="grid gap-4 border-t border-line px-5 py-5 sm:grid-cols-2 lg:grid-cols-3">
+          <Field label="Lot de coques (optionnel)" htmlFor="batch-lot">
+            <select id="batch-lot" value={lotId} onChange={(event) => setLotId(event.target.value)} className={selectClassName} style={selectStyle}>
+              <option value="">Non rattaché</option>
+              {lots.map((lot) => (
+                <option key={lot.id} value={lot.id}>{lot.code}</option>
+              ))}
+            </select>
+          </Field>
+
+          <Field label="Date et heure de début" htmlFor="batch-date">
+            <input id="batch-date" type="datetime-local" value={startedAt} onChange={(event) => setStartedAt(event.target.value)} required className={inputClassName} />
+          </Field>
+
+          <Field label="Produit fabriqué" htmlFor="batch-product">
+            <select id="batch-product" value={productType} onChange={(event) => setProductType(event.target.value)} className={selectClassName} style={selectStyle}>
+              {PRODUCT_TYPES.map((type) => (
+                <option key={type.value} value={type.value}>{type.label}</option>
+              ))}
+            </select>
+          </Field>
+
+          <Field label="Poudre de coques utilisée (kg)" htmlFor="batch-powder">
+            <input id="batch-powder" type="number" min="0.01" step="0.01" value={powderKg} onChange={(event) => setPowderKg(event.target.value)} required className={inputClassName} />
+          </Field>
+
+          <Field label="Liant utilisé (kg)" htmlFor="batch-binder">
+            <input id="batch-binder" type="number" min="0" step="0.01" value={binderKg} onChange={(event) => setBinderKg(event.target.value)} required className={inputClassName} />
+          </Field>
+
+          <Field label="Humidité du mélange (%)" htmlFor="batch-humidity">
+            <input id="batch-humidity" type="number" min="0" max="100" step="0.1" value={mixHumidity} onChange={(event) => setMixHumidity(event.target.value)} required className={inputClassName} />
+          </Field>
+
+          <Field label="Température de pressage (°C)" htmlFor="batch-temp">
+            <input id="batch-temp" type="number" min="0" max="400" step="0.1" value={temperature} onChange={(event) => setTemperature(event.target.value)} required className={inputClassName} />
+          </Field>
+
+          <Field label="Pression appliquée (MPa)" htmlFor="batch-pressure">
+            <input id="batch-pressure" type="number" min="0" max="200" step="0.01" value={pressure} onChange={(event) => setPressure(event.target.value)} required className={inputClassName} />
+          </Field>
+
+          <Field label="Temps de cycle (min)" htmlFor="batch-cycle">
+            <input id="batch-cycle" type="number" min="0.01" step="0.1" value={cycleTime} onChange={(event) => setCycleTime(event.target.value)} required className={inputClassName} />
+          </Field>
+
+          <Field label="Pièces produites" htmlFor="batch-pieces">
+            <input id="batch-pieces" type="number" min="1" step="1" value={pieces} onChange={(event) => setPieces(event.target.value)} required className={inputClassName} />
+          </Field>
+
+          <Field label="Rebuts" htmlFor="batch-rejects">
+            <input id="batch-rejects" type="number" min="0" step="1" max={numbers.pieces} value={rejects} onChange={(event) => setRejects(event.target.value)} className={inputClassName} />
+          </Field>
+
+          <Field label="Cause principale des rebuts" htmlFor="batch-cause">
+            <select id="batch-cause" value={rejectCause} onChange={(event) => setRejectCause(event.target.value)} className={selectClassName} style={selectStyle}>
+              <option value="">Non renseignée</option>
+              {REJECT_CAUSES.map((cause) => (
+                <option key={cause.value} value={cause.value}>{cause.label}</option>
+              ))}
+            </select>
+          </Field>
+
+          <Field label="Coût poudre (FCFA)" htmlFor="batch-powder-cost" hint={`Par défaut : ${defaults.powderCostPerKg} FCFA/kg`}>
+            <input id="batch-powder-cost" type="number" min="0" step="1" value={powderCost} onChange={(event) => setPowderCost(event.target.value)} placeholder={String(numbers.powderCost)} className={inputClassName} />
+          </Field>
+
+          <Field label="Coût liant (FCFA)" htmlFor="batch-binder-cost" hint={`Par défaut : ${defaults.binderCostPerKg} FCFA/kg`}>
+            <input id="batch-binder-cost" type="number" min="0" step="1" value={binderCost} onChange={(event) => setBinderCost(event.target.value)} placeholder={String(numbers.binderCost)} className={inputClassName} />
+          </Field>
+
+          <Field label="Main-d’œuvre (FCFA)" htmlFor="batch-labor-cost">
+            <input id="batch-labor-cost" type="number" min="0" step="1" value={laborCost} onChange={(event) => setLaborCost(event.target.value)} className={inputClassName} />
+          </Field>
+
+          <Field label="Énergie (FCFA)" htmlFor="batch-energy-cost">
+            <input id="batch-energy-cost" type="number" min="0" step="1" value={energyCost} onChange={(event) => setEnergyCost(event.target.value)} className={inputClassName} />
+          </Field>
+
+          <div className="sm:col-span-2 lg:col-span-3">
+            <Field label="Observations" htmlFor="batch-observations">
+              <textarea id="batch-observations" rows={3} value={observations} onChange={(event) => setObservations(event.target.value)} className={inputClassName} />
+            </Field>
+          </div>
+
+          <div className="rounded-control border border-line bg-ground/60 p-4 text-sm sm:col-span-2 lg:col-span-3">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div>
+                <p className="text-xs text-ink-muted">Rendement</p>
+                <p className="mt-1 font-display text-xl font-bold">{formatPercent(numbers.yield)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-ink-muted">Taux de rebut</p>
+                <p className={`mt-1 font-display text-xl font-bold ${numbers.rejectRate > defaults.rejectAlertPct ? 'text-danger' : ''}`}>
+                  {formatPercent(numbers.rejectRate)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-ink-muted">Coût / pièce valide</p>
+                <p className="mt-1 font-display text-xl font-bold">
+                  {formatCurrency(numbers.pieces - numbers.rejects > 0 ? numbers.totalCost / (numbers.pieces - numbers.rejects) : 0)}
+                </p>
+              </div>
+            </div>
+            {numbers.rejectRate > defaults.rejectAlertPct ? (
+              <p className="mt-3 rounded-control border border-danger/30 bg-danger/5 px-3 py-2 text-xs text-danger">
+                Alerte : le taux de rebut dépasse le seuil de {defaults.rejectAlertPct} %.
+              </p>
+            ) : null}
+          </div>
+
+          {error ? <div className="sm:col-span-2 lg:col-span-3"><FormFeedback type="error" message={error} /></div> : null}
+          {success ? <div className="sm:col-span-2 lg:col-span-3"><FormFeedback type="success" message={success} /></div> : null}
+
+          <div className="flex flex-wrap gap-2 sm:col-span-2 lg:col-span-3">
+            <button type="submit" disabled={loading} className={buttonClassName('primary')}>
+              {loading ? 'Enregistrement…' : initial ? 'Enregistrer les modifications' : 'Enregistrer le batch'}
+            </button>
+            {initial ? (
+              <button type="button" onClick={() => setOpen(false)} className={buttonClassName('secondary')}>Fermer</button>
+            ) : null}
+          </div>
+        </form>
+      ) : null}
+    </section>
+  );
+}

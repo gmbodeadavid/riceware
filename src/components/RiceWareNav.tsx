@@ -1,8 +1,8 @@
-import BrandMark from './BrandMark';
 import Link from 'next/link';
 import { LuArrowLeft } from 'react-icons/lu';
 import { NAV_LINKS } from '@/lib/site';
 import CartIcon from './CartIcon';
+import NavLogo from './NavLogo';
 
 export default function RiceWareNav({ checkout = false }: { checkout?: boolean }) {
   if (checkout) {
@@ -26,12 +26,7 @@ export default function RiceWareNav({ checkout = false }: { checkout?: boolean }
     <header id="top" className="sticky top-0 z-50 w-full bg-ground border-b border-line">
       <nav aria-label="Navigation principale" className="max-w-page mx-auto px-5 sm:px-8 flex items-center justify-between gap-4 h-[68px]">
 
-        <a href="#top" className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-          <BrandMark preload className="hidden min-[360px]:block h-9 sm:h-11 w-auto" />
-          <span className="font-display font-bold text-paddy text-[18px] sm:text-[20px] whitespace-nowrap">
-            RiceWare CI
-          </span>
-        </a>
+        <NavLogo />
 
         <div className="hidden items-center gap-4 xl:flex">
           {NAV_LINKS.map((link) => (
