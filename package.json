@@ -11,6 +11,7 @@
     "db:seed": "prisma db seed",
     "admin:hash": "node scripts/hash-admin-password.mjs",
     "db:backup": "node scripts/db-backup.js",
+    "db:seed:demo": "DATABASE_URL=file:./prisma/demo.db npx tsx scripts/seed-demo.ts",
     "postinstall": "prisma generate"
   },
   "prisma": {
