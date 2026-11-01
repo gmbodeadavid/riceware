@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { requireAdminPage } from '@/lib/admin-guard';
 import { can } from '@/lib/rbac';
 import { getBatch, listLots } from '@/lib/production/queries';
+import { prisma } from '@/lib/db';
 import {
   computeBatchCost,
   computeCostPerUnit,
@@ -21,6 +22,8 @@ import BatchForm from '@/components/admin/BatchForm';
 import ProductForm from '@/components/admin/ProductForm';
 import TestForm from '@/components/admin/TestForm';
 import DeleteButton from '@/components/admin/DeleteButton';
+import { PACK_LOT_STATUSES } from '@/lib/enums';
+import CreatePackLotForm from '@/components/admin/CreatePackLotForm';
 
 type PageProps = { params: Promise<{ id: string }> };
 
@@ -34,10 +37,28 @@ export default async function BatchDetailPage({ params }: PageProps) {
   ]);
   if (!batch) notFound();
 
+  // Charger les packs disponibles pour ce type de produit
+  const productPacks = await prisma.productPack.findMany({
+    where: { product: { isPublished: true } },
+    orderBy: { label: 'asc' },
+    include: { product: { select: { id: true, name: true } } },
+  });
+
   const canWrite = can(session.role, 'production:write');
   const canQualityWrite = can(session.role, 'quality:write');
   const rejectRate = computeRejectRate(batch.piecesProduced, batch.rejects);
   const rejectAlertPct = settingNumber(settings, 'rejectAlertPct', 10);
+
+  // Calcul pièces conformes disponibles pour packaging
+  const alreadyPacked = batch.packLots.reduce(
+    (sum, pl) => sum + pl.quantity * pl.pack.quantity, 0,
+  );
+  const validPieces = Math.max(0, batch.piecesProduced - batch.rejects);
+  const availableForPacking = validPieces - alreadyPacked;
+
+  // Total kg coques utilisés
+  const totalKgUsed = batch.usages.reduce((sum, u) => sum + (u.kgUsed ?? 0), 0);
+  const totalKgLot = batch.lot?.netWeightKg ?? null;
 
   return (
     <div>
@@ -102,13 +123,13 @@ export default async function BatchDetailPage({ params }: PageProps) {
             <div><dt className="text-ink-muted">Pression</dt><dd className="font-medium">{formatNumber(batch.pressureMpa, 'MPa')}</dd></div>
             <div><dt className="text-ink-muted">Temps de cycle</dt><dd className="font-medium">{formatNumber(batch.cycleTimeMin, 'min')}</dd></div>
             <div><dt className="text-ink-muted">Cause principale du rebut</dt><dd className="font-medium">{batch.rejectCause ? labelOf(REJECT_CAUSES, batch.rejectCause) : '—'}</dd></div>
-            <div><dt className="text-ink-muted">Lot de coques</dt><dd className="font-medium">{batch.lot ? <Link href={`/admin/lots/${batch.lot.id}`} className="text-paddy hover:underline">{batch.lot.code}</Link> : 'Non rattaché'}</dd></div>
+            <div><dt className="text-ink-muted">Lot de coques (hérité)</dt><dd className="font-medium">{batch.lot ? <Link href={`/admin/lots/${batch.lot.id}`} className="text-paddy hover:underline">{batch.lot.code}</Link> : 'Non rattaché'}</dd></div>
           </dl>
 
           <div className="mt-4 grid gap-2 rounded-control border border-line bg-ground/60 p-3 text-sm sm:grid-cols-4">
             <div><p className="text-xs text-ink-muted">Poudre</p><p className="font-semibold">{formatCurrency(batch.powderCostFcfa)}</p></div>
             <div><p className="text-xs text-ink-muted">Liant</p><p className="font-semibold">{formatCurrency(batch.binderCostFcfa)}</p></div>
-            <div><p className="text-xs text-ink-muted">Main-d’œuvre</p><p className="font-semibold">{formatCurrency(batch.laborCostFcfa)}</p></div>
+            <div><p className="text-xs text-ink-muted">Main-d'œuvre</p><p className="font-semibold">{formatCurrency(batch.laborCostFcfa)}</p></div>
             <div><p className="text-xs text-ink-muted">Énergie</p><p className="font-semibold">{formatCurrency(batch.energyCostFcfa)}</p></div>
           </div>
         </Section>
@@ -124,7 +145,115 @@ export default async function BatchDetailPage({ params }: PageProps) {
               <LinkButton href={`/tracabilite/${encodeURIComponent(batch.lot.code)}`} target="_blank">Ouvrir la fiche publique</LinkButton>
             </div>
           ) : (
-            <p className="text-sm text-ink-muted">Ce batch n’est rattaché à aucun lot de coques.</p>
+            <p className="text-sm text-ink-muted">Ce batch n'est rattaché à aucun lot de coques (héritage P1). Utilisez la section « Matières consommées » ci-dessous.</p>
+          )}
+        </Section>
+      </div>
+
+      {/* ─── Onglet Matières consommées (BMU) ─── */}
+      <div className="mt-6">
+        <Section
+          title="Matières consommées"
+          description={`${batch.usages.length} lot(s) de coques enregistré(s) · ${totalKgUsed.toFixed(2)} kg au total${totalKgLot != null ? ` sur ${totalKgLot} kg du lot hérité` : ''}.`}
+        >
+          {batch.usages.length === 0 ? (
+            <EmptyState title="Aucun usage de lot enregistré" description="Associez les lots de coques utilisés dans ce batch." />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
+                    <th className="pb-2 pr-3">Lot</th>
+                    <th className="pb-2 pr-3">Rizerie</th>
+                    <th className="pb-2 pr-3">Kg utilisés</th>
+                    <th className="pb-2 pr-3">Part (%)</th>
+                    <th className="pb-2">Estimé</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {batch.usages.map((usage) => {
+                    const pct = totalKgUsed > 0 && usage.kgUsed != null
+                      ? ((usage.kgUsed / totalKgUsed) * 100).toFixed(1)
+                      : null;
+                    return (
+                      <tr key={usage.id} className="border-b border-line/60 last:border-0">
+                        <td className="py-2.5 pr-3">
+                          <Link href={`/admin/lots/${usage.lot.id}`} className="font-mono-brand text-xs font-semibold text-paddy hover:underline">
+                            {usage.lot.code}
+                          </Link>
+                        </td>
+                        <td className="py-2.5 pr-3 text-xs text-ink-muted">{usage.lot.rizerie.name}</td>
+                        <td className="py-2.5 pr-3">{usage.kgUsed != null ? formatNumber(usage.kgUsed, 'kg') : <span className="text-ink-muted">Non renseigné</span>}</td>
+                        <td className="py-2.5 pr-3">{pct != null ? `${pct} %` : '—'}</td>
+                        <td className="py-2.5">{usage.estimated ? <Badge tone="warning">Estimé</Badge> : <Badge tone="success">Mesuré</Badge>}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Section>
+      </div>
+
+      {/* ─── Onglet Packs créés ─── */}
+      <div className="mt-6">
+        <Section
+          title="Lots de packs créés"
+          description={`${batch.packLots.length} lot(s) de packs · ${availableForPacking} pièce(s) conformes disponibles pour packaging.`}
+        >
+          {availableForPacking > 0 && canWrite && !batch.deletedAt ? (
+            <div className="mb-4 rounded-control border border-line bg-ground/40 p-3">
+              <p className="mb-2 text-xs font-semibold text-ink-muted">Créer un nouveau lot de packs</p>
+              <CreatePackLotForm
+                batchId={batch.id}
+                availablePieces={availableForPacking}
+                packs={productPacks}
+              />
+            </div>
+          ) : null}
+
+          {batch.packLots.length === 0 ? (
+            <EmptyState title="Aucun lot de packs" description="Créez un lot de packs depuis les pièces conformes de ce batch." />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
+                    <th className="pb-2 pr-3">Code</th>
+                    <th className="pb-2 pr-3">Pack</th>
+                    <th className="pb-2 pr-3">Qté</th>
+                    <th className="pb-2 pr-3">Restant</th>
+                    <th className="pb-2 pr-3">Statut</th>
+                    <th className="pb-2">Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {batch.packLots.map((pl) => {
+                    const remaining = pl.quantity - pl.allocations.reduce((s, a) => s + a.quantity, 0);
+                    const statusEntry = PACK_LOT_STATUSES.find((s) => s.value === pl.status);
+                    return (
+                      <tr key={pl.id} className="border-b border-line/60 last:border-0">
+                        <td className="py-2.5 pr-3">
+                          <Link href={`/admin/packs/${pl.id}`} className="font-mono-brand text-xs font-semibold text-paddy hover:underline">
+                            {pl.code}
+                          </Link>
+                        </td>
+                        <td className="py-2.5 pr-3 text-xs">{pl.pack.label}</td>
+                        <td className="py-2.5 pr-3">{pl.quantity}</td>
+                        <td className="py-2.5 pr-3">{remaining}</td>
+                        <td className="py-2.5 pr-3">
+                          <Badge tone={(statusEntry?.badge === 'default' || !statusEntry?.badge ? 'neutral' : statusEntry.badge) as 'success' | 'warning' | 'danger' | 'info' | 'neutral'}>
+                            {statusEntry?.label ?? pl.status}
+                          </Badge>
+                        </td>
+                        <td className="py-2.5 text-xs text-ink-muted">{formatDateTime(pl.packedAt)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </Section>
       </div>
@@ -132,7 +261,7 @@ export default async function BatchDetailPage({ params }: PageProps) {
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
         <Section title="Produits finis contrôlés" description={`${batch.products.length} produit(s) enregistré(s).`}>
           {batch.products.length === 0 ? (
-            <EmptyState title="Aucun produit fini" description="Enregistrez des échantillons pour mesurer le poids, l’épaisseur et l’étanchéité." />
+            <EmptyState title="Aucun produit fini" description="Enregistrez des échantillons pour mesurer le poids, l'épaisseur et l'étanchéité." />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
@@ -165,7 +294,7 @@ export default async function BatchDetailPage({ params }: PageProps) {
 
         <Section title="Tests qualité" description={`${batch.tests.length} test(s) sur ce batch.`}>
           {batch.tests.length === 0 ? (
-            <EmptyState title="Aucun test" description="Saisissez au moins un test de charge, d’étanchéité ou visuel." />
+            <EmptyState title="Aucun test" description="Saisissez au moins un test de charge, d'étanchéité ou visuel." />
           ) : (
             <ul className="divide-y divide-line">
               {batch.tests.map((test) => (
@@ -204,8 +333,9 @@ export default async function BatchDetailPage({ params }: PageProps) {
 
         {canWrite && !batch.deletedAt ? (
           <BatchForm
-            lots={lots.map((lot) => ({ id: lot.id, code: lot.code }))}
+            lots={lots.map((lot) => ({ id: lot.id, code: lot.code, netWeightKg: lot.netWeightKg }))}
             defaultLotId={batch.lotId ?? undefined}
+            batchId={batch.id}
             initial={{
               id: batch.id,
               code: batch.code,

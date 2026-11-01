@@ -10,6 +10,7 @@ export type LotVisualQuality = (typeof LOT_VISUAL_QUALITIES)[number]['value'];
 export const LOT_STATUSES = [
   { value: 'accepted', label: 'Accepté' },
   { value: 'refused', label: 'Refusé' },
+  { value: 'recalled', label: 'En rappel' },
 ] as const;
 
 export type LotStatus = (typeof LOT_STATUSES)[number]['value'];

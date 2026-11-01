@@ -189,6 +189,52 @@ export async function getBatch(id: string) {
           operator: { select: { id: true, name: true } },
         },
       },
+      usages: {
+        where: { deletedAt: null },
+        orderBy: { createdAt: 'asc' },
+        include: {
+          lot: {
+            include: { rizerie: { select: { id: true, name: true, location: true } } },
+          },
+        },
+      },
+      packLots: {
+        where: { deletedAt: null },
+        orderBy: { packedAt: 'asc' },
+        include: {
+          pack: { select: { id: true, label: true, quantity: true, packKey: true, productId: true } },
+          allocations: { where: { deletedAt: null }, select: { quantity: true } },
+        },
+      },
+    },
+  });
+}
+
+// ─── Commandes avec allocations ────────────────────────────────────────────
+
+export async function getOrderWithAllocations(id: string) {
+  return prisma.order.findUnique({
+    where: { id, deletedAt: null },
+    include: {
+      customer: true,
+      deliveryAddress: true,
+      lines: {
+        include: {
+          productPack: { include: { product: { select: { id: true, name: true } } } },
+          allocations: {
+            where: { deletedAt: null },
+            include: {
+              packLot: {
+                include: {
+                  batch: { select: { id: true, code: true } },
+                  pack: { select: { id: true, label: true, quantity: true } },
+                  allocations: { where: { deletedAt: null }, select: { quantity: true } },
+                },
+              },
+            },
+          },
+        },
+      },
     },
   });
 }

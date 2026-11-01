@@ -50,6 +50,7 @@ const NAV_GROUPS: Array<{ group: string; items: NavItem[] }> = [
     items: [
       { href: '/admin/lots', label: 'Lots de coques', icon: LuPackage, permission: 'lots:view' },
       { href: '/admin/production', label: 'Production', icon: LuFactory, permission: 'production:view' },
+      { href: '/admin/packs', label: 'Lots de packs', icon: LuArchive, permission: 'production:view' },
       { href: '/admin/qualite', label: 'Qualité', icon: LuShieldCheck, permission: 'quality:view' },
       { href: '/admin/stocks', label: 'Stocks', icon: LuArchive, permission: 'stocks:view' },
     ],

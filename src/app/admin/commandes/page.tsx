@@ -136,7 +136,7 @@ export default async function OrdersPage({ searchParams }: PageProps) {
                 {orders.map((order) => (
                   <tr key={order.id} className="border-b border-line/60 last:border-0 align-top">
                     <td className="py-3 pr-3">
-                      <p className="font-mono-brand text-xs font-semibold">{order.orderNumber}</p>
+                      <Link href={`/admin/commandes/${order.id}`} className="font-mono-brand text-xs font-semibold text-paddy hover:underline">{order.orderNumber}</Link>
                       {order.notes ? <p className="mt-1 max-w-56 text-[11px] leading-4 text-ink-muted">{order.notes}</p> : null}
                     </td>
                     <td className="py-3 pr-3 text-xs text-ink-muted">{formatDateTime(order.createdAt)}</td>
