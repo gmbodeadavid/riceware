@@ -333,36 +333,36 @@ export default async function AdminDashboardPage({ searchParams }: PageProps) {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b border-line text-[11px] uppercase tracking-wide text-ink-muted">
-                    <th className="pb-2.5 pr-3 font-semibold">Batch</th>
-                    <th className="pb-2.5 pr-3 font-semibold">Date</th>
-                    <th className="pb-2.5 pr-3 font-semibold">Pièces</th>
-                    <th className="pb-2.5 pr-3 font-semibold">Rendement</th>
-                    <th className="pb-2.5 font-semibold">Coût / pièce</th>
+                  <tr className="border-b border-line bg-ground/40 text-[11px] uppercase tracking-wide text-ink-muted">
+                    <th className="px-4 py-3 font-semibold">Batch</th>
+                    <th className="px-4 py-3 font-semibold hidden sm:table-cell">Date</th>
+                    <th className="px-4 py-3 font-semibold">Pièces</th>
+                    <th className="px-4 py-3 font-semibold">Rendement</th>
+                    <th className="px-4 py-3 font-semibold hidden md:table-cell">Coût / pièce</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-line/50">
                   {data.recentBatches.slice(0, 5).map((batch) => (
-                    <tr key={batch.id} className="border-b border-line/50 last:border-0 hover:bg-ground/40 transition-colors">
-                      <td className="py-2.5 pr-3">
+                    <tr key={batch.id} className="group transition-colors hover:bg-paddy/[0.03]">
+                      <td className="px-4 py-3 align-middle">
                         <Link
                           href={`/admin/production/${batch.id}`}
                           className="font-mono-brand text-xs font-semibold text-paddy hover:text-paddy-deep hover:underline"
                         >
                           {batch.code}
                         </Link>
-                        <p className="text-[11px] text-ink-muted">{batch.lot?.code ?? 'sans lot'}</p>
+                        <p className="mt-0.5 text-[11px] text-ink-muted">{batch.lot?.code ?? 'sans lot'}</p>
                       </td>
-                      <td className="py-2.5 pr-3 text-ink-muted text-xs">{formatDate(batch.startedAt)}</td>
-                      <td className="py-2.5 pr-3 font-medium">{batch.piecesProduced}</td>
-                      <td className="py-2.5 pr-3">
+                      <td className="px-4 py-3 align-middle text-ink-muted text-xs hidden sm:table-cell whitespace-nowrap">{formatDate(batch.startedAt)}</td>
+                      <td className="px-4 py-3 align-middle font-medium">{batch.piecesProduced}</td>
+                      <td className="px-4 py-3 align-middle">
                         <Badge
                           tone={computeRejectRate(batch.piecesProduced, batch.rejects) > 10 ? 'danger' : 'success'}
                         >
                           {formatPercent(computeYield(batch.piecesProduced, batch.rejects))}
                         </Badge>
                       </td>
-                      <td className="py-2.5 text-ink-muted text-xs">
+                      <td className="px-4 py-3 align-middle text-ink-muted text-xs hidden md:table-cell">
                         {formatCurrency(computeCostPerUnit(batch))}
                       </td>
                     </tr>

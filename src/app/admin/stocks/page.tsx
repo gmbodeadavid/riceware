@@ -73,43 +73,45 @@ export default async function StocksPage() {
             <EmptyState title="Aucune référence" description="Ajoutez une référence de stock ou enregistrez un lot de coques." />
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[900px] text-left text-sm">
+              <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
-                    <th className="pb-2 pr-3">Type</th>
-                    <th className="pb-2 pr-3">Libellé</th>
-                    <th className="pb-2 pr-3">Quantité</th>
-                    <th className="pb-2 pr-3">Seuil</th>
-                    <th className="pb-2 pr-3">Emplacement</th>
-                    <th className="pb-2 pr-3">Dernier mouvement</th>
-                    <th className="pb-2 pr-3">Alerte</th>
-                    <th className="pb-2">Actions</th>
+                  <tr className="border-b border-line bg-ground/40 text-[11px] uppercase tracking-wide text-ink-muted">
+                    <th className="px-4 py-3 font-semibold hidden sm:table-cell">Type</th>
+                    <th className="px-4 py-3 font-semibold">Libellé</th>
+                    <th className="px-4 py-3 font-semibold">Quantité</th>
+                    <th className="px-4 py-3 font-semibold hidden md:table-cell">Seuil</th>
+                    <th className="px-4 py-3 font-semibold hidden lg:table-cell">Emplacement</th>
+                    <th className="px-4 py-3 font-semibold hidden lg:table-cell">Dernier mouvement</th>
+                    <th className="px-4 py-3 font-semibold">Alerte</th>
+                    <th className="px-4 py-3 font-semibold hidden sm:table-cell">Actions</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-line/50">
                   {stocks.map((stock) => {
                     const low = stock.minThreshold > 0 && stock.quantity <= stock.minThreshold;
                     return (
-                      <tr key={stock.id} className="border-b border-line/60 last:border-0">
-                        <td className="py-2.5 pr-3 text-ink-muted">
+                      <tr key={stock.id} className="group transition-colors hover:bg-paddy/[0.03]">
+                        <td className="px-4 py-3 align-middle text-xs text-ink-muted hidden sm:table-cell">
                           {labelOf(STOCK_ITEM_TYPES, stock.itemType)}
-                          {stock.productType ? ` · ${labelOf(PRODUCT_TYPES, stock.productType)}` : ''}
+                          {stock.productType ? <><br /><span className="opacity-70">{labelOf(PRODUCT_TYPES, stock.productType)}</span></> : ''}
                         </td>
-                        <td className="py-2.5 pr-3 font-medium">{stock.label}</td>
-                        <td className="py-2.5 pr-3 font-mono-brand text-xs font-semibold">{formatNumber(stock.quantity, stock.unit)}</td>
-                        <td className="py-2.5 pr-3 text-ink-muted">{formatNumber(stock.minThreshold, stock.unit)}</td>
-                        <td className="py-2.5 pr-3 text-ink-muted">{stock.location ?? '—'}</td>
-                        <td className="py-2.5 pr-3 text-xs text-ink-muted">
+                        <td className="px-4 py-3 align-middle font-medium">{stock.label}</td>
+                        <td className="px-4 py-3 align-middle font-mono-brand text-xs font-semibold whitespace-nowrap">{formatNumber(stock.quantity, stock.unit)}</td>
+                        <td className="px-4 py-3 align-middle text-ink-muted hidden md:table-cell whitespace-nowrap">{formatNumber(stock.minThreshold, stock.unit)}</td>
+                        <td className="px-4 py-3 align-middle text-ink-muted text-xs hidden lg:table-cell">{stock.location ?? '—'}</td>
+                        <td className="px-4 py-3 align-middle text-xs text-ink-muted hidden lg:table-cell">
                           {stock.movements[0] ? (
                             <>
-                              {labelOf(STOCK_MOVEMENT_TYPES, stock.movements[0].type)} · {formatDateTime(stock.movements[0].createdAt)}
+                              <span className="whitespace-nowrap">{formatDateTime(stock.movements[0].createdAt)}</span>
                               <br />
-                              <span className="font-mono-brand">{stock.movements[0].quantity > 0 ? '+' : ''}{formatNumber(stock.movements[0].quantity, stock.unit)}</span>
+                              <span className={`font-mono-brand font-semibold ${stock.movements[0].quantity >= 0 ? 'text-paddy-deep' : 'text-danger'}`}>
+                                {stock.movements[0].quantity > 0 ? '+' : ''}{formatNumber(stock.movements[0].quantity, stock.unit)}
+                              </span>
                             </>
                           ) : '—'}
                         </td>
-                        <td className="py-2.5 pr-3"><Badge tone={low ? 'warning' : 'success'}>{low ? 'Sous seuil' : 'OK'}</Badge></td>
-                        <td className="py-2.5">
+                        <td className="px-4 py-3 align-middle"><Badge tone={low ? 'warning' : 'success'}>{low ? 'Sous seuil' : 'OK'}</Badge></td>
+                        <td className="px-4 py-3 align-middle hidden sm:table-cell">
                           {canWrite ? <DeleteButton endpoint={`/api/admin/stocks/${stock.id}`} confirmation={`Supprimer la référence ${stock.label} ?`} label="Suppr." /> : null}
                         </td>
                       </tr>
@@ -128,30 +130,30 @@ export default async function StocksPage() {
             <EmptyState title="Aucun mouvement" description="Les entrées de lots et les consommations de production apparaissent ici automatiquement." />
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[800px] text-left text-sm">
+              <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
-                    <th className="pb-2 pr-3">Date</th>
-                    <th className="pb-2 pr-3">Stock</th>
-                    <th className="pb-2 pr-3">Type</th>
-                    <th className="pb-2 pr-3">Mouvement</th>
-                    <th className="pb-2 pr-3">Solde</th>
-                    <th className="pb-2 pr-3">Référence</th>
-                    <th className="pb-2">Auteur</th>
+                  <tr className="border-b border-line bg-ground/40 text-[11px] uppercase tracking-wide text-ink-muted">
+                    <th className="px-4 py-3 font-semibold">Date</th>
+                    <th className="px-4 py-3 font-semibold">Stock</th>
+                    <th className="px-4 py-3 font-semibold hidden sm:table-cell">Type</th>
+                    <th className="px-4 py-3 font-semibold">Mouvement</th>
+                    <th className="px-4 py-3 font-semibold hidden md:table-cell">Solde</th>
+                    <th className="px-4 py-3 font-semibold hidden lg:table-cell">Référence</th>
+                    <th className="px-4 py-3 font-semibold hidden md:table-cell">Auteur</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-line/50">
                   {movements.map((movement) => (
-                    <tr key={movement.id} className="border-b border-line/60 last:border-0">
-                      <td className="py-2.5 pr-3 text-ink-muted">{formatDateTime(movement.createdAt)}</td>
-                      <td className="py-2.5 pr-3">{movement.stock.label}</td>
-                      <td className="py-2.5 pr-3">{labelOf(STOCK_MOVEMENT_TYPES, movement.type)}</td>
-                      <td className={`py-2.5 pr-3 font-mono-brand text-xs font-semibold ${movement.quantity < 0 ? 'text-danger' : 'text-paddy-deep'}`}>
+                    <tr key={movement.id} className="group transition-colors hover:bg-paddy/[0.03]">
+                      <td className="px-4 py-3 align-middle text-xs text-ink-muted whitespace-nowrap">{formatDateTime(movement.createdAt)}</td>
+                      <td className="px-4 py-3 align-middle text-sm">{movement.stock.label}</td>
+                      <td className="px-4 py-3 align-middle text-xs text-ink-muted hidden sm:table-cell">{labelOf(STOCK_MOVEMENT_TYPES, movement.type)}</td>
+                      <td className={`px-4 py-3 align-middle font-mono-brand text-xs font-semibold whitespace-nowrap ${movement.quantity < 0 ? 'text-danger' : 'text-paddy-deep'}`}>
                         {movement.quantity > 0 ? '+' : ''}{formatNumber(movement.quantity, movement.stock.unit)}
                       </td>
-                      <td className="py-2.5 pr-3">{formatNumber(movement.resultingQuantity, movement.stock.unit)}</td>
-                      <td className="py-2.5 pr-3 text-ink-muted">{movement.reference ?? '—'}</td>
-                      <td className="py-2.5 text-ink-muted">{movement.createdBy?.name ?? 'système'}</td>
+                      <td className="px-4 py-3 align-middle hidden md:table-cell font-mono-brand text-xs">{formatNumber(movement.resultingQuantity, movement.stock.unit)}</td>
+                      <td className="px-4 py-3 align-middle text-xs text-ink-muted hidden lg:table-cell">{movement.reference ?? '—'}</td>
+                      <td className="px-4 py-3 align-middle text-xs text-ink-muted hidden md:table-cell">{movement.createdBy?.name ?? 'système'}</td>
                     </tr>
                   ))}
                 </tbody>

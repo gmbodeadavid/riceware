@@ -99,49 +99,49 @@ export default async function ProductionPage({ searchParams }: PageProps) {
         <EmptyState title="Aucun batch" description="Enregistrez un batch pour suivre le rendement, les rebuts et le coût de revient." />
       ) : (
         <div className="overflow-x-auto rounded-panel border border-line bg-surface">
-          <table className="w-full min-w-[1100px] text-left text-sm">
+          <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-line bg-ground/60 text-xs uppercase tracking-wide text-ink-muted">
-                <th className="px-4 py-3">Batch</th>
-                <th className="px-4 py-3">Date</th>
-                <th className="px-4 py-3">Lot</th>
-                <th className="px-4 py-3">Produit</th>
-                <th className="px-4 py-3">Pièces</th>
-                <th className="px-4 py-3">Rebuts</th>
-                <th className="px-4 py-3">Rendement</th>
-                <th className="px-4 py-3">Coût / pièce</th>
-                <th className="px-4 py-3">Cause</th>
-                <th className="px-4 py-3">Actions</th>
+              <tr className="border-b border-line bg-ground/40 text-[11px] uppercase tracking-wide text-ink-muted">
+                <th className="px-4 py-3 font-semibold">Batch</th>
+                <th className="px-4 py-3 font-semibold hidden sm:table-cell">Date</th>
+                <th className="px-4 py-3 font-semibold hidden md:table-cell">Lot</th>
+                <th className="px-4 py-3 font-semibold hidden sm:table-cell">Produit</th>
+                <th className="px-4 py-3 font-semibold">Pièces</th>
+                <th className="px-4 py-3 font-semibold hidden lg:table-cell">Rebuts</th>
+                <th className="px-4 py-3 font-semibold">Rendement</th>
+                <th className="px-4 py-3 font-semibold hidden lg:table-cell">Coût / pièce</th>
+                <th className="px-4 py-3 font-semibold hidden xl:table-cell">Cause</th>
+                <th className="px-4 py-3 font-semibold">Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-line/50">
               {batches.map((batch) => {
                 const rejectRate = computeRejectRate(batch.piecesProduced, batch.rejects);
                 return (
-                  <tr key={batch.id} className="border-b border-line/60 last:border-0 hover:bg-husk-soft/20">
-                    <td className="px-4 py-3">
-                      <Link href={`/admin/production/${batch.id}`} className="font-mono-brand text-xs font-semibold text-paddy hover:underline">{batch.code}</Link>
-                      {batch.operator ? <p className="text-[11px] text-ink-muted">{batch.operator.name}</p> : null}
+                  <tr key={batch.id} className="group transition-colors hover:bg-paddy/[0.03]">
+                    <td className="px-4 py-3 align-middle">
+                      <Link href={`/admin/production/${batch.id}`} className="font-mono-brand text-xs font-semibold text-paddy hover:text-paddy-deep hover:underline">{batch.code}</Link>
+                      {batch.operator ? <p className="mt-0.5 text-[11px] text-ink-muted">{batch.operator.name}</p> : null}
                     </td>
-                    <td className="px-4 py-3 text-ink-muted">{formatDateTime(batch.startedAt)}</td>
-                    <td className="px-4 py-3">{batch.lot?.code ?? '—'}</td>
-                    <td className="px-4 py-3">{labelOf(PRODUCT_TYPES, batch.productType)}</td>
-                    <td className="px-4 py-3">{batch.piecesProduced}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 align-middle text-ink-muted text-xs hidden sm:table-cell whitespace-nowrap">{formatDateTime(batch.startedAt)}</td>
+                    <td className="px-4 py-3 align-middle font-mono-brand text-xs hidden md:table-cell">{batch.lot?.code ?? '—'}</td>
+                    <td className="px-4 py-3 align-middle hidden sm:table-cell">{labelOf(PRODUCT_TYPES, batch.productType)}</td>
+                    <td className="px-4 py-3 align-middle font-medium">{batch.piecesProduced}</td>
+                    <td className="px-4 py-3 align-middle hidden lg:table-cell">
                       <span className={rejectRate > rejectAlertPct ? 'font-semibold text-danger' : ''}>{batch.rejects}</span>
                       {rejectRate > rejectAlertPct ? <p className="text-[11px] text-danger">Alerte &gt; {rejectAlertPct} %</p> : null}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 align-middle">
                       <Badge tone={rejectRate > rejectAlertPct ? 'danger' : 'success'}>{formatPercent(computeYield(batch.piecesProduced, batch.rejects))}</Badge>
                     </td>
-                    <td className="px-4 py-3">
-                      {formatCurrency(computeCostPerUnit(batch))}
+                    <td className="px-4 py-3 align-middle hidden lg:table-cell">
+                      <span className="font-medium">{formatCurrency(computeCostPerUnit(batch))}</span>
                       <p className="text-[11px] text-ink-muted">Total {formatCurrency(computeBatchCost(batch))}</p>
                     </td>
-                    <td className="px-4 py-3 text-ink-muted">{batch.rejectCause ? labelOf(REJECT_CAUSES, batch.rejectCause) : '—'}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 align-middle text-ink-muted text-xs hidden xl:table-cell">{batch.rejectCause ? labelOf(REJECT_CAUSES, batch.rejectCause) : '—'}</td>
+                    <td className="px-4 py-3 align-middle">
                       <div className="flex items-center gap-2">
-                        <Link href={`/admin/production/${batch.id}`} className="rounded-control border border-line px-2.5 py-1 text-xs font-semibold hover:border-paddy hover:text-paddy">Voir</Link>
+                        <Link href={`/admin/production/${batch.id}`} className="rounded-control border border-line px-2.5 py-1 text-xs font-semibold hover:border-paddy hover:text-paddy transition-colors">Voir</Link>
                         {canWrite ? <DeleteButton endpoint={`/api/admin/batches/${batch.id}`} confirmation={`Supprimer le batch ${batch.code} ? Les stocks seront corrigés.`} /> : null}
                       </div>
                     </td>

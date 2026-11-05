@@ -243,41 +243,58 @@ export function DataTable({
   children,
   minWidth,
 }: {
-  headers: string[];
+  headers: Array<string | { label: string; hide?: 'sm' | 'md' | 'lg' | 'xl' }>;
   children: ReactNode;
   minWidth?: string;
 }) {
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto -mx-px">
       <table className={`w-full text-left text-sm ${minWidth ? `min-w-[${minWidth}]` : ''}`}>
         <thead>
-          <tr className="border-b border-line text-[11px] uppercase tracking-wide text-ink-muted">
-            {headers.map((h, i) => (
-              <th key={i} className="pb-2.5 pr-3 font-semibold last:pr-0">
-                {h}
-              </th>
-            ))}
+          <tr className="border-b border-line bg-ground/40 text-[11px] uppercase tracking-wide text-ink-muted">
+            {headers.map((h, i) => {
+              const label = typeof h === 'string' ? h : h.label;
+              const hide = typeof h === 'object' ? h.hide : undefined;
+              const hideCls = hide === 'sm' ? 'hidden sm:table-cell' : hide === 'md' ? 'hidden md:table-cell' : hide === 'lg' ? 'hidden lg:table-cell' : hide === 'xl' ? 'hidden xl:table-cell' : '';
+              return (
+                <th key={i} className={`px-4 py-3 font-semibold first:pl-4 last:pr-4 ${hideCls}`}>
+                  {label}
+                </th>
+              );
+            })}
           </tr>
         </thead>
-        <tbody>{children}</tbody>
+        <tbody className="divide-y divide-line/50">{children}</tbody>
       </table>
     </div>
   );
 }
 
 export function DataRow({ children, href }: { children: ReactNode; href?: string }) {
-  const tr = (
-    <tr className={`border-b border-line/50 last:border-0 ${href ? 'hover:bg-ground/40 cursor-pointer transition-colors' : ''}`}>
+  return (
+    <tr className={`group transition-colors ${href ? 'hover:bg-paddy/[0.03] cursor-pointer' : 'hover:bg-ground/50'}`}>
       {children}
     </tr>
   );
-  return tr;
 }
 
-export function DataCell({ children, muted, mono }: { children: ReactNode; muted?: boolean; mono?: boolean }) {
+export function DataCell({
+  children,
+  muted,
+  mono,
+  hide,
+  nowrap,
+}: {
+  children: ReactNode;
+  muted?: boolean;
+  mono?: boolean;
+  hide?: 'sm' | 'md' | 'lg' | 'xl';
+  nowrap?: boolean;
+}) {
+  const hideCls = hide === 'sm' ? 'hidden sm:table-cell' : hide === 'md' ? 'hidden md:table-cell' : hide === 'lg' ? 'hidden lg:table-cell' : hide === 'xl' ? 'hidden xl:table-cell' : '';
   return (
     <td
-      className={`py-2.5 pr-3 last:pr-0 ${muted ? 'text-ink-muted' : ''} ${mono ? 'font-mono-brand text-xs' : ''}`}
+      className={`px-4 py-3 first:pl-4 last:pr-4 align-middle ${muted ? 'text-ink-muted' : ''} ${mono ? 'font-mono-brand text-xs' : ''} ${hideCls} ${nowrap ? 'whitespace-nowrap' : ''}`}
     >
       {children}
     </td>

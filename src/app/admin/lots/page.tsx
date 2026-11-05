@@ -92,53 +92,53 @@ export default async function LotsPage({ searchParams }: PageProps) {
         />
       ) : (
         <div className="overflow-x-auto rounded-panel border border-line bg-surface">
-          <table className="w-full min-w-[900px] text-left text-sm">
-            <thead>
-              <tr className="border-b border-line bg-ground/60 text-xs uppercase tracking-wide text-ink-muted">
-                <th className="px-4 py-3">ID unique</th>
-                <th className="px-4 py-3">Réception</th>
-                <th className="px-4 py-3">Rizerie</th>
-                <th className="px-4 py-3">Poids net</th>
-                <th className="px-4 py-3">Humidité</th>
-                <th className="px-4 py-3">État visuel</th>
-                <th className="px-4 py-3">Statut</th>
-                <th className="px-4 py-3">Batches</th>
-                <th className="px-4 py-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lots.map((lot) => (
-                <tr key={lot.id} className="border-b border-line/60 last:border-0 hover:bg-husk-soft/20">
-                  <td className="px-4 py-3">
-                    <Link href={`/admin/lots/${lot.id}`} className="font-mono-brand text-xs font-semibold text-paddy hover:underline">
-                      {lot.code}
-                    </Link>
-                    {lot.photoUrl ? <p className="mt-0.5 text-[11px] text-ink-muted">Photo jointe</p> : null}
-                  </td>
-                  <td className="px-4 py-3 text-ink-muted">{formatDateTime(lot.receivedAt)}</td>
-                  <td className="px-4 py-3">{lot.rizerie.name}</td>
-                  <td className="px-4 py-3">{formatNumber(lot.netWeightKg, 'kg')}</td>
-                  <td className="px-4 py-3">{formatPercent(lot.humidityPct)}</td>
-                  <td className="px-4 py-3">{labelOf(LOT_VISUAL_QUALITIES, lot.visualQuality)}</td>
-                  <td className="px-4 py-3">
-                    <Badge tone={lot.status === 'accepted' ? 'success' : 'danger'}>{labelOf(LOT_STATUSES, lot.status)}</Badge>
-                  </td>
-                  <td className="px-4 py-3">{lot._count.batches}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <Link href={`/admin/lots/${lot.id}`} className="rounded-control border border-line px-2.5 py-1 text-xs font-semibold hover:border-paddy hover:text-paddy">
-                        Voir
-                      </Link>
-                      {canWrite ? (
-                        <DeleteButton endpoint={`/api/admin/lots/${lot.id}`} confirmation={`Supprimer le lot ${lot.code} ?`} />
-                      ) : null}
-                    </div>
-                  </td>
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-line bg-ground/40 text-[11px] uppercase tracking-wide text-ink-muted">
+                  <th className="px-4 py-3 font-semibold">ID unique</th>
+                  <th className="px-4 py-3 font-semibold hidden sm:table-cell">Réception</th>
+                  <th className="px-4 py-3 font-semibold">Rizerie</th>
+                  <th className="px-4 py-3 font-semibold hidden md:table-cell">Poids net</th>
+                  <th className="px-4 py-3 font-semibold hidden lg:table-cell">Humidité</th>
+                  <th className="px-4 py-3 font-semibold hidden lg:table-cell">État visuel</th>
+                  <th className="px-4 py-3 font-semibold">Statut</th>
+                  <th className="px-4 py-3 font-semibold hidden xl:table-cell">Batches</th>
+                  <th className="px-4 py-3 font-semibold">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-line/50">
+                {lots.map((lot) => (
+                  <tr key={lot.id} className="group transition-colors hover:bg-paddy/[0.03]">
+                    <td className="px-4 py-3 align-middle">
+                      <Link href={`/admin/lots/${lot.id}`} className="font-mono-brand text-xs font-semibold text-paddy hover:text-paddy-deep hover:underline">
+                        {lot.code}
+                      </Link>
+                      {lot.photoUrl ? <p className="mt-0.5 text-[11px] text-ink-muted">Photo jointe</p> : null}
+                    </td>
+                    <td className="px-4 py-3 align-middle text-ink-muted text-xs hidden sm:table-cell whitespace-nowrap">{formatDateTime(lot.receivedAt)}</td>
+                    <td className="px-4 py-3 align-middle text-sm">{lot.rizerie.name}</td>
+                    <td className="px-4 py-3 align-middle font-medium hidden md:table-cell whitespace-nowrap">{formatNumber(lot.netWeightKg, 'kg')}</td>
+                    <td className="px-4 py-3 align-middle text-ink-muted hidden lg:table-cell">{formatPercent(lot.humidityPct)}</td>
+                    <td className="px-4 py-3 align-middle text-ink-muted hidden lg:table-cell">{labelOf(LOT_VISUAL_QUALITIES, lot.visualQuality)}</td>
+                    <td className="px-4 py-3 align-middle">
+                      <Badge tone={lot.status === 'accepted' ? 'success' : 'danger'}>{labelOf(LOT_STATUSES, lot.status)}</Badge>
+                    </td>
+                    <td className="px-4 py-3 align-middle text-ink-muted hidden xl:table-cell">{lot._count.batches}</td>
+                    <td className="px-4 py-3 align-middle">
+                      <div className="flex items-center gap-2">
+                        <Link href={`/admin/lots/${lot.id}`} className="rounded-control border border-line px-2.5 py-1 text-xs font-semibold hover:border-paddy hover:text-paddy transition-colors">
+                          Voir
+                        </Link>
+                        {canWrite ? (
+                          <DeleteButton endpoint={`/api/admin/lots/${lot.id}`} confirmation={`Supprimer le lot ${lot.code} ?`} />
+                        ) : null}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
       )}
     </div>
   );

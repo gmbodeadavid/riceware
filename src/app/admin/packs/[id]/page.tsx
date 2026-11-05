@@ -147,28 +147,28 @@ export default async function PackLotDetailPage({ params }: PageProps) {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
-                    <th className="pb-2 pr-3">Commande</th>
-                    <th className="pb-2 pr-3">Client</th>
-                    <th className="pb-2 pr-3">Statut</th>
-                    <th className="pb-2">Qté allouée</th>
+                  <tr className="border-b border-line bg-ground/40 text-[11px] uppercase tracking-wide text-ink-muted">
+                    <th className="px-4 py-3 font-semibold">Commande</th>
+                    <th className="px-4 py-3 font-semibold hidden sm:table-cell">Client</th>
+                    <th className="px-4 py-3 font-semibold">Statut</th>
+                    <th className="px-4 py-3 font-semibold">Qté allouée</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-line/50">
                   {packLot.allocations.map((alloc) => (
-                    <tr key={alloc.id} className="border-b border-line/60 last:border-0">
-                      <td className="py-2.5 pr-3">
-                        <Link href={`/admin/commandes/${alloc.orderLine.order.id}`} className="font-mono-brand text-xs font-semibold text-paddy hover:underline">
+                    <tr key={alloc.id} className="group transition-colors hover:bg-paddy/[0.03]">
+                      <td className="px-4 py-3 align-middle">
+                        <Link href={`/admin/commandes/${alloc.orderLine.order.id}`} className="font-mono-brand text-xs font-semibold text-paddy hover:text-paddy-deep hover:underline">
                           {alloc.orderLine.order.orderNumber}
                         </Link>
                       </td>
-                      <td className="py-2.5 pr-3 text-xs">{alloc.orderLine.order.customer.fullName}</td>
-                      <td className="py-2.5 pr-3">
+                      <td className="px-4 py-3 align-middle text-xs hidden sm:table-cell">{alloc.orderLine.order.customer.fullName}</td>
+                      <td className="px-4 py-3 align-middle">
                         <Badge tone={alloc.orderLine.order.status === 'delivered' ? 'success' : alloc.orderLine.order.status === 'cancelled' ? 'danger' : 'info'}>
                           {alloc.orderLine.order.status}
                         </Badge>
                       </td>
-                      <td className="py-2.5 font-semibold">{alloc.quantity}</td>
+                      <td className="px-4 py-3 align-middle font-semibold">{alloc.quantity}</td>
                     </tr>
                   ))}
                 </tbody>

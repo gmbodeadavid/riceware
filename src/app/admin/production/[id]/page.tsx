@@ -167,30 +167,30 @@ export default async function BatchDetailPage({ params }: PageProps) {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
-                    <th className="pb-2 pr-3">Lot</th>
-                    <th className="pb-2 pr-3">Rizerie</th>
-                    <th className="pb-2 pr-3">Kg utilisés</th>
-                    <th className="pb-2 pr-3">Part (%)</th>
-                    <th className="pb-2">Estimé</th>
+                  <tr className="border-b border-line bg-ground/40 text-[11px] uppercase tracking-wide text-ink-muted">
+                    <th className="px-4 py-3 font-semibold">Lot</th>
+                    <th className="px-4 py-3 font-semibold hidden sm:table-cell">Rizerie</th>
+                    <th className="px-4 py-3 font-semibold">Kg utilisés</th>
+                    <th className="px-4 py-3 font-semibold hidden sm:table-cell">Part (%)</th>
+                    <th className="px-4 py-3 font-semibold">Mesuré ?</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-line/50">
                   {batch.usages.map((usage) => {
                     const pct = totalKgUsed > 0 && usage.kgUsed != null
                       ? ((usage.kgUsed / totalKgUsed) * 100).toFixed(1)
                       : null;
                     return (
-                      <tr key={usage.id} className="border-b border-line/60 last:border-0">
-                        <td className="py-2.5 pr-3">
-                          <Link href={`/admin/lots/${usage.lot.id}`} className="font-mono-brand text-xs font-semibold text-paddy hover:underline">
+                      <tr key={usage.id} className="group transition-colors hover:bg-paddy/[0.03]">
+                        <td className="px-4 py-3 align-middle">
+                          <Link href={`/admin/lots/${usage.lot.id}`} className="font-mono-brand text-xs font-semibold text-paddy hover:text-paddy-deep hover:underline">
                             {usage.lot.code}
                           </Link>
                         </td>
-                        <td className="py-2.5 pr-3 text-xs text-ink-muted">{usage.lot.rizerie.name}</td>
-                        <td className="py-2.5 pr-3">{usage.kgUsed != null ? formatNumber(usage.kgUsed, 'kg') : <span className="text-ink-muted">Non renseigné</span>}</td>
-                        <td className="py-2.5 pr-3">{pct != null ? `${pct} %` : '—'}</td>
-                        <td className="py-2.5">{usage.estimated ? <Badge tone="warning">Estimé</Badge> : <Badge tone="success">Mesuré</Badge>}</td>
+                        <td className="px-4 py-3 align-middle text-xs text-ink-muted hidden sm:table-cell">{usage.lot.rizerie.name}</td>
+                        <td className="px-4 py-3 align-middle font-medium whitespace-nowrap">{usage.kgUsed != null ? formatNumber(usage.kgUsed, 'kg') : <span className="text-ink-muted">—</span>}</td>
+                        <td className="px-4 py-3 align-middle text-ink-muted hidden sm:table-cell">{pct != null ? `${pct} %` : '—'}</td>
+                        <td className="px-4 py-3 align-middle">{usage.estimated ? <Badge tone="warning">Estimé</Badge> : <Badge tone="success">Mesuré</Badge>}</td>
                       </tr>
                     );
                   })}
@@ -224,35 +224,35 @@ export default async function BatchDetailPage({ params }: PageProps) {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
-                    <th className="pb-2 pr-3">Code</th>
-                    <th className="pb-2 pr-3">Pack</th>
-                    <th className="pb-2 pr-3">Qté</th>
-                    <th className="pb-2 pr-3">Restant</th>
-                    <th className="pb-2 pr-3">Statut</th>
-                    <th className="pb-2">Date</th>
+                  <tr className="border-b border-line bg-ground/40 text-[11px] uppercase tracking-wide text-ink-muted">
+                    <th className="px-4 py-3 font-semibold">Code</th>
+                    <th className="px-4 py-3 font-semibold">Pack</th>
+                    <th className="px-4 py-3 font-semibold hidden sm:table-cell">Qté</th>
+                    <th className="px-4 py-3 font-semibold">Restant</th>
+                    <th className="px-4 py-3 font-semibold">Statut</th>
+                    <th className="px-4 py-3 font-semibold hidden md:table-cell">Date</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-line/50">
                   {batch.packLots.map((pl) => {
                     const remaining = pl.quantity - pl.allocations.reduce((s, a) => s + a.quantity, 0);
                     const statusEntry = PACK_LOT_STATUSES.find((s) => s.value === pl.status);
                     return (
-                      <tr key={pl.id} className="border-b border-line/60 last:border-0">
-                        <td className="py-2.5 pr-3">
-                          <Link href={`/admin/packs/${pl.id}`} className="font-mono-brand text-xs font-semibold text-paddy hover:underline">
+                      <tr key={pl.id} className="group transition-colors hover:bg-paddy/[0.03]">
+                        <td className="px-4 py-3 align-middle">
+                          <Link href={`/admin/packs/${pl.id}`} className="font-mono-brand text-xs font-semibold text-paddy hover:text-paddy-deep hover:underline">
                             {pl.code}
                           </Link>
                         </td>
-                        <td className="py-2.5 pr-3 text-xs">{pl.pack.label}</td>
-                        <td className="py-2.5 pr-3">{pl.quantity}</td>
-                        <td className="py-2.5 pr-3">{remaining}</td>
-                        <td className="py-2.5 pr-3">
+                        <td className="px-4 py-3 align-middle text-xs">{pl.pack.label}</td>
+                        <td className="px-4 py-3 align-middle font-medium hidden sm:table-cell">{pl.quantity}</td>
+                        <td className={`px-4 py-3 align-middle font-semibold ${remaining === 0 ? 'text-ink-muted' : remaining < 5 ? 'text-danger' : 'text-paddy-deep'}`}>{remaining}</td>
+                        <td className="px-4 py-3 align-middle">
                           <Badge tone={(statusEntry?.badge === 'default' || !statusEntry?.badge ? 'neutral' : statusEntry.badge) as 'success' | 'warning' | 'danger' | 'info' | 'neutral'}>
                             {statusEntry?.label ?? pl.status}
                           </Badge>
                         </td>
-                        <td className="py-2.5 text-xs text-ink-muted">{formatDateTime(pl.packedAt)}</td>
+                        <td className="px-4 py-3 align-middle text-xs text-ink-muted hidden md:table-cell whitespace-nowrap">{formatDateTime(pl.packedAt)}</td>
                       </tr>
                     );
                   })}
@@ -271,24 +271,24 @@ export default async function BatchDetailPage({ params }: PageProps) {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
-                    <th className="pb-2 pr-3">Type</th>
-                    <th className="pb-2 pr-3">Poids</th>
-                    <th className="pb-2 pr-3">Épaisseur</th>
-                    <th className="pb-2 pr-3">Test</th>
-                    <th className="pb-2 pr-3">Statut</th>
-                    <th className="pb-2">Tests</th>
+                  <tr className="border-b border-line bg-ground/40 text-[11px] uppercase tracking-wide text-ink-muted">
+                    <th className="px-4 py-3 font-semibold">Type</th>
+                    <th className="px-4 py-3 font-semibold hidden sm:table-cell">Poids</th>
+                    <th className="px-4 py-3 font-semibold hidden sm:table-cell">Épaisseur</th>
+                    <th className="px-4 py-3 font-semibold hidden md:table-cell">Test étanchéité</th>
+                    <th className="px-4 py-3 font-semibold">Statut</th>
+                    <th className="px-4 py-3 font-semibold hidden lg:table-cell">Tests</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-line/50">
                   {batch.products.map((product) => (
-                    <tr key={product.id} className="border-b border-line/60 last:border-0">
-                      <td className="py-2.5 pr-3">{labelOf(PRODUCT_TYPES, product.type)}</td>
-                      <td className="py-2.5 pr-3">{formatNumber(product.weightG, 'g')}</td>
-                      <td className="py-2.5 pr-3">{formatNumber(product.thicknessMm, 'mm')}</td>
-                      <td className="py-2.5 pr-3">{product.leakTest == null ? '—' : product.leakTest ? 'Étanche' : 'Fuite'}</td>
-                      <td className="py-2.5 pr-3"><Badge tone={product.status === 'valide' ? 'success' : 'danger'}>{product.status === 'valide' ? 'Validé' : 'Rejeté'}</Badge></td>
-                      <td className="py-2.5">{product.tests.length}</td>
+                    <tr key={product.id} className="group transition-colors hover:bg-paddy/[0.03]">
+                      <td className="px-4 py-3 align-middle">{labelOf(PRODUCT_TYPES, product.type)}</td>
+                      <td className="px-4 py-3 align-middle text-ink-muted hidden sm:table-cell whitespace-nowrap">{formatNumber(product.weightG, 'g')}</td>
+                      <td className="px-4 py-3 align-middle text-ink-muted hidden sm:table-cell whitespace-nowrap">{formatNumber(product.thicknessMm, 'mm')}</td>
+                      <td className="px-4 py-3 align-middle hidden md:table-cell">{product.leakTest == null ? '—' : product.leakTest ? 'Étanche' : 'Fuite'}</td>
+                      <td className="px-4 py-3 align-middle"><Badge tone={product.status === 'valide' ? 'success' : 'danger'}>{product.status === 'valide' ? 'Validé' : 'Rejeté'}</Badge></td>
+                      <td className="px-4 py-3 align-middle text-ink-muted hidden lg:table-cell">{product.tests.length}</td>
                     </tr>
                   ))}
                 </tbody>

@@ -120,42 +120,42 @@ export default async function OrdersPage({ searchParams }: PageProps) {
           <EmptyState title="Aucune commande" description="Aucune commande ne correspond aux filtres. Les demandes du site apparaissent automatiquement ici." />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1000px] text-left text-sm">
+            <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
-                  <th className="pb-2 pr-3">Commande</th>
-                  <th className="pb-2 pr-3">Date</th>
-                  <th className="pb-2 pr-3">Client</th>
-                  <th className="pb-2 pr-3">Canal</th>
-                  <th className="pb-2 pr-3">Articles</th>
-                  <th className="pb-2 pr-3">Total</th>
-                  <th className="pb-2 pr-3">Suivi</th>
-                  <th className="pb-2">Actions</th>
+                <tr className="border-b border-line bg-ground/40 text-[11px] uppercase tracking-wide text-ink-muted">
+                  <th className="px-4 py-3 font-semibold">Commande</th>
+                  <th className="px-4 py-3 font-semibold hidden sm:table-cell">Date</th>
+                  <th className="px-4 py-3 font-semibold">Client</th>
+                  <th className="px-4 py-3 font-semibold hidden md:table-cell">Canal</th>
+                  <th className="px-4 py-3 font-semibold hidden lg:table-cell">Articles</th>
+                  <th className="px-4 py-3 font-semibold">Total</th>
+                  <th className="px-4 py-3 font-semibold">Suivi</th>
+                  <th className="px-4 py-3 font-semibold hidden sm:table-cell">Actions</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-line/50">
                 {orders.map((order) => (
-                  <tr key={order.id} className="border-b border-line/60 last:border-0 align-top">
-                    <td className="py-3 pr-3">
-                      <Link href={`/admin/commandes/${order.id}`} className="font-mono-brand text-xs font-semibold text-paddy hover:underline">{order.orderNumber}</Link>
-                      {order.notes ? <p className="mt-1 max-w-56 text-[11px] leading-4 text-ink-muted">{order.notes}</p> : null}
+                  <tr key={order.id} className="group transition-colors hover:bg-paddy/[0.03]">
+                    <td className="px-4 py-3 align-top">
+                      <Link href={`/admin/commandes/${order.id}`} className="font-mono-brand text-xs font-semibold text-paddy hover:text-paddy-deep hover:underline">{order.orderNumber}</Link>
+                      {order.notes ? <p className="mt-1 max-w-48 text-[11px] leading-4 text-ink-muted line-clamp-2">{order.notes}</p> : null}
                     </td>
-                    <td className="py-3 pr-3 text-xs text-ink-muted">{formatDateTime(order.createdAt)}</td>
-                    <td className="py-3 pr-3">
+                    <td className="px-4 py-3 align-top text-xs text-ink-muted whitespace-nowrap hidden sm:table-cell">{formatDateTime(order.createdAt)}</td>
+                    <td className="px-4 py-3 align-top">
                       <p className="font-medium">{order.customerName ?? 'Client non renseigné'}</p>
                       <p className="text-xs text-ink-muted">{order.lines.length} ligne(s)</p>
                     </td>
-                    <td className="py-3 pr-3 text-xs text-ink-muted">{SALES_CHANNELS.find((item) => item.value === order.channel)?.label ?? order.channel}</td>
-                    <td className="py-3 pr-3">
-                      <ul className="space-y-1 text-xs">
+                    <td className="px-4 py-3 align-top text-xs text-ink-muted hidden md:table-cell whitespace-nowrap">{SALES_CHANNELS.find((item) => item.value === order.channel)?.label ?? order.channel}</td>
+                    <td className="px-4 py-3 align-top hidden lg:table-cell">
+                      <ul className="space-y-0.5 text-xs">
                         {order.lines.slice(0, 3).map((line) => (
-                          <li key={line.id}>{line.quantity} × {line.packNameSnapshot}</li>
+                          <li key={line.id} className="text-ink-muted">{line.quantity} × {line.packNameSnapshot}</li>
                         ))}
-                        {order.lines.length > 3 ? <li className="text-ink-muted">+{order.lines.length - 3} autre(s)</li> : null}
+                        {order.lines.length > 3 ? <li className="text-ink-muted/70">+{order.lines.length - 3} autre(s)</li> : null}
                       </ul>
                     </td>
-                    <td className="py-3 pr-3 font-semibold">{formatCurrency(order.total.amount)}</td>
-                    <td className="py-3 pr-3">
+                    <td className="px-4 py-3 align-top font-semibold whitespace-nowrap">{formatCurrency(order.total.amount)}</td>
+                    <td className="px-4 py-3 align-top">
                       {canWrite ? (
                         <OrderStatusSelect orderId={order.id} status={order.status} paymentStatus={order.paymentStatus} />
                       ) : (
@@ -169,7 +169,7 @@ export default async function OrdersPage({ searchParams }: PageProps) {
                         </div>
                       )}
                     </td>
-                    <td className="py-3">
+                    <td className="px-4 py-3 align-top hidden sm:table-cell">
                       {canWrite ? (
                         <DeleteButton endpoint={`/api/admin/orders/${order.id}`} confirmation={`Supprimer la commande ${order.orderNumber} ?`} label="Suppr." />
                       ) : null}
