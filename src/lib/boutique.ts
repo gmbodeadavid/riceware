@@ -38,7 +38,7 @@ export interface Product {
 }
 
 export const CATEGORY_OPTIONS = [
-  { id: 'toutes', label: 'Tout le catalogue' },
+  { id: 'toutes', label: 'Tout' },
   { id: 'assiettes', label: 'Assiettes' },
   { id: 'couverts', label: 'Couverts' },
   { id: 'barquettes', label: 'Barquettes' },

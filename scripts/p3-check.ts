@@ -6,7 +6,30 @@
  *
  * Suppose la DB en état propre P2 (3 rizeries, 3 lots, 3 batches, 1 commande).
  * Crée des données de test P3, les vérifie, puis les nettoie.
+ *
+ * GUARD : Tourne toujours sur une COPIE de la base (jamais sur dev.db directement).
+ * DATABASE_URL est réécrit avant tout import Prisma pour pointer vers la copie.
  */
+
+// ─── SETUP COPIE — DOIT PRÉCÉDER TOUT IMPORT PRISMA ────────────────────────
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname_p3 = path.dirname(fileURLToPath(import.meta.url));
+const ROOT_P3 = path.resolve(__dirname_p3, '..');
+const REAL_DB_P3 = path.join(ROOT_P3, 'prisma', 'dev.db');
+const TEST_DB_P3 = path.join(ROOT_P3, 'backups', 'p3-check-test.db');
+
+if (!fs.existsSync(REAL_DB_P3)) { console.error(`Base réelle introuvable : ${REAL_DB_P3}`); process.exit(1); }
+const backupsDir_p3 = path.join(ROOT_P3, 'backups');
+if (!fs.existsSync(backupsDir_p3)) fs.mkdirSync(backupsDir_p3);
+fs.copyFileSync(REAL_DB_P3, TEST_DB_P3);
+// Forcer DATABASE_URL vers la copie AVANT tout import de @prisma/client / traceability
+process.env.DATABASE_URL = `file:${TEST_DB_P3}`;
+console.log(`[SETUP] Copie de test : ${TEST_DB_P3}`);
+console.log(`[SETUP] DATABASE_URL  : ${process.env.DATABASE_URL}`);
+// ────────────────────────────────────────────────────────────────────────────
 
 import { PrismaClient } from '@prisma/client';
 import {

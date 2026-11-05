@@ -50,9 +50,10 @@ export default async function BlogPostDetailPage({
           <div className="max-w-[760px] mx-auto px-5 sm:px-8">
             <Link
               href="/blog"
-              className="inline-flex items-center gap-2 text-sm font-semibold text-paddy hover:text-paddy-deep transition-colors mb-6"
+              className="inline-flex items-center justify-center rounded-full bg-orange-500 w-16 h-10 text-xl font-bold text-white transition-colors hover:bg-orange-600 mb-6 leading-none"
+              aria-label="Retour au journal"
             >
-              ← Retour au journal
+              ←
             </Link>
 
             <header className="space-y-4">

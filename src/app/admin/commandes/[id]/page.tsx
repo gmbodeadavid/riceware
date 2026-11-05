@@ -26,8 +26,12 @@ export default async function OrderDetailPage({ params }: PageProps) {
   // Calculer l'état d'allocation par ligne
   const linesWithAlloc = order.lines.map((line) => {
     const allocated = line.allocations.reduce((s, a) => s + a.quantity, 0);
-    const isFullyAllocated = !line.productPackId || allocated >= line.quantity;
-    return { ...line, allocated, isFullyAllocated };
+    // Une ligne SANS productPackId ne peut pas être tracée — elle est "hors-traçabilité".
+    // On la marque isFullyAllocated=true pour ne pas bloquer, mais hasNoPackLink=true
+    // pour afficher un avertissement explicite.
+    const hasNoPackLink = !line.productPackId;
+    const isFullyAllocated = hasNoPackLink || allocated >= line.quantity;
+    return { ...line, allocated, isFullyAllocated, hasNoPackLink };
   });
 
   const allAllocated = linesWithAlloc.every((l) => l.isFullyAllocated);
@@ -104,6 +108,24 @@ export default async function OrderDetailPage({ params }: PageProps) {
           )}
         </Section>
       </div>
+
+      {/* ─── Avertissement lignes hors-traçabilité ─── */}
+      {linesWithAlloc.some((l) => l.hasNoPackLink) && (
+        <div className="mt-4 rounded-control border border-warning bg-warning/10 p-4 text-sm">
+          <p className="font-semibold text-ink">⚠️ Lignes hors traçabilité</p>
+          <p className="mt-1 text-ink-muted">
+            Cette commande contient {linesWithAlloc.filter((l) => l.hasNoPackLink).length} ligne(s) sans
+            lien vers un pack produit (<code>productPackId</code> absent). Ces lignes ne peuvent pas
+            être allouées à un PackLot de production. La traçabilité lot → commande est incomplète
+            pour ces articles.
+          </p>
+          <ul className="mt-2 list-disc list-inside text-ink-muted">
+            {linesWithAlloc.filter((l) => l.hasNoPackLink).map((l) => (
+              <li key={l.id}>{l.packNameSnapshot} — {l.quantity} unité(s)</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* ─── Bloc d'allocation ─── */}
       <div className="mt-6">

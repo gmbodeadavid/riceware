@@ -121,11 +121,6 @@ export default function BoutiqueCatalogClient({
                   <span className="text-sm font-semibold text-ink">{product.currentPrice}</span>
                 </div>
 
-                <div className="mt-auto pt-3">
-                  <span className="inline-flex items-center justify-center rounded-full bg-paddy px-3 py-1.5 text-xs font-semibold text-on-paddy transition-colors hover:bg-paddy-deep sm:text-sm">
-                    Voir plus
-                  </span>
-                </div>
               </div>
             </Link>
           ))}
