@@ -29,7 +29,8 @@ export default async function RizeriesPage() {
         <div className="space-y-3">
           {rizeries.map((rizerie) => (
             <article key={rizerie.id} className="rounded-panel border border-line bg-surface">
-              <div className="flex flex-wrap items-start justify-between gap-3 p-4 sm:p-5">
+              <div className={`grid gap-6 p-4 sm:p-5 ${canWrite ? 'lg:grid-cols-[1.4fr_1fr]' : ''}`}>
+                {/* ── Infos ── */}
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <h2 className="font-display text-lg font-semibold text-ink">{rizerie.name}</h2>
@@ -46,19 +47,17 @@ export default async function RizeriesPage() {
                     <div><dt className="inline text-ink-muted">Email : </dt><dd className="inline">{rizerie.contactEmail ?? '—'}</dd></div>
                   </dl>
                   {rizerie.qualityNotes ? <p className="mt-3 text-sm text-ink-muted">Qualité : {rizerie.qualityNotes}</p> : null}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Link href={`/admin/lots?rizerieId=${rizerie.id}`} className="rounded-control border border-line px-3 py-1.5 text-xs font-semibold hover:border-paddy hover:text-paddy transition-colors">
+                      Voir les lots
+                    </Link>
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <Link href={`/admin/lots?rizerieId=${rizerie.id}`} className="rounded-control border border-line px-3 py-1.5 text-xs font-semibold hover:border-paddy hover:text-paddy">
-                    Voir les lots
-                  </Link>
-                  {canWrite ? <DeleteButton endpoint={`/api/admin/rizieries/${rizerie.id}`} confirmation={`Supprimer la rizerie ${rizerie.name} ?`} /> : null}
-                </div>
-              </div>
 
-              {canWrite ? (
-                <details className="border-t border-line">
-                  <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-paddy sm:px-5">Modifier la fiche</summary>
-                  <div className="border-t border-line px-4 py-5 sm:px-5">
+                {/* ── Formulaire d'édition toujours visible ── */}
+                {canWrite ? (
+                  <div className="border-t border-line pt-4 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6">
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-muted">Modifier la fiche</p>
                     <RizerieForm
                       initial={{
                         id: rizerie.id,
@@ -74,9 +73,12 @@ export default async function RizeriesPage() {
                         active: rizerie.active,
                       }}
                     />
+                    <div className="mt-3 pt-3 border-t border-line/60">
+                      <DeleteButton endpoint={`/api/admin/rizieries/${rizerie.id}`} confirmation={`Supprimer la rizerie ${rizerie.name} ?`} label="Supprimer cette rizerie" compact={false} />
+                    </div>
                   </div>
-                </details>
-              ) : null}
+                ) : null}
+              </div>
             </article>
           ))}
         </div>

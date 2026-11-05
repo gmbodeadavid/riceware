@@ -253,30 +253,45 @@ export default async function ReportsPage() {
 
       {/* Goal edit forms (admin only) */}
       {canManage ? (
-        <div className="mt-6 space-y-4">
+        <div className="mt-6 space-y-3">
           {data.goals.map((goal) => (
-            <details key={goal.id} className="rounded-panel border border-line bg-surface">
-              <summary className="cursor-pointer px-5 py-3 text-sm font-semibold text-paddy hover:bg-ground/40 transition-colors rounded-panel">
-                Modifier « {goal.label} »
-              </summary>
-              <div className="border-t border-line px-5 py-5">
-                <GoalForm
-                  initial={{
-                    id: goal.id,
-                    label: goal.label,
-                    description: goal.description,
-                    metric: goal.metric,
-                    target: goal.target,
-                    unit: goal.unit,
-                    startDate: goal.startDate,
-                    endDate: goal.endDate,
-                    status: goal.status,
-                  }}
-                />
+            <article key={goal.id} className="rounded-panel border border-line bg-surface">
+              <div className="grid gap-6 p-4 sm:p-5 lg:grid-cols-[1.4fr_1fr]">
+                {/* ── Résumé de l'objectif ── */}
+                <div>
+                  <p className="font-display text-base font-semibold text-ink">{goal.label}</p>
+                  {goal.description ? <p className="mt-1 text-sm text-ink-muted">{goal.description}</p> : null}
+                  <dl className="mt-3 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+                    <div><dt className="inline text-ink-muted">Cible : </dt><dd className="inline font-medium">{formatNumber(goal.target, goal.unit)}</dd></div>
+                    <div><dt className="inline text-ink-muted">Métrique : </dt><dd className="inline">{goal.metric}</dd></div>
+                    {goal.startDate ? <div><dt className="inline text-ink-muted">Début : </dt><dd className="inline">{formatDate(goal.startDate)}</dd></div> : null}
+                    {goal.endDate ? <div><dt className="inline text-ink-muted">Échéance : </dt><dd className="inline">{formatDate(goal.endDate)}</dd></div> : null}
+                  </dl>
+                </div>
+                {/* ── Formulaire d'édition toujours visible ── */}
+                <div className="border-t border-line pt-4 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6">
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-muted">Modifier l'objectif</p>
+                  <GoalForm
+                    initial={{
+                      id: goal.id,
+                      label: goal.label,
+                      description: goal.description,
+                      metric: goal.metric,
+                      target: goal.target,
+                      unit: goal.unit,
+                      startDate: goal.startDate,
+                      endDate: goal.endDate,
+                      status: goal.status,
+                    }}
+                  />
+                </div>
               </div>
-            </details>
+            </article>
           ))}
-          <GoalForm />
+          <div className="rounded-panel border border-line bg-surface p-4 sm:p-5">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-muted">Nouvel objectif</p>
+            <GoalForm />
+          </div>
         </div>
       ) : null}
 
@@ -293,23 +308,23 @@ export default async function ReportsPage() {
             />
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[700px] text-left text-sm">
+              <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
-                    <th className="pb-2.5 pr-3 font-semibold">Date</th>
-                    <th className="pb-2.5 pr-3 font-semibold">Auteur</th>
-                    <th className="pb-2.5 pr-3 font-semibold">Action</th>
-                    <th className="pb-2.5 font-semibold">Entité</th>
+                  <tr className="border-b border-line bg-ground/40 text-[11px] uppercase tracking-wide text-ink-muted">
+                    <th className="px-4 py-3 font-semibold">Date</th>
+                    <th className="px-4 py-3 font-semibold">Auteur</th>
+                    <th className="px-4 py-3 font-semibold">Action</th>
+                    <th className="px-4 py-3 font-semibold hidden sm:table-cell">Entité</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-line/50">
                   {audits.map((audit) => (
-                    <tr key={audit.id} className="border-b border-line/50 last:border-0 hover:bg-ground/40 transition-colors">
-                      <td className="py-2.5 pr-3 text-xs text-ink-muted whitespace-nowrap">
+                    <tr key={audit.id} className="group transition-colors hover:bg-paddy/[0.03]">
+                      <td className="px-4 py-3 align-middle text-xs text-ink-muted whitespace-nowrap">
                         {formatDateTime(audit.createdAt)}
                       </td>
-                      <td className="py-2.5 pr-3 font-medium">{audit.user?.name ?? audit.actorName}</td>
-                      <td className="py-2.5 pr-3">
+                      <td className="px-4 py-3 align-middle font-medium">{audit.user?.name ?? audit.actorName}</td>
+                      <td className="px-4 py-3 align-middle">
                         <Badge
                           tone={
                             audit.action === 'delete' ? 'danger'
@@ -320,7 +335,7 @@ export default async function ReportsPage() {
                           {audit.action}
                         </Badge>
                       </td>
-                      <td className="py-2.5 text-ink-muted text-xs">
+                      <td className="px-4 py-3 align-middle text-ink-muted text-xs hidden sm:table-cell">
                         {audit.entityType}
                         {audit.entityId ? ` · ${audit.entityId}` : ''}
                       </td>

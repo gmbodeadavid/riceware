@@ -37,7 +37,8 @@ export default async function UsersPage() {
             const isCurrent = user.email === session.email || user.id === session.userId;
             return (
               <article key={user.id} className="rounded-panel border border-line bg-surface">
-                <div className="flex flex-wrap items-start justify-between gap-3 p-4 sm:p-5">
+                <div className="grid gap-6 p-4 sm:grid-cols-[1fr_auto] sm:p-5 lg:grid-cols-[1.4fr_1fr]">
+                  {/* ── Infos ── */}
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <h2 className="font-display text-lg font-semibold">{user.name}</h2>
@@ -54,14 +55,10 @@ export default async function UsersPage() {
                     </dl>
                     <p className="mt-3 text-xs text-ink-muted">{ROLE_OPTIONS.find((option) => option.value === user.role)?.description}</p>
                   </div>
-                  {!isCurrent ? (
-                    <DeleteButton endpoint={`/api/admin/utilisateurs/${user.id}`} confirmation={`Supprimer le compte ${user.name} ?`} />
-                  ) : null}
-                </div>
 
-                <details className="border-t border-line">
-                  <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-paddy sm:px-5">Modifier le compte</summary>
-                  <div className="border-t border-line px-4 py-5 sm:px-5">
+                  {/* ── Formulaire d'édition toujours visible ── */}
+                  <div className="border-t border-line pt-4 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-5 lg:pl-6">
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-muted">Modifier le compte</p>
                     <UserForm
                       initial={{
                         id: user.id,
@@ -71,8 +68,13 @@ export default async function UsersPage() {
                         active: user.active,
                       }}
                     />
+                    {!isCurrent ? (
+                      <div className="mt-3 pt-3 border-t border-line/60">
+                        <DeleteButton endpoint={`/api/admin/utilisateurs/${user.id}`} confirmation={`Supprimer le compte ${user.name} ?`} label="Supprimer ce compte" compact={false} />
+                      </div>
+                    ) : null}
                   </div>
-                </details>
+                </div>
               </article>
             );
           })}

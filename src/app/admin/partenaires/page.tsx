@@ -37,7 +37,8 @@ export default async function PartnersPage() {
         <div className="space-y-3">
           {partners.map((partner) => (
             <article key={partner.id} className="rounded-panel border border-line bg-surface">
-              <div className="flex flex-wrap items-start justify-between gap-3 p-4 sm:p-5">
+              <div className={`grid gap-6 p-4 sm:p-5 ${canWrite ? 'lg:grid-cols-[1.4fr_1fr]' : ''}`}>
+                {/* ── Infos ── */}
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <h2 className="font-display text-lg font-semibold">{partner.name}</h2>
@@ -54,13 +55,11 @@ export default async function PartnersPage() {
                   </dl>
                   {partner.notes ? <p className="mt-3 text-sm text-ink-muted">{partner.notes}</p> : null}
                 </div>
-                {canWrite ? <DeleteButton endpoint={`/api/admin/partenaires/${partner.id}`} confirmation={`Supprimer le partenaire ${partner.name} ?`} /> : null}
-              </div>
 
-              {canWrite ? (
-                <details className="border-t border-line">
-                  <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-paddy sm:px-5">Modifier la fiche</summary>
-                  <div className="border-t border-line px-4 py-5 sm:px-5">
+                {/* ── Formulaire d'édition toujours visible ── */}
+                {canWrite ? (
+                  <div className="border-t border-line pt-4 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6">
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-muted">Modifier la fiche</p>
                     <PartnerForm
                       initial={{
                         id: partner.id,
@@ -75,9 +74,12 @@ export default async function PartnersPage() {
                         active: partner.active,
                       }}
                     />
+                    <div className="mt-3 pt-3 border-t border-line/60">
+                      <DeleteButton endpoint={`/api/admin/partenaires/${partner.id}`} confirmation={`Supprimer le partenaire ${partner.name} ?`} label="Supprimer ce partenaire" compact={false} />
+                    </div>
                   </div>
-                </details>
-              ) : null}
+                ) : null}
+              </div>
             </article>
           ))}
         </div>
