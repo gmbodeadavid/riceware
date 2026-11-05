@@ -7,15 +7,12 @@ import { listProducts, getProductBySlug } from '@/lib/data/products';
 import { ProductColorGallery, ProductColorProvider, ProductColorSwatches } from '@/components/ProductColorGallery';
 import AddToCartForm from '@/components/AddToCartForm';
 
+export const dynamic = 'force-dynamic';
+
 function isRecentProduct(createdAt: Date): boolean {
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
   return createdAt > thirtyDaysAgo;
-}
-
-export async function generateStaticParams() {
-  const products = await listProducts({ isPublished: true });
-  return products.map((product) => ({ slug: product.slug }));
 }
 
 export default async function ProductDetailPage({

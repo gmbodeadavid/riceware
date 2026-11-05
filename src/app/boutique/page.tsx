@@ -8,6 +8,8 @@ import { CATEGORY_OPTIONS, getCategoryLabel } from '@/lib/boutique';
 import { listProducts } from '@/lib/data/products';
 import BoutiqueCatalogClient from '@/components/BoutiqueCatalogClient';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'Boutique | RiceWare CI',
   description: 'Catalogue produit RiceWare CI : assiettes, couverts, barquettes et gobelets.',
