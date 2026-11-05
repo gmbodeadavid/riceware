@@ -95,7 +95,7 @@ export function StatCard({
       }`}
     >
       <div className="flex items-start justify-between gap-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{label}</p>
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted leading-4 line-clamp-2">{label}</p>
         {icon ? (
           <div
             className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${t.icon} transition-transform group-hover:scale-105`}
@@ -110,7 +110,7 @@ export function StatCard({
       </p>
 
       {hint ? (
-        <p className="mt-1.5 text-xs leading-5 text-ink-muted">{hint}</p>
+        <p className="mt-auto pt-2 text-xs leading-5 text-ink-muted">{hint}</p>
       ) : null}
 
       {trend !== undefined && (
@@ -146,7 +146,7 @@ export function StatCard({
     </div>
   );
 
-  if (href) return <Link href={href}>{inner}</Link>;
+  if (href) return <Link href={href} className="h-full block">{inner}</Link>;
   return inner;
 }
 

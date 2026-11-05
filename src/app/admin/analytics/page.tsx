@@ -202,25 +202,13 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
         <StatCard
           label="Stocks à surveiller"
           value={kpis.lowStockCount}
-          hint={
-            <>
-              {kpis.activeRizeries} rizerie(s) active(s) · {kpis.activePartners} partenaire(s)
-              <br />
-              <Comparison value={null} />
-            </>
-          }
+          hint={`${kpis.activeRizeries} rizerie(s) active(s) · ${kpis.activePartners} partenaire(s)`}
           tone={kpis.lowStockCount ? 'warning' : 'default'}
         />
         <StatCard
           label="Commandes reçues"
           value={formatNumber(kpis.totalOrders)}
-          hint={
-            <>
-              {kpis.paidOrders} payée(s) · {formatCurrency(kpis.revenue)} encaissés
-              <br />
-              <Comparison value={null} />
-            </>
-          }
+          hint={`${kpis.paidOrders} payée(s) · ${formatCurrency(kpis.revenue)} encaissés`}
         />
       </div>
 
