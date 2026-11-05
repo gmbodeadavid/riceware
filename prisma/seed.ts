@@ -864,6 +864,36 @@ async function main() {
     },
   });
 
+  // Packs de référence utilisés par les PackLots P2 (créés ici car absent de catalogSeed.ts)
+  await prisma.productPack.upsert({
+    where: { id: 'assiette-plate-pack-100' },
+    update: { label: 'Pack de 100 assiettes plates', quantity: 100, price: '1 500 FCFA' },
+    create: {
+      id: 'assiette-plate-pack-100',
+      productId: 'assiette-plate',
+      packKey: '100',
+      label: 'Pack de 100 assiettes plates',
+      quantity: 100,
+      price: '1 500 FCFA',
+      priceValue: 1500,
+      note: '',
+    },
+  });
+  await prisma.productPack.upsert({
+    where: { id: 'assiette-plate-pack-150' },
+    update: { label: 'Pack de 150 assiettes plates', quantity: 150, price: '2 000 FCFA' },
+    create: {
+      id: 'assiette-plate-pack-150',
+      productId: 'assiette-plate',
+      packKey: '150',
+      label: 'Pack de 150 assiettes plates',
+      quantity: 150,
+      price: '2 000 FCFA',
+      priceValue: 2000,
+      note: '',
+    },
+  });
+
   // 2 PackLot pour le batch multi-lots (pack de 50 bols et pack de 100 bols)
   await prisma.packLot.upsert({
     where: { id: 'seed-p2-packlot-assiette100' },
