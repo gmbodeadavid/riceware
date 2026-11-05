@@ -90,7 +90,7 @@ export function StatCard({
 
   const inner = (
     <div
-      className={`group relative rounded-panel border p-4 sm:p-5 transition-all duration-200 ${t.card} ${
+      className={`group relative flex flex-col h-full rounded-panel border p-4 sm:p-5 transition-all duration-200 ${t.card} ${
         href ? 'hover:shadow-md hover:-translate-y-0.5 cursor-pointer' : ''
       }`}
     >

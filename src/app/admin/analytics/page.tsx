@@ -129,8 +129,8 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
         </AlertBanner>
       ) : null}
 
-      {/* KPIs row 1 */}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      {/* KPIs — grille unifiée 8 cartes, hauteur égale par rangée (h-full sur StatCard) */}
+      <div className="grid gap-3 grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Pièces produites"
           value={formatNumber(kpis.pieces)}
@@ -177,10 +177,6 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
           }
           tone={kpis.testsPassed + kpis.testsFailed > 0 && kpis.passRate < 90 ? 'warning' : 'default'}
         />
-      </div>
-
-      {/* KPIs row 2 */}
-      <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Chiffre d'affaires encaissé"
           value={formatCurrency(kpis.revenue)}
@@ -206,13 +202,25 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
         <StatCard
           label="Stocks à surveiller"
           value={kpis.lowStockCount}
-          hint={`${kpis.activeRizeries} rizerie(s) active(s) · ${kpis.activePartners} partenaire(s)`}
+          hint={
+            <>
+              {kpis.activeRizeries} rizerie(s) active(s) · {kpis.activePartners} partenaire(s)
+              <br />
+              <Comparison value={null} />
+            </>
+          }
           tone={kpis.lowStockCount ? 'warning' : 'default'}
         />
         <StatCard
           label="Commandes reçues"
           value={formatNumber(kpis.totalOrders)}
-          hint={`${kpis.paidOrders} payée(s) · ${formatCurrency(kpis.revenue)} encaissés`}
+          hint={
+            <>
+              {kpis.paidOrders} payée(s) · {formatCurrency(kpis.revenue)} encaissés
+              <br />
+              <Comparison value={null} />
+            </>
+          }
         />
       </div>
 
@@ -269,28 +277,28 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
-                    <th className="pb-2.5 pr-2 font-semibold">Produit</th>
-                    <th className="pb-2.5 pr-2 font-semibold">Batches</th>
-                    <th className="pb-2.5 pr-2 font-semibold">Pièces</th>
-                    <th className="pb-2.5 pr-2 font-semibold">Rendement</th>
-                    <th className="pb-2.5 pr-2 font-semibold">Coût / pce</th>
-                    <th className="pb-2.5 font-semibold">Volume</th>
+                  <tr className="border-b border-line bg-ground/40 text-[11px] uppercase tracking-wide text-ink-muted">
+                    <th className="px-4 py-3 font-semibold">Produit</th>
+                    <th className="px-4 py-3 font-semibold hidden sm:table-cell">Batches</th>
+                    <th className="px-4 py-3 font-semibold">Pièces</th>
+                    <th className="px-4 py-3 font-semibold">Rendement</th>
+                    <th className="px-4 py-3 font-semibold hidden md:table-cell">Coût / pce</th>
+                    <th className="px-4 py-3 font-semibold hidden lg:table-cell">Volume</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-line/50">
                   {data.productMix.map((product) => (
-                    <tr key={product.type} className="border-b border-line/50 last:border-0 hover:bg-ground/40 transition-colors">
-                      <td className="py-2.5 pr-3 font-medium">{product.label}</td>
-                      <td className="py-2.5 pr-3 text-ink-muted">{product.batches}</td>
-                      <td className="py-2.5 pr-3">{formatNumber(product.pieces)}</td>
-                      <td className="py-2.5 pr-3">
+                    <tr key={product.type} className="group transition-colors hover:bg-paddy/[0.03]">
+                      <td className="px-4 py-3 align-middle font-medium">{product.label}</td>
+                      <td className="px-4 py-3 align-middle text-ink-muted hidden sm:table-cell">{product.batches}</td>
+                      <td className="px-4 py-3 align-middle">{formatNumber(product.pieces)}</td>
+                      <td className="px-4 py-3 align-middle">
                         <Badge tone={product.yieldRate >= 90 ? 'success' : 'warning'}>
                           {formatPercent(product.yieldRate)}
                         </Badge>
                       </td>
-                      <td className="py-2.5 pr-3 text-ink-muted">{formatCurrency(product.costPerUnit)}</td>
-                      <td className="w-28 py-2.5">
+                      <td className="px-4 py-3 align-middle text-ink-muted hidden md:table-cell">{formatCurrency(product.costPerUnit)}</td>
+                      <td className="px-4 py-3 align-middle hidden lg:table-cell w-28">
                         <div className="h-1.5 w-full overflow-hidden rounded-full bg-grain/70">
                           <div
                             className="h-full rounded-full bg-paddy transition-all"
@@ -356,22 +364,22 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
-                    <th className="pb-2.5 pr-3 font-semibold">Statut</th>
-                    <th className="pb-2.5 pr-3 font-semibold">Commandes</th>
-                    <th className="pb-2.5 font-semibold">Montant</th>
+                  <tr className="border-b border-line bg-ground/40 text-[11px] uppercase tracking-wide text-ink-muted">
+                    <th className="px-4 py-3 font-semibold">Statut</th>
+                    <th className="px-4 py-3 font-semibold">Commandes</th>
+                    <th className="px-4 py-3 font-semibold">Montant</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-line/50">
                   {data.orderPipeline.map((row) => (
-                    <tr key={row.status} className="border-b border-line/50 last:border-0 hover:bg-ground/40 transition-colors">
-                      <td className="py-2.5 pr-3">
+                    <tr key={row.status} className="group transition-colors hover:bg-paddy/[0.03]">
+                      <td className="px-4 py-3 align-middle">
                         <Badge tone={orderTone(row.status)}>
                           {ORDER_STATUS_LABELS[row.status] ?? row.status}
                         </Badge>
                       </td>
-                      <td className="py-2.5 pr-3 font-medium">{row.count}</td>
-                      <td className="py-2.5 text-ink-muted">{formatCurrency(row.amount)}</td>
+                      <td className="px-4 py-3 align-middle font-medium">{row.count}</td>
+                      <td className="px-4 py-3 align-middle text-ink-muted">{formatCurrency(row.amount)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -392,30 +400,30 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
             <EmptyState title="Aucune réception" description="Aucun lot de coques sur la période." />
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[560px] text-left text-sm">
+              <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
-                    <th className="pb-2.5 pr-3 font-semibold">Rizerie</th>
-                    <th className="pb-2.5 pr-3 font-semibold">Lots</th>
-                    <th className="pb-2.5 pr-3 font-semibold">Poids accepté</th>
-                    <th className="pb-2.5 font-semibold">Dernière réception</th>
+                  <tr className="border-b border-line bg-ground/40 text-[11px] uppercase tracking-wide text-ink-muted">
+                    <th className="px-4 py-3 font-semibold">Rizerie</th>
+                    <th className="px-4 py-3 font-semibold hidden sm:table-cell">Lots</th>
+                    <th className="px-4 py-3 font-semibold">Poids accepté</th>
+                    <th className="px-4 py-3 font-semibold hidden md:table-cell">Dernière réception</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-line/50">
                   {data.rizeriePerformance.slice(0, 8).map((rizerie) => (
-                    <tr key={rizerie.id} className="border-b border-line/50 last:border-0 hover:bg-ground/40 transition-colors">
-                      <td className="py-2.5 pr-3">
+                    <tr key={rizerie.id} className="group transition-colors hover:bg-paddy/[0.03]">
+                      <td className="px-4 py-3 align-middle">
                         <p className="font-medium">{rizerie.name}</p>
                         <p className="text-xs text-ink-muted">{rizerie.location}</p>
                       </td>
-                      <td className="py-2.5 pr-3">
+                      <td className="px-4 py-3 align-middle hidden sm:table-cell">
                         {rizerie.lots}
                         {rizerie.refused > 0 ? (
                           <span className="ml-1 text-xs text-danger">({rizerie.refused} refusé(s))</span>
                         ) : null}
                       </td>
-                      <td className="py-2.5 pr-3 font-medium">{formatNumber(rizerie.weightKg, 'kg')}</td>
-                      <td className="py-2.5 text-ink-muted text-xs">{formatDate(rizerie.lastReceivedAt)}</td>
+                      <td className="px-4 py-3 align-middle font-medium whitespace-nowrap">{formatNumber(rizerie.weightKg, 'kg')}</td>
+                      <td className="px-4 py-3 align-middle text-ink-muted text-xs hidden md:table-cell whitespace-nowrap">{formatDate(rizerie.lastReceivedAt)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -433,29 +441,29 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
             <EmptyState title="Aucun stock" description="Créez les références de stock dans le module Stocks." />
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[560px] text-left text-sm">
+              <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
-                    <th className="pb-2.5 pr-3 font-semibold">Référence</th>
-                    <th className="pb-2.5 pr-3 font-semibold">Quantité</th>
-                    <th className="pb-2.5 pr-3 font-semibold">Seuil</th>
-                    <th className="pb-2.5 font-semibold">État</th>
+                  <tr className="border-b border-line bg-ground/40 text-[11px] uppercase tracking-wide text-ink-muted">
+                    <th className="px-4 py-3 font-semibold">Référence</th>
+                    <th className="px-4 py-3 font-semibold">Quantité</th>
+                    <th className="px-4 py-3 font-semibold hidden sm:table-cell">Seuil</th>
+                    <th className="px-4 py-3 font-semibold">État</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-line/50">
                   {data.stockHealth.map((stock) => {
                     const status = STOCK_STATUS[stock.status];
                     return (
-                      <tr key={stock.id} className="border-b border-line/50 last:border-0 hover:bg-ground/40 transition-colors">
-                        <td className="py-2.5 pr-3">
+                      <tr key={stock.id} className="group transition-colors hover:bg-paddy/[0.03]">
+                        <td className="px-4 py-3 align-middle">
                           <p className="font-medium">{stock.label}</p>
-                          <p className="text-xs text-ink-muted">{stock.location ?? 'Emplacement non renseigné'}</p>
+                          <p className="text-xs text-ink-muted">{stock.location ?? '—'}</p>
                         </td>
-                        <td className="py-2.5 pr-3 font-medium">{formatNumber(stock.quantity, stock.unit)}</td>
-                        <td className="py-2.5 pr-3 text-ink-muted">
+                        <td className="px-4 py-3 align-middle font-medium whitespace-nowrap">{formatNumber(stock.quantity, stock.unit)}</td>
+                        <td className="px-4 py-3 align-middle text-ink-muted hidden sm:table-cell whitespace-nowrap">
                           {stock.minThreshold > 0 ? formatNumber(stock.minThreshold, stock.unit) : '—'}
                         </td>
-                        <td className="py-2.5">
+                        <td className="px-4 py-3 align-middle">
                           <Badge tone={status.tone}>{status.label}</Badge>
                         </td>
                       </tr>
@@ -479,39 +487,39 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
             <EmptyState title="Aucun batch" description="Les batches apparaîtront ici après la première production." />
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[700px] text-left text-sm">
+              <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
-                    <th className="pb-2.5 pr-3 font-semibold">Batch</th>
-                    <th className="pb-2.5 pr-3 font-semibold">Date</th>
-                    <th className="pb-2.5 pr-3 font-semibold">Produit</th>
-                    <th className="pb-2.5 pr-3 font-semibold">Pièces</th>
-                    <th className="pb-2.5 pr-3 font-semibold">Rebut</th>
-                    <th className="pb-2.5 pr-3 font-semibold">Coût / pièce</th>
-                    <th className="pb-2.5 font-semibold">Niveau</th>
+                  <tr className="border-b border-line bg-ground/40 text-[11px] uppercase tracking-wide text-ink-muted">
+                    <th className="px-4 py-3 font-semibold">Batch</th>
+                    <th className="px-4 py-3 font-semibold hidden sm:table-cell">Date</th>
+                    <th className="px-4 py-3 font-semibold hidden sm:table-cell">Produit</th>
+                    <th className="px-4 py-3 font-semibold hidden md:table-cell">Pièces</th>
+                    <th className="px-4 py-3 font-semibold">Rebut</th>
+                    <th className="px-4 py-3 font-semibold">Coût / pièce</th>
+                    <th className="px-4 py-3 font-semibold hidden lg:table-cell">Niveau</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-line/50">
                   {data.topCostBatches.map((batch) => (
-                    <tr key={batch.id} className="border-b border-line/50 last:border-0 hover:bg-ground/40 transition-colors">
-                      <td className="py-2.5 pr-3">
+                    <tr key={batch.id} className="group transition-colors hover:bg-paddy/[0.03]">
+                      <td className="px-4 py-3 align-middle">
                         <Link
                           href={`/admin/production/${batch.id}`}
-                          className="font-mono-brand text-xs font-semibold text-paddy hover:underline"
+                          className="font-mono-brand text-xs font-semibold text-paddy hover:text-paddy-deep hover:underline"
                         >
                           {batch.code}
                         </Link>
                       </td>
-                      <td className="py-2.5 pr-3 text-ink-muted text-xs">{formatDate(batch.startedAt)}</td>
-                      <td className="py-2.5 pr-3">{batch.productLabel}</td>
-                      <td className="py-2.5 pr-3">{formatNumber(batch.piecesProduced)}</td>
-                      <td className="py-2.5 pr-3">
+                      <td className="px-4 py-3 align-middle text-ink-muted text-xs hidden sm:table-cell whitespace-nowrap">{formatDate(batch.startedAt)}</td>
+                      <td className="px-4 py-3 align-middle hidden sm:table-cell">{batch.productLabel}</td>
+                      <td className="px-4 py-3 align-middle hidden md:table-cell">{formatNumber(batch.piecesProduced)}</td>
+                      <td className="px-4 py-3 align-middle">
                         <Badge tone={batch.rejectRate > 10 ? 'danger' : 'neutral'}>
                           {formatPercent(batch.rejectRate)}
                         </Badge>
                       </td>
-                      <td className="py-2.5 pr-3 font-medium">{formatCurrency(batch.costPerUnit)}</td>
-                      <td className="w-28 py-2.5">
+                      <td className="px-4 py-3 align-middle font-medium whitespace-nowrap">{formatCurrency(batch.costPerUnit)}</td>
+                      <td className="px-4 py-3 align-middle hidden lg:table-cell w-28">
                         <div className="h-1.5 w-full overflow-hidden rounded-full bg-grain/70">
                           <div
                             className="h-full rounded-full bg-bran transition-all"
