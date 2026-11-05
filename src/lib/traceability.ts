@@ -17,6 +17,8 @@
 import { prisma } from '@/lib/db';
 import { PackLotStatus } from '@/lib/enums';
 import { Prisma } from '@prisma/client';
+import { createNotification } from '@/lib/production/notifications';
+import { recordAudit } from '@/lib/production/audit';
 
 // ─── Erreur métier ──────────────────────────────────────────────────────────
 
@@ -628,4 +630,447 @@ export async function createBatchMaterialUsage(input: {
       },
     });
   });
+}
+
+// ─── P3 additions ────────────────────────────────────────────────────────────
+
+/** Liste les PackLots avec filtres et stock restant calculé. */
+export async function listPackLots(filters: {
+  packId?: string;
+  batchId?: string;
+  rizerieId?: string;
+  status?: string;
+  limit?: number;
+} = {}) {
+  const where: Prisma.PackLotWhereInput = { deletedAt: null };
+  if (filters.packId) where.packId = filters.packId;
+  if (filters.batchId) where.batchId = filters.batchId;
+  if (filters.status) where.status = filters.status;
+  if (filters.rizerieId) {
+    where.batch = { usages: { some: { lot: { rizerieId: filters.rizerieId }, deletedAt: null } } };
+  }
+
+  const rows = await prisma.packLot.findMany({
+    where,
+    orderBy: { packedAt: 'desc' },
+    take: filters.limit ?? 200,
+    include: {
+      pack: { include: { product: { select: { id: true, name: true, slug: true } } } },
+      batch: {
+        select: {
+          id: true, code: true,
+          usages: {
+            where: { deletedAt: null },
+            select: { lot: { select: { rizerie: { select: { id: true, name: true } } } } },
+          },
+        },
+      },
+      allocations: { where: { deletedAt: null }, select: { quantity: true } },
+    },
+  });
+
+  return rows.map((row) => ({
+    ...row,
+    remaining: row.quantity - row.allocations.reduce((s, a) => s + a.quantity, 0),
+    rizeries: Array.from(
+      new Map(
+        row.batch.usages.map((u) => [u.lot.rizerie.id, u.lot.rizerie.name])
+      ).entries()
+    ).map(([id, name]) => ({ id, name })),
+  }));
+}
+
+/** Récupère un PackLot par id (avec detailing complet). */
+export async function getPackLot(id: string) {
+  const row = await prisma.packLot.findUnique({
+    where: { id },
+    include: {
+      pack: { include: { product: { select: { id: true, name: true, slug: true } } } },
+      batch: {
+        include: {
+          usages: {
+            where: { deletedAt: null },
+            include: { lot: { include: { rizerie: { select: { id: true, name: true, location: true } } } } },
+          },
+        },
+      },
+      allocations: {
+        where: { deletedAt: null },
+        include: {
+          orderLine: {
+            include: {
+              order: { select: { id: true, orderNumber: true, status: true, customer: { select: { fullName: true } } } },
+            },
+          },
+        },
+      },
+    },
+  });
+  if (!row) return null;
+  const remaining = row.quantity - row.allocations.reduce((s, a) => s + a.quantity, 0);
+  return { ...row, remaining };
+}
+
+/**
+ * Suggère l'allocation FIFO pour une ligne de commande.
+ * Retourne une liste de { packLot, qty } triée par packedAt croissant.
+ */
+export async function suggestFifoAllocation(orderLineId: string): Promise<Array<{ packLotId: string; code: string; packId: string; quantity: number }>> {
+  const line = await prisma.orderLine.findUnique({
+    where: { id: orderLineId },
+    include: { allocations: { where: { deletedAt: null }, select: { quantity: true } } },
+  });
+  if (!line) throw new TraceabilityError('Ligne introuvable.', { status: 404 });
+  if (!line.productPackId) throw new TraceabilityError('Ligne sans pack lié — allocation impossible.', { status: 409 });
+
+  const alreadyAllocated = line.allocations.reduce((s, a) => s + a.quantity, 0);
+  let remaining = line.quantity - alreadyAllocated;
+  if (remaining <= 0) return [];
+
+  // PackLots libres du bon pack, classés par packedAt
+  const packLots = await prisma.packLot.findMany({
+    where: { packId: line.productPackId, status: 'libre', deletedAt: null },
+    orderBy: { packedAt: 'asc' },
+    include: { allocations: { where: { deletedAt: null }, select: { quantity: true } } },
+  });
+
+  const result: Array<{ packLotId: string; code: string; packId: string; quantity: number }> = [];
+  for (const pl of packLots) {
+    if (remaining <= 0) break;
+    const available = pl.quantity - pl.allocations.reduce((s, a) => s + a.quantity, 0);
+    if (available <= 0) continue;
+    const qty = Math.min(available, remaining);
+    result.push({ packLotId: pl.id, code: pl.code, packId: pl.packId, quantity: qty });
+    remaining -= qty;
+  }
+  return result;
+}
+
+/**
+ * createPackLotWithStock — crée un PackLot (statut quarantaine) ET le StockMovement d'entrée.
+ * La capacité est vérifiée (qty × pack.quantity ≤ pièces conformes disponibles du batch).
+ */
+export async function createPackLotWithStock(
+  input: PackLotInput & { createdById?: string },
+  actorId?: string,
+): Promise<ReturnType<typeof prisma.packLot.create>> {
+  return prisma.$transaction(async (tx) => {
+    // Vérifier que le batch existe et n'est pas supprimé
+    const batch = await tx.batchProduction.findUnique({ where: { id: input.batchId } });
+    if (!batch) throw new TraceabilityError('Batch introuvable.', { status: 404 });
+    if (batch.deletedAt) throw new TraceabilityError('Ce batch a été supprimé.', { status: 409 });
+
+    // Vérifier le pack
+    const pack = await tx.productPack.findUnique({ where: { id: input.packId } });
+    if (!pack) throw new TraceabilityError('Pack introuvable.', { status: 404 });
+
+    // Pièces conformes disponibles = piecesProduced - rejects - déjà packagées dans des PackLots actifs
+    const existingPackLots = await tx.packLot.findMany({
+      where: { batchId: input.batchId, deletedAt: null },
+      select: { quantity: true, pack: { select: { quantity: true } } },
+    });
+    const alreadyPacked = existingPackLots.reduce(
+      (sum, pl) => sum + pl.quantity * pl.pack.quantity, 0,
+    );
+    const validPieces = Math.max(0, batch.piecesProduced - batch.rejects);
+    const availablePieces = validPieces - alreadyPacked;
+    const neededPieces = input.quantity * pack.quantity;
+
+    if (neededPieces > availablePieces) {
+      throw new TraceabilityError(
+        `Impossible de créer ce lot : ${neededPieces} pièces nécessaires mais seulement ${availablePieces} conformes disponibles dans le batch.`,
+        { status: 409 },
+      );
+    }
+
+    const code = await nextPackLotCode(input.packedAt ?? new Date(), tx);
+    const packLot = await tx.packLot.create({
+      data: {
+        code,
+        batchId: input.batchId,
+        packId: input.packId,
+        quantity: input.quantity,
+        status: 'quarantaine',
+        packedAt: input.packedAt ?? new Date(),
+        createdById: actorId ?? null,
+      },
+    });
+
+    // StockMovement d'entrée pour le stock produit_fini du type
+    const stock = await tx.stock.upsert({
+      where: {
+        itemType_productType: {
+          itemType: 'produit_fini',
+          productType: batch.productType,
+        },
+      },
+      update: {},
+      create: {
+        itemType: 'produit_fini',
+        productType: batch.productType,
+        label: `Produits finis — ${batch.productType}`,
+        unit: 'unités',
+        minThreshold: 0,
+        quantity: 0,
+      },
+    });
+
+    const newQty = stock.quantity; // PackLot entrée = comptabilisé séparément, pas en stock coques
+    // Note: le stock produit_fini est géré en pièces (dans createBatch). Ici on crée
+    // un mouvement de traçabilité packLot sans double-compter.
+    await tx.stockMovement.create({
+      data: {
+        stockId: stock.id,
+        type: 'entree',
+        quantity: input.quantity,
+        resultingQuantity: newQty + input.quantity,
+        reference: code,
+        note: `PackLot créé depuis batch ${batch.code}`,
+        createdById: actorId ?? null,
+        packLotId: packLot.id,
+        batchId: input.batchId,
+      },
+    });
+
+    await tx.stock.update({
+      where: { id: stock.id },
+      data: { quantity: newQty + input.quantity },
+    });
+
+    return packLot;
+  }) as ReturnType<typeof prisma.packLot.create>;
+}
+
+/**
+ * releasePackLot — passe un PackLot de quarantaine → libre.
+ * Requiert quality:write (vérifié côté appelant).
+ * Requiert au moins 1 test qualité conforme sur le batch.
+ */
+export async function releasePackLot(packLotId: string, actorId?: string): Promise<void> {
+  const packLot = await prisma.packLot.findUnique({
+    where: { id: packLotId },
+    include: {
+      batch: {
+        include: {
+          tests: { where: { result: 'succes' }, take: 1 },
+        },
+      },
+    },
+  });
+  if (!packLot) throw new TraceabilityError('PackLot introuvable.', { status: 404 });
+  if (packLot.deletedAt) throw new TraceabilityError('Ce PackLot a été supprimé.', { status: 409 });
+  if (packLot.status !== 'quarantaine') {
+    throw new TraceabilityError(`Ce PackLot est déjà au statut « ${packLot.status} ».`, { status: 409 });
+  }
+  if (packLot.batch.tests.length === 0) {
+    throw new TraceabilityError(
+      'Impossible de libérer ce PackLot : aucun contrôle qualité conforme enregistré sur le batch.',
+      { status: 422 },
+    );
+  }
+  await prisma.packLot.update({ where: { id: packLotId }, data: { status: 'libre' } });
+  await recordAudit({
+    userId: actorId ?? null,
+    actorName: 'système',
+    action: 'update',
+    entityType: 'packLot',
+    entityId: packLotId,
+    details: { status: 'libre' },
+  });
+}
+
+/**
+ * recallLot — marque tous les PackLots d'un lot en rappel.
+ * Crée une Notification de niveau error.
+ * Retourne la liste des commandes et clients concernés.
+ */
+export async function recallLot(lotId: string, motif: string, actorId?: string) {
+  const lot = await prisma.lotCoques.findUnique({
+    where: { id: lotId },
+    include: {
+      usages: {
+        where: { deletedAt: null },
+        include: {
+          batch: {
+            include: {
+              packLots: {
+                where: { deletedAt: null },
+                include: {
+                  allocations: {
+                    where: { deletedAt: null },
+                    include: {
+                      orderLine: {
+                        include: {
+                          order: {
+                            include: { customer: { select: { id: true, fullName: true, phone: true, email: true } } },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+  if (!lot) throw new TraceabilityError('Lot introuvable.', { status: 404 });
+
+  const packLotIds: string[] = [];
+  const orderSet = new Map<string, { orderId: string; orderNumber: string; customer: { fullName: string; phone: string; email: string | null } }>();
+
+  for (const usage of lot.usages) {
+    for (const packLot of usage.batch.packLots) {
+      if (packLot.status !== 'rappel') packLotIds.push(packLot.id);
+      for (const alloc of packLot.allocations) {
+        const order = alloc.orderLine.order;
+        orderSet.set(order.id, {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          customer: { fullName: order.customer.fullName, phone: order.customer.phone, email: order.customer.email },
+        });
+      }
+    }
+  }
+
+  if (packLotIds.length > 0) {
+    await prisma.packLot.updateMany({
+      where: { id: { in: packLotIds } },
+      data: { status: 'rappel' },
+    });
+  }
+
+  // Mettre à jour le status du lot
+  await prisma.lotCoques.update({ where: { id: lotId }, data: { status: 'recalled' } });
+
+  await createNotification({
+    type: 'rappel_lot',
+    level: 'danger',
+    title: `Rappel produit — lot ${lot.code}`,
+    message: `Motif : ${motif}. ${packLotIds.length} lot(s) de packs marqués en rappel. ${orderSet.size} commande(s) concernée(s).`,
+    entityType: 'lot',
+    entityId: lotId,
+  });
+
+  await recordAudit({
+    userId: actorId ?? null,
+    actorName: 'système',
+    action: 'recall',
+    entityType: 'lot',
+    entityId: lotId,
+    details: { motif, packLotCount: packLotIds.length, orderCount: orderSet.size },
+  });
+
+  return { affectedOrders: [...orderSet.values()] };
+}
+
+/**
+ * recallPackLot — marque un PackLot en rappel.
+ */
+export async function recallPackLot(packLotId: string, motif: string, actorId?: string) {
+  const packLot = await prisma.packLot.findUnique({
+    where: { id: packLotId },
+    include: {
+      allocations: {
+        where: { deletedAt: null },
+        include: {
+          orderLine: {
+            include: {
+              order: {
+                include: { customer: { select: { id: true, fullName: true, phone: true, email: true } } },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+  if (!packLot) throw new TraceabilityError('PackLot introuvable.', { status: 404 });
+  if (packLot.deletedAt) throw new TraceabilityError('Ce PackLot a été supprimé.', { status: 409 });
+
+  await prisma.packLot.update({ where: { id: packLotId }, data: { status: 'rappel' } });
+
+  const orderSet = new Map<string, { orderId: string; orderNumber: string; customer: { fullName: string; phone: string; email: string | null } }>();
+  for (const alloc of packLot.allocations) {
+    const order = alloc.orderLine.order;
+    orderSet.set(order.id, {
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      customer: { fullName: order.customer.fullName, phone: order.customer.phone, email: order.customer.email },
+    });
+  }
+
+  await createNotification({
+    type: 'rappel_pack_lot',
+    level: 'danger',
+    title: `Rappel produit — PackLot ${packLot.code}`,
+    message: `Motif : ${motif}. ${orderSet.size} commande(s) concernée(s).`,
+    entityType: 'packLot',
+    entityId: packLotId,
+  });
+
+  await recordAudit({
+    userId: actorId ?? null,
+    actorName: 'système',
+    action: 'recall',
+    entityType: 'packLot',
+    entityId: packLotId,
+    details: { motif, orderCount: orderSet.size },
+  });
+
+  return { affectedOrders: [...orderSet.values()] };
+}
+
+/**
+ * cancelOrderAllocations — libère toutes les allocations d'une commande
+ * en les supprimant doucement et en créant des mouvements d'entrée inverses.
+ */
+export async function cancelOrderAllocations(orderId: string, actorId?: string): Promise<void> {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: {
+      lines: {
+        include: {
+          allocations: {
+            where: { deletedAt: null },
+            include: { packLot: { include: { batch: { select: { productType: true, code: true } } } } },
+          },
+        },
+      },
+    },
+  });
+  if (!order) return;
+
+  const now = new Date();
+  for (const line of order.lines) {
+    for (const alloc of line.allocations) {
+      await prisma.orderLineAllocation.update({
+        where: { id: alloc.id },
+        data: { deletedAt: now, deletedById: actorId ?? null },
+      });
+      // Mouvement d'entrée inverse (libère le stock)
+      const stock = await prisma.stock.findFirst({
+        where: { itemType: 'produit_fini', productType: alloc.packLot.batch.productType, deletedAt: null },
+      });
+      if (stock) {
+        const newQty = stock.quantity + alloc.quantity;
+        await prisma.stock.update({ where: { id: stock.id }, data: { quantity: newQty } });
+        await prisma.stockMovement.create({
+          data: {
+            stockId: stock.id,
+            type: 'entree',
+            quantity: alloc.quantity,
+            resultingQuantity: newQty,
+            reference: order.orderNumber,
+            note: `Annulation commande — libération allocation PackLot ${alloc.packLot.code}`,
+            createdById: actorId ?? null,
+            packLotId: alloc.packLotId,
+            orderId,
+          },
+        });
+      }
+    }
+  }
 }

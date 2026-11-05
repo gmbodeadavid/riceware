@@ -3,6 +3,7 @@ import { mapAddress, mapCustomer, mapOrder, mapPublicOrder, type MappedOrder, ty
 import type { Customer, Address, OrderStatus, PaymentStatus, SalesChannel } from '@/lib/ricewareModels';
 import { generateOrderNumber } from '@/lib/ricewareModels';
 import type { Prisma } from '@prisma/client';
+import { cancelOrderAllocations } from '@/lib/traceability';
 
 const orderInclude = {
   lines: true,
@@ -204,6 +205,30 @@ export async function createCheckoutOrder(payload: CheckoutPayload): Promise<Pub
 }
 
 export async function updateOrderStatusRecord(id: string, status: OrderStatus): Promise<MappedOrder> {
+  // Refus d'expédition si des lignes ne sont pas entièrement allouées
+  if (status === 'shipped') {
+    const order = await prisma.order.findUnique({
+      where: { id },
+      include: {
+        lines: {
+          include: { allocations: { where: { deletedAt: null }, select: { quantity: true } } },
+        },
+      },
+    });
+    if (order) {
+      const incomplete = order.lines.filter((line) => {
+        if (!line.productPackId) return false; // lignes sans pack ne sont pas allouées
+        const allocated = line.allocations.reduce((s, a) => s + a.quantity, 0);
+        return allocated < line.quantity;
+      });
+      if (incomplete.length > 0) {
+        throw new Error(
+          `Expédition impossible : ${incomplete.length} ligne(s) non allouée(s). Allouez les packs avant d'expédier.`,
+        );
+      }
+    }
+  }
+
   const now = new Date();
   const row = await prisma.order.update({
     where: { id },
@@ -216,6 +241,14 @@ export async function updateOrderStatusRecord(id: string, status: OrderStatus): 
     },
     include: orderInclude,
   });
+
+  // Libérer les allocations si la commande est annulée
+  if (status === 'cancelled') {
+    await cancelOrderAllocations(id).catch((error) =>
+      console.error('cancelOrderAllocations error:', error),
+    );
+  }
+
   return mapOrder(row);
 }
 

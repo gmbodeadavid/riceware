@@ -8,7 +8,30 @@
  *  - kgUsed null : pas de répartition à parts égales, pctKg=null, kgUnknown=true
  *  - Commande réelle (6 000 FCFA) : aucune allocation automatique
  *  - Soft-delete : allocation vers PackLot supprimé rejetée
+ *
+ * GUARD : Tourne toujours sur une COPIE de la base (jamais sur dev.db directement).
+ * DATABASE_URL est réécrit avant tout import Prisma pour pointer vers la copie.
  */
+
+// ─── SETUP COPIE — DOIT PRÉCÉDER TOUT IMPORT PRISMA ────────────────────────
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname_p2 = path.dirname(fileURLToPath(import.meta.url));
+const ROOT_P2 = path.resolve(__dirname_p2, '..');
+const REAL_DB_P2 = path.join(ROOT_P2, 'prisma', 'dev.db');
+const TEST_DB_P2 = path.join(ROOT_P2, 'backups', 'p2-check-test.db');
+
+if (!fs.existsSync(REAL_DB_P2)) { console.error(`Base réelle introuvable : ${REAL_DB_P2}`); process.exit(1); }
+const backupsDir_p2 = path.join(ROOT_P2, 'backups');
+if (!fs.existsSync(backupsDir_p2)) fs.mkdirSync(backupsDir_p2);
+fs.copyFileSync(REAL_DB_P2, TEST_DB_P2);
+// Forcer DATABASE_URL vers la copie AVANT tout import de @prisma/client / traceability
+process.env.DATABASE_URL = `file:${TEST_DB_P2}`;
+console.log(`[SETUP] Copie de test : ${TEST_DB_P2}`);
+console.log(`[SETUP] DATABASE_URL  : ${process.env.DATABASE_URL}`);
+// ────────────────────────────────────────────────────────────────────────────
 
 import {
   traceBackFromOrderLine,

@@ -58,9 +58,9 @@ export type SalesChannel = (typeof ORDER_CHANNELS)[number]['value'];
 // ─── Notifications ─────────────────────────────────────────────────────────
 
 export const NOTIFICATION_LEVELS = [
-  { value: 'info',    label: 'Information', badge: 'default' },
-  { value: 'warning', label: 'Avertissement', badge: 'warning' },
-  { value: 'error',   label: 'Erreur',       badge: 'danger' },
+  { value: 'info',    label: 'Information',    badge: 'default' },
+  { value: 'warning', label: 'Avertissement',  badge: 'warning' },
+  { value: 'danger',  label: 'Critique',       badge: 'danger' },
 ] as const;
 
 export type NotificationLevel = (typeof NOTIFICATION_LEVELS)[number]['value'];

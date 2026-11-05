@@ -3,11 +3,13 @@ import { notFound } from 'next/navigation';
 import { requireAdminPage } from '@/lib/admin-guard';
 import { can } from '@/lib/rbac';
 import { getLot, listRizeries } from '@/lib/production/queries';
+import { traceForwardFromLot } from '@/lib/traceability';
 import { labelOf, LOT_STATUSES, LOT_VISUAL_QUALITIES, computeRejectRate, computeYield } from '@/lib/production/types';
 import { formatDateTime, formatNumber, formatPercent } from '@/lib/format';
 import { PageHeader, Badge, EmptyState, LinkButton, Section } from '@/components/admin/ui';
 import LotForm from '@/components/admin/LotForm';
 import DeleteButton from '@/components/admin/DeleteButton';
+import RecallButton from '@/components/admin/RecallButton';
 
 type PageProps = { params: Promise<{ id: string }> };
 
@@ -18,6 +20,15 @@ export default async function LotDetailPage({ params }: PageProps) {
   if (!lot) notFound();
 
   const canWrite = can(session.role, 'lots:write');
+  const canProductionWrite = can(session.role, 'production:write');
+
+  // Traçabilité descendante (packs et clients)
+  let forwardTrace: Awaited<ReturnType<typeof traceForwardFromLot>> | null = null;
+  try {
+    forwardTrace = await traceForwardFromLot(lot.id);
+  } catch {
+    // Lot sans usages — pas d'erreur critique
+  }
 
   return (
     <div>
@@ -32,6 +43,13 @@ export default async function LotDetailPage({ params }: PageProps) {
         actions={
           <>
             <LinkButton href={`/tracabilite/${encodeURIComponent(lot.code)}`} target="_blank">Fiche publique</LinkButton>
+            {canProductionWrite && lot.status !== 'recalled' && !lot.deletedAt ? (
+              <RecallButton
+                endpoint={`/api/admin/lots/${lot.id}/recall`}
+                label="Marquer en rappel"
+                confirmation={`Déclencher un rappel produit pour le lot ${lot.code} ?`}
+              />
+            ) : null}
             {canWrite ? <DeleteButton endpoint={`/api/admin/lots/${lot.id}`} confirmation={`Supprimer le lot ${lot.code} ?`} label="Supprimer le lot" compact={false} redirectTo="/admin/lots" /> : null}
           </>
         }
@@ -113,6 +131,29 @@ export default async function LotDetailPage({ params }: PageProps) {
               notes: lot.notes,
             }}
           />
+        </div>
+      ) : null}
+
+      {/* ─── Traçabilité descendante ─── */}
+      {forwardTrace && (forwardTrace.batches.length > 0 || forwardTrace.affectedOrders.length > 0) ? (
+        <div className="mt-6">
+          <Section title="Clients livrés (traçabilité descendante)" description={`${forwardTrace.affectedOrders.length} commande(s) concernée(s).`}>
+            {forwardTrace.affectedOrders.length === 0 ? (
+              <p className="text-sm text-ink-muted">Aucune commande liée à ce lot.</p>
+            ) : (
+              <ul className="divide-y divide-line">
+                {forwardTrace.affectedOrders.map((o) => (
+                  <li key={o.orderId} className="flex flex-wrap items-center justify-between gap-2 py-2.5 first:pt-0 last:pb-0">
+                    <div>
+                      <Link href={`/admin/commandes/${o.orderId}`} className="font-mono-brand text-xs font-semibold text-paddy hover:underline">{o.orderNumber}</Link>
+                      <span className="ml-2 text-xs text-ink-muted">{o.customer.fullName} · {o.customer.phone}</span>
+                    </div>
+                    <Badge tone={o.status === 'delivered' ? 'success' : o.status === 'cancelled' ? 'danger' : 'info'}>{o.status}</Badge>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Section>
         </div>
       ) : null}
     </div>

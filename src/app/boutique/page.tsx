@@ -64,7 +64,7 @@ export default async function BoutiquePage({
 
             <div className="rounded-[22px] border border-line bg-surface p-4 sm:p-5">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <form action="/boutique" method="get" className="flex-1">
+                <form action="/boutique" method="get" className="w-full max-w-xs">
                   <label htmlFor="catalog-search" className="sr-only">
                     Rechercher un produit
                   </label>

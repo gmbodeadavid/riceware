@@ -60,9 +60,9 @@ export default async function BlogPage() {
                   )}
                   <Link
                     href={`/blog/${featuredPost.slug}`}
-                    className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-paddy transition-colors hover:text-paddy-deep"
+                    className="mt-6 inline-flex items-center gap-2 rounded-full bg-orange-500 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-600"
                   >
-                    Lire l&apos;article <span aria-hidden="true">→</span>
+                    Lire <span aria-hidden="true">→</span>
                   </Link>
                 </div>
 
@@ -116,14 +116,14 @@ export default async function BlogPage() {
           </section>
         )}
 
+        {otherPosts.length > 0 && (
         <section className="bg-surface py-section">
           <div className="max-w-page mx-auto px-5 sm:px-8">
             <h2 className="font-display text-title font-bold text-ink m-0">
               Tous nos articles
             </h2>
-            {otherPosts.length > 0 ? (
-              <div className="mt-6 divide-y divide-line">
-                {otherPosts.map((post) => (
+            <div className="mt-6 divide-y divide-line">
+              {otherPosts.map((post) => (
                   <article key={post.id} className="py-6 sm:py-8 first:pt-0">
                     <div className="grid gap-3 sm:grid-cols-[180px_minmax(0,1fr)] sm:gap-8">
                       <p className="font-mono-brand text-[11px] uppercase tracking-[0.08em] text-paddy m-0">
@@ -140,30 +140,20 @@ export default async function BlogPage() {
                             {post.excerpt}
                           </p>
                         )}
+                        <Link
+                          href={`/blog/${post.slug}`}
+                          className="mt-3 inline-flex items-center gap-2 rounded-full bg-orange-500 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-600"
+                        >
+                          Lire <span aria-hidden="true">→</span>
+                        </Link>
                       </div>
                     </div>
                   </article>
                 ))}
-              </div>
-            ) : !featuredPost ? (
-              <div className="mt-6 border-y border-line py-6 sm:py-8">
-                <div className="grid gap-3 sm:grid-cols-[180px_minmax(0,1fr)] sm:gap-8">
-                  <p className="font-mono-brand text-[11px] uppercase tracking-[0.08em] text-paddy m-0">
-                    En préparation
-                  </p>
-                  <div>
-                    <h3 className="font-display text-lg font-semibold text-ink m-0 sm:text-xl">
-                      Aucun article publié pour le moment.
-                    </h3>
-                    <p className="mt-2 max-w-[620px] text-sm leading-6 text-ink-muted m-0">
-                      Les premières publications apparaîtront ici lorsqu’elles seront prêtes.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : null}
+            </div>
           </div>
         </section>
+        )}
       </main>
       <Footer />
     </div>
