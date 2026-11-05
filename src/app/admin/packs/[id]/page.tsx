@@ -40,6 +40,11 @@ export default async function PackLotDetailPage({ params }: PageProps) {
       <PageHeader
         title={packLot.code}
         description={`PackLot créé le ${formatDateTime(packLot.packedAt)} · ${packLot.pack.product.name} · ${packLot.pack.label}`}
+        breadcrumb={[
+          { label: 'Tableau de bord', href: '/admin' },
+          { label: 'Lots de packs', href: '/admin/packs' },
+          { label: packLot.code },
+        ]}
         actions={
           <>
             <LinkButton href={`/tracabilite/${encodeURIComponent(packLot.code)}`} target="_blank">

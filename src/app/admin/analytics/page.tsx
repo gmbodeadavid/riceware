@@ -14,6 +14,7 @@ import {
   ProgressBar,
   Section,
   StatCard,
+  AlertBanner,
 } from '@/components/admin/ui';
 import { BarChart, DonutChart, LineChart } from '@/components/admin/charts';
 import { buttonClassName } from '@/components/admin/fields';
@@ -63,11 +64,12 @@ function Comparison({
   const positive = invert ? value < 0 : value > 0;
   const negative = invert ? value > 0 : value < 0;
   const sign = value > 0 ? '+' : '';
+  const arrow = positive ? '↑' : negative ? '↓' : '→';
 
   return (
-    <span className={positive ? 'text-paddy-deep' : negative ? 'text-danger' : 'text-ink-muted'}>
-      {sign}
-      {value.toFixed(1).replace('.', ',')} {unit} vs période précédente
+    <span className={`inline-flex items-center gap-0.5 ${positive ? 'text-paddy-deep' : negative ? 'text-danger' : 'text-ink-muted'}`}>
+      <span>{arrow}</span>
+      {sign}{value.toFixed(1).replace('.', ',')} {unit} vs période précédente
     </span>
   );
 }
@@ -87,23 +89,28 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
       <PageHeader
         title="Analyses & performance"
         description={`Du ${formatDate(data.from)} au ${formatDate(data.to)}. Production, coûts, qualité, matière première, stocks et commandes sur la période sélectionnée.`}
+        breadcrumb={[
+          { label: 'Tableau de bord', href: '/admin' },
+          { label: 'Analyses' },
+        ]}
         actions={
           <>
             <LinkButton href="/api/admin/exports/dashboard" target="_blank">
               Rapport PDF
             </LinkButton>
-            <LinkButton href="/admin">Vue d’ensemble</LinkButton>
+            <LinkButton href="/admin">Vue d'ensemble</LinkButton>
           </>
         }
       />
 
-      <div className="mb-5 flex flex-wrap items-center gap-2 rounded-panel border border-line bg-surface p-3">
+      {/* Period selector */}
+      <div className="mb-5 flex flex-wrap items-center gap-2 rounded-panel border border-line bg-surface p-3 shadow-sm">
         <span className="px-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">Période</span>
         {ANALYTICS_RANGES.map((range) => (
           <Link
             key={range}
             href={`/admin/analytics?periode=${range}`}
-            className={buttonClassName(range === days ? 'primary' : 'secondary', 'min-h-9 px-3 py-1.5')}
+            className={buttonClassName(range === days ? 'primary' : 'secondary', 'min-h-9 px-3 py-1.5 text-xs')}
             aria-current={range === days ? 'page' : undefined}
           >
             {range} jours
@@ -115,13 +122,14 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
       </div>
 
       {data.activeGoal ? (
-        <div className="mb-5 rounded-control border border-paddy/25 bg-paddy/5 px-4 py-3 text-sm">
-          <span className="font-semibold">Objectif actif :</span> {data.activeGoal.label} — cible de{' '}
-          {formatNumber(data.activeGoal.target, data.activeGoal.unit)}
+        <AlertBanner tone="success">
+          <span className="font-semibold">Objectif actif :</span>{' '}
+          {data.activeGoal.label} — cible de {formatNumber(data.activeGoal.target, data.activeGoal.unit)}
           {data.activeGoal.endDate ? `, échéance ${formatDate(data.activeGoal.endDate)}` : ''}.
-        </div>
+        </AlertBanner>
       ) : null}
 
+      {/* KPIs row 1 */}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Pièces produites"
@@ -171,9 +179,10 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
         />
       </div>
 
+      {/* KPIs row 2 */}
       <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
-          label="Chiffre d’affaires encaissé"
+          label="Chiffre d'affaires encaissé"
           value={formatCurrency(kpis.revenue)}
           hint={
             <>
@@ -207,16 +216,15 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
         />
       </div>
 
+      {/* Charts: production trend + cost */}
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
         <Section
           title="Production sur la période"
           description={days <= 90 ? 'Pièces produites par semaine.' : 'Pièces produites par mois.'}
-          actions={
-            <LinkButton href="/admin/production">Détail production</LinkButton>
-          }
+          actions={<LinkButton href="/admin/production">Détail production</LinkButton>}
         >
           {kpis.batches === 0 ? (
-            <EmptyState title="Aucune production" description="Aucun batch n’a été enregistré sur cette période." />
+            <EmptyState title="Aucune production" description="Aucun batch n'a été enregistré sur cette période." />
           ) : (
             <LineChart
               data={data.trend.map((point) => ({
@@ -229,7 +237,11 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
           )}
         </Section>
 
-        <Section title="Coût de revient" description="Coût moyen par pièce valide sur la période.">
+        <Section
+          title="Coût de revient"
+          description="Coût moyen par pièce valide sur la période."
+          actions={<LinkButton href="/admin/rapports">Rapports</LinkButton>}
+        >
           {kpis.batches === 0 ? (
             <EmptyState title="Aucun coût" description="Les coûts apparaîtront après le premier batch." />
           ) : (
@@ -245,39 +257,43 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
         </Section>
       </div>
 
+      {/* Product mix + reject causes */}
       <div className="mt-6 grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-        <Section title="Mix produits" description="Répartition des volumes et performance par type de produit.">
+        <Section
+          title="Mix produits"
+          description="Répartition des volumes et performance par type de produit."
+        >
           {data.productMix.length === 0 ? (
             <EmptyState title="Aucun produit fabriqué" description="Aucun batch sur la période." />
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[640px] text-left text-sm">
+              <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
-                    <th className="pb-2 pr-3">Produit</th>
-                    <th className="pb-2 pr-3">Batches</th>
-                    <th className="pb-2 pr-3">Pièces</th>
-                    <th className="pb-2 pr-3">Rendement</th>
-                    <th className="pb-2 pr-3">Coût / pièce</th>
-                    <th className="pb-2">Volume</th>
+                    <th className="pb-2.5 pr-2 font-semibold">Produit</th>
+                    <th className="pb-2.5 pr-2 font-semibold">Batches</th>
+                    <th className="pb-2.5 pr-2 font-semibold">Pièces</th>
+                    <th className="pb-2.5 pr-2 font-semibold">Rendement</th>
+                    <th className="pb-2.5 pr-2 font-semibold">Coût / pce</th>
+                    <th className="pb-2.5 font-semibold">Volume</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.productMix.map((product) => (
-                    <tr key={product.type} className="border-b border-line/60 last:border-0">
+                    <tr key={product.type} className="border-b border-line/50 last:border-0 hover:bg-ground/40 transition-colors">
                       <td className="py-2.5 pr-3 font-medium">{product.label}</td>
-                      <td className="py-2.5 pr-3">{product.batches}</td>
+                      <td className="py-2.5 pr-3 text-ink-muted">{product.batches}</td>
                       <td className="py-2.5 pr-3">{formatNumber(product.pieces)}</td>
                       <td className="py-2.5 pr-3">
                         <Badge tone={product.yieldRate >= 90 ? 'success' : 'warning'}>
                           {formatPercent(product.yieldRate)}
                         </Badge>
                       </td>
-                      <td className="py-2.5 pr-3">{formatCurrency(product.costPerUnit)}</td>
-                      <td className="w-32 py-2.5">
-                        <div className="h-2 w-full overflow-hidden rounded-full bg-grain/70">
+                      <td className="py-2.5 pr-3 text-ink-muted">{formatCurrency(product.costPerUnit)}</td>
+                      <td className="w-28 py-2.5">
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-grain/70">
                           <div
-                            className="h-full rounded-full bg-paddy"
+                            className="h-full rounded-full bg-paddy transition-all"
                             style={{ width: `${Math.max(2, (product.pieces / maxProductPieces) * 100)}%` }}
                           />
                         </div>
@@ -290,7 +306,11 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
           )}
         </Section>
 
-        <Section title="Causes de rebut" description="Volume de rebuts déclaré sur la période.">
+        <Section
+          title="Causes de rebut"
+          description="Volume de rebuts déclaré sur la période."
+          actions={<LinkButton href="/admin/qualite">Qualité</LinkButton>}
+        >
           <DonutChart
             data={data.rejectCauses.map((cause) => ({ label: cause.label, value: cause.quantity }))}
             centerLabel="rebuts"
@@ -299,15 +319,20 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
         </Section>
       </div>
 
+      {/* Quality + orders pipeline */}
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
-        <Section title="Qualité par type de test" description="Taux de réussite et volume de contrôles.">
+        <Section
+          title="Qualité par type de test"
+          description="Taux de réussite et volume de contrôles."
+          actions={<LinkButton href="/admin/qualite">Qualité</LinkButton>}
+        >
           {kpis.testsPassed + kpis.testsFailed === 0 ? (
-            <EmptyState title="Aucun test qualité" description="Aucun contrôle n’a été enregistré sur la période." />
+            <EmptyState title="Aucun test qualité" description="Aucun contrôle n'a été enregistré sur la période." />
           ) : (
             <ul className="space-y-4">
               {data.qualityByType.map((test) => (
                 <li key={test.type}>
-                  <div className="mb-1 flex items-center justify-between gap-3 text-sm">
+                  <div className="mb-1.5 flex items-center justify-between gap-3 text-sm">
                     <span className="font-medium">{test.label}</span>
                     <span className="text-xs text-ink-muted">
                       {test.passed} succès · {test.failed} échec(s) · {test.total} test(s)
@@ -320,29 +345,33 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
           )}
         </Section>
 
-        <Section title="Commandes par statut" description="Volume et montant des demandes reçues sur la période.">
+        <Section
+          title="Commandes par statut"
+          description="Volume et montant des demandes reçues sur la période."
+          actions={<LinkButton href="/admin/commandes">Commandes</LinkButton>}
+        >
           {data.orderPipeline.length === 0 ? (
-            <EmptyState title="Aucune commande" description="Aucune demande n’a été reçue sur la période." />
+            <EmptyState title="Aucune commande" description="Aucune demande n'a été reçue sur la période." />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
-                    <th className="pb-2 pr-3">Statut</th>
-                    <th className="pb-2 pr-3">Commandes</th>
-                    <th className="pb-2">Montant</th>
+                    <th className="pb-2.5 pr-3 font-semibold">Statut</th>
+                    <th className="pb-2.5 pr-3 font-semibold">Commandes</th>
+                    <th className="pb-2.5 font-semibold">Montant</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.orderPipeline.map((row) => (
-                    <tr key={row.status} className="border-b border-line/60 last:border-0">
+                    <tr key={row.status} className="border-b border-line/50 last:border-0 hover:bg-ground/40 transition-colors">
                       <td className="py-2.5 pr-3">
                         <Badge tone={orderTone(row.status)}>
                           {ORDER_STATUS_LABELS[row.status] ?? row.status}
                         </Badge>
                       </td>
-                      <td className="py-2.5 pr-3">{row.count}</td>
-                      <td className="py-2.5">{formatCurrency(row.amount)}</td>
+                      <td className="py-2.5 pr-3 font-medium">{row.count}</td>
+                      <td className="py-2.5 text-ink-muted">{formatCurrency(row.amount)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -352,8 +381,13 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
         </Section>
       </div>
 
+      {/* Rizeries performance + stock health */}
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
-        <Section title="Performance des rizeries" description="Volume de coques accepté et régularité des réceptions.">
+        <Section
+          title="Performance des rizeries"
+          description="Volume de coques accepté et régularité des réceptions."
+          actions={<LinkButton href="/admin/rizieries">Rizeries</LinkButton>}
+        >
           {data.rizeriePerformance.length === 0 ? (
             <EmptyState title="Aucune réception" description="Aucun lot de coques sur la période." />
           ) : (
@@ -361,15 +395,15 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
               <table className="w-full min-w-[560px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
-                    <th className="pb-2 pr-3">Rizerie</th>
-                    <th className="pb-2 pr-3">Lots</th>
-                    <th className="pb-2 pr-3">Poids accepté</th>
-                    <th className="pb-2">Dernière réception</th>
+                    <th className="pb-2.5 pr-3 font-semibold">Rizerie</th>
+                    <th className="pb-2.5 pr-3 font-semibold">Lots</th>
+                    <th className="pb-2.5 pr-3 font-semibold">Poids accepté</th>
+                    <th className="pb-2.5 font-semibold">Dernière réception</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.rizeriePerformance.slice(0, 8).map((rizerie) => (
-                    <tr key={rizerie.id} className="border-b border-line/60 last:border-0">
+                    <tr key={rizerie.id} className="border-b border-line/50 last:border-0 hover:bg-ground/40 transition-colors">
                       <td className="py-2.5 pr-3">
                         <p className="font-medium">{rizerie.name}</p>
                         <p className="text-xs text-ink-muted">{rizerie.location}</p>
@@ -381,7 +415,7 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
                         ) : null}
                       </td>
                       <td className="py-2.5 pr-3 font-medium">{formatNumber(rizerie.weightKg, 'kg')}</td>
-                      <td className="py-2.5 text-ink-muted">{formatDate(rizerie.lastReceivedAt)}</td>
+                      <td className="py-2.5 text-ink-muted text-xs">{formatDate(rizerie.lastReceivedAt)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -390,7 +424,11 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
           )}
         </Section>
 
-        <Section title="État des stocks" description="Références triées par criticité.">
+        <Section
+          title="État des stocks"
+          description="Références triées par criticité."
+          actions={<LinkButton href="/admin/stocks">Stocks</LinkButton>}
+        >
           {data.stockHealth.length === 0 ? (
             <EmptyState title="Aucun stock" description="Créez les références de stock dans le module Stocks." />
           ) : (
@@ -398,17 +436,17 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
               <table className="w-full min-w-[560px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
-                    <th className="pb-2 pr-3">Référence</th>
-                    <th className="pb-2 pr-3">Quantité</th>
-                    <th className="pb-2 pr-3">Seuil</th>
-                    <th className="pb-2">État</th>
+                    <th className="pb-2.5 pr-3 font-semibold">Référence</th>
+                    <th className="pb-2.5 pr-3 font-semibold">Quantité</th>
+                    <th className="pb-2.5 pr-3 font-semibold">Seuil</th>
+                    <th className="pb-2.5 font-semibold">État</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.stockHealth.map((stock) => {
                     const status = STOCK_STATUS[stock.status];
                     return (
-                      <tr key={stock.id} className="border-b border-line/60 last:border-0">
+                      <tr key={stock.id} className="border-b border-line/50 last:border-0 hover:bg-ground/40 transition-colors">
                         <td className="py-2.5 pr-3">
                           <p className="font-medium">{stock.label}</p>
                           <p className="text-xs text-ink-muted">{stock.location ?? 'Emplacement non renseigné'}</p>
@@ -430,8 +468,13 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
         </Section>
       </div>
 
+      {/* Top cost batches */}
       <div className="mt-6">
-        <Section title="Batches les plus coûteux" description="Coût de revient par pièce valide sur la période.">
+        <Section
+          title="Batches les plus coûteux"
+          description="Coût de revient par pièce valide sur la période."
+          actions={<LinkButton href="/admin/production">Production</LinkButton>}
+        >
           {data.topCostBatches.length === 0 ? (
             <EmptyState title="Aucun batch" description="Les batches apparaîtront ici après la première production." />
           ) : (
@@ -439,32 +482,39 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
               <table className="w-full min-w-[700px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
-                    <th className="pb-2 pr-3">Batch</th>
-                    <th className="pb-2 pr-3">Date</th>
-                    <th className="pb-2 pr-3">Produit</th>
-                    <th className="pb-2 pr-3">Pièces</th>
-                    <th className="pb-2 pr-3">Rebut</th>
-                    <th className="pb-2 pr-3">Coût / pièce</th>
-                    <th className="pb-2">Niveau</th>
+                    <th className="pb-2.5 pr-3 font-semibold">Batch</th>
+                    <th className="pb-2.5 pr-3 font-semibold">Date</th>
+                    <th className="pb-2.5 pr-3 font-semibold">Produit</th>
+                    <th className="pb-2.5 pr-3 font-semibold">Pièces</th>
+                    <th className="pb-2.5 pr-3 font-semibold">Rebut</th>
+                    <th className="pb-2.5 pr-3 font-semibold">Coût / pièce</th>
+                    <th className="pb-2.5 font-semibold">Niveau</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.topCostBatches.map((batch) => (
-                    <tr key={batch.id} className="border-b border-line/60 last:border-0">
+                    <tr key={batch.id} className="border-b border-line/50 last:border-0 hover:bg-ground/40 transition-colors">
                       <td className="py-2.5 pr-3">
-                        <Link href={`/admin/production/${batch.id}`} className="font-mono-brand text-xs font-semibold text-paddy hover:underline">
+                        <Link
+                          href={`/admin/production/${batch.id}`}
+                          className="font-mono-brand text-xs font-semibold text-paddy hover:underline"
+                        >
                           {batch.code}
                         </Link>
                       </td>
-                      <td className="py-2.5 pr-3 text-ink-muted">{formatDate(batch.startedAt)}</td>
+                      <td className="py-2.5 pr-3 text-ink-muted text-xs">{formatDate(batch.startedAt)}</td>
                       <td className="py-2.5 pr-3">{batch.productLabel}</td>
                       <td className="py-2.5 pr-3">{formatNumber(batch.piecesProduced)}</td>
-                      <td className="py-2.5 pr-3">{formatPercent(batch.rejectRate)}</td>
+                      <td className="py-2.5 pr-3">
+                        <Badge tone={batch.rejectRate > 10 ? 'danger' : 'neutral'}>
+                          {formatPercent(batch.rejectRate)}
+                        </Badge>
+                      </td>
                       <td className="py-2.5 pr-3 font-medium">{formatCurrency(batch.costPerUnit)}</td>
-                      <td className="w-32 py-2.5">
-                        <div className="h-2 w-full overflow-hidden rounded-full bg-grain/70">
+                      <td className="w-28 py-2.5">
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-grain/70">
                           <div
-                            className="h-full rounded-full bg-husk-deep"
+                            className="h-full rounded-full bg-bran transition-all"
                             style={{ width: `${Math.max(2, (batch.costPerUnit / maxProductCost) * 100)}%` }}
                           />
                         </div>

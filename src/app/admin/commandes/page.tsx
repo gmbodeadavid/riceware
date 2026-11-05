@@ -66,6 +66,7 @@ export default async function OrdersPage({ searchParams }: PageProps) {
       <PageHeader
         title="Commandes"
         description="Demandes reçues depuis le site, WhatsApp et les ventes directes. Les prix et les livraisons sont confirmés manuellement."
+        breadcrumb={[{ label: 'Tableau de bord', href: '/admin' }, { label: 'Commandes' }]}
         actions={
           <>
             <LinkButton href={`${exportBase}&format=csv`} target="_blank">CSV</LinkButton>

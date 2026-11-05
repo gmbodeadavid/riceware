@@ -39,6 +39,7 @@ export default async function LotsPage({ searchParams }: PageProps) {
       <PageHeader
         title="Lots de coques"
         description="Traçabilité des matières premières : origine, poids, humidité, qualité visuelle et ID unique."
+        breadcrumb={[{ label: 'Tableau de bord', href: '/admin' }, { label: 'Lots de coques' }]}
         actions={
           <>
             <LinkButton href={`${exportBase}&format=csv`} target="_blank">CSV</LinkButton>

@@ -40,6 +40,11 @@ export default async function LotDetailPage({ params }: PageProps) {
       <PageHeader
         title={lot.code}
         description={`Lot réceptionné le ${formatDateTime(lot.receivedAt)} — ${lot.rizerie.name}, ${lot.rizerie.location}.`}
+        breadcrumb={[
+          { label: 'Tableau de bord', href: '/admin' },
+          { label: 'Lots de coques', href: '/admin/lots' },
+          { label: lot.code },
+        ]}
         actions={
           <>
             <LinkButton href={`/tracabilite/${encodeURIComponent(lot.code)}`} target="_blank">Fiche publique</LinkButton>

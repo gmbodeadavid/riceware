@@ -111,6 +111,7 @@ export default async function CorbeilleAdminPage() {
             ? `${totalDeleted} élément(s) dans la corbeille. Les batches supprimés ne sont pas restaurables en P1.`
             : 'La corbeille est vide.'
         }
+        breadcrumb={[{ label: 'Tableau de bord', href: '/admin' }, { label: 'Éléments supprimés' }]}
       />
       <CorbeilleClient groups={groups} />
     </div>

@@ -20,6 +20,7 @@ export default async function StocksPage() {
       <PageHeader
         title="Gestion des stocks"
         description="Coques, poudre, liant et produits finis. Chaque mouvement est historisé et les seuils déclenchent des alertes."
+        breadcrumb={[{ label: 'Tableau de bord', href: '/admin' }, { label: 'Stocks' }]}
         actions={
           <>
             <LinkButton href="/api/admin/exports/stocks?format=pdf" target="_blank">Inventaire PDF</LinkButton>

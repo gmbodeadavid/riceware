@@ -77,12 +77,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         />
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 sm:py-8">
+        <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
           {children}
         </main>
 
-        <footer className="shrink-0 border-t border-line px-4 py-3 text-center text-xs text-ink-muted">
-          RiceWare CI — back-office interne · données de production confidentielles
+        {/* Footer */}
+        <footer className="shrink-0 border-t border-line/70 bg-surface/60 px-6 py-2.5 flex items-center justify-between gap-4">
+          <span className="text-xs text-ink-muted">
+            RiceWare CI — back-office interne
+          </span>
+          <span className="text-xs text-ink-muted opacity-60">
+            données de production confidentielles
+          </span>
         </footer>
       </div>
     </div>

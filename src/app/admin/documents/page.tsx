@@ -33,6 +33,7 @@ export default async function DocumentsPage() {
       <PageHeader
         title="Documents et justificatifs"
         description="Certificats, contrats, rapports et photos. Les fichiers sont stockés hors du dossier public et servis uniquement aux utilisateurs connectés."
+        breadcrumb={[{ label: 'Tableau de bord', href: '/admin' }, { label: 'Documents' }]}
       />
 
       {canWrite ? <div className="mb-5"><DocumentForm entityOptions={entityOptions} /></div> : null}

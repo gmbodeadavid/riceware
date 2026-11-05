@@ -3,7 +3,7 @@ import { can } from '@/lib/rbac';
 import { listPartners } from '@/lib/production/queries';
 import { labelOf, PARTNER_TYPES } from '@/lib/production/types';
 import { formatDate } from '@/lib/format';
-import { PageHeader, Badge, EmptyState, LinkButton } from '@/components/admin/ui';
+import { PageHeader, Badge, EmptyState, LinkButton, StatCard } from '@/components/admin/ui';
 import PartnerForm from '@/components/admin/PartnerForm';
 import DeleteButton from '@/components/admin/DeleteButton';
 
@@ -19,22 +19,14 @@ export default async function PartnersPage() {
       <PageHeader
         title="Partenaires"
         description="Laboratoires, clients pilotes, fournisseurs et institutions. Les documents associés sont disponibles dans le module Documents."
+        breadcrumb={[{ label: 'Tableau de bord', href: '/admin' }, { label: 'Partenaires' }]}
         actions={<LinkButton href="/admin/documents">Documents</LinkButton>}
       />
 
       <div className="mb-5 grid gap-3 sm:grid-cols-3">
-        <div className="rounded-panel border border-line bg-surface p-4">
-          <p className="text-xs uppercase text-ink-muted">Partenaires</p>
-          <p className="mt-2 font-display text-2xl font-bold">{partners.length}</p>
-        </div>
-        <div className="rounded-panel border border-line bg-surface p-4">
-          <p className="text-xs uppercase text-ink-muted">Actifs</p>
-          <p className="mt-2 font-display text-2xl font-bold">{active}</p>
-        </div>
-        <div className="rounded-panel border border-line bg-surface p-4">
-          <p className="text-xs uppercase text-ink-muted">Laboratoires</p>
-          <p className="mt-2 font-display text-2xl font-bold">{partners.filter((partner) => partner.type === 'laboratoire').length}</p>
-        </div>
+        <StatCard label="Partenaires" value={partners.length} hint="Total référencé" />
+        <StatCard label="Actifs" value={active} tone="paddy" hint={`${Math.round((active / (partners.length || 1)) * 100)}% d'activité`} />
+        <StatCard label="Laboratoires" value={partners.filter((partner) => partner.type === 'laboratoire').length} hint="Analyses & conformité" />
       </div>
 
       {canWrite ? <div className="mb-5"><PartnerForm /></div> : null}

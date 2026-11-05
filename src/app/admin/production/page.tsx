@@ -44,6 +44,7 @@ export default async function ProductionPage({ searchParams }: PageProps) {
       <PageHeader
         title="Suivi de production"
         description="Batches de poudre, liant, pressage et séchage : rendement, rebuts, coûts et traçabilité."
+        breadcrumb={[{ label: 'Tableau de bord', href: '/admin' }, { label: 'Production' }]}
         actions={
           <>
             <LinkButton href={`${exportBase}&format=csv`} target="_blank">CSV</LinkButton>

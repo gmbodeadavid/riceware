@@ -37,6 +37,7 @@ export default async function QualityPage({ searchParams }: PageProps) {
       <PageHeader
         title="Contrôle qualité"
         description="Tests de charge, d’étanchéité et visuels. Chaque échec crée une alerte et rejette le produit concerné."
+        breadcrumb={[{ label: 'Tableau de bord', href: '/admin' }, { label: 'Qualité' }]}
         actions={
           <>
             <LinkButton href={`${exportBase}&format=csv`} target="_blank">CSV</LinkButton>

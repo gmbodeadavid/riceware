@@ -70,6 +70,11 @@ export default async function BatchDetailPage({ params }: PageProps) {
       <PageHeader
         title={batch.code}
         description={`Batch de production du ${formatDateTime(batch.startedAt)} — ${labelOf(PRODUCT_TYPES, batch.productType)}${batch.lot ? ` — lot ${batch.lot.code}` : ''}.`}
+        breadcrumb={[
+          { label: 'Tableau de bord', href: '/admin' },
+          { label: 'Production', href: '/admin/production' },
+          { label: batch.code },
+        ]}
         actions={
           <>
             <LinkButton href={`/admin/exports/quality/${batch.id}`} target="_blank">

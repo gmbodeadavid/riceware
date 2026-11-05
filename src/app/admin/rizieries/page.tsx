@@ -18,6 +18,7 @@ export default async function RizeriesPage() {
       <PageHeader
         title="Rizeries partenaires"
         description="Origine des coques de riz : contacts, contrats, volumes et conditions qualité."
+        breadcrumb={[{ label: 'Tableau de bord', href: '/admin' }, { label: 'Rizeries' }]}
       />
 
       {canWrite ? <div className="mb-5"><RizerieForm /></div> : null}

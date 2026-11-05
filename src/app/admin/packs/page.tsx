@@ -34,6 +34,7 @@ export default async function PacksPage({ searchParams }: PageProps) {
       <PageHeader
         title="Lots de packs"
         description="Lots de conditionnement créés depuis les batches de production."
+        breadcrumb={[{ label: 'Tableau de bord', href: '/admin' }, { label: 'Lots de packs' }]}
       />
 
       <form method="get" className="mb-5 grid gap-3 rounded-panel border border-line bg-surface p-4 sm:grid-cols-2 lg:grid-cols-4">

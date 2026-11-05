@@ -3,34 +3,83 @@ import { requireAdminPage } from '@/lib/admin-guard';
 import { getDashboardData } from '@/lib/production/queries';
 import { computeCostPerUnit, computeRejectRate, computeYield, labelOf, LOT_STATUSES } from '@/lib/production/types';
 import { formatCurrency, formatDate, formatDateTime, formatNumber, formatPercent } from '@/lib/format';
-import { PageHeader, StatCard, Badge, Section, LinkButton, ProgressBar, EmptyState, KpiGroupLabel } from '@/components/admin/ui';
-import { LineChart, BarChart, DonutChart } from '@/components/admin/charts';
+import { PageHeader, StatCard, Badge, Section, LinkButton, ProgressBar, EmptyState, KpiGroupLabel, AlertBanner } from '@/components/admin/ui';
+import { LineChart, BarChart, DonutChart, RadialProgress } from '@/components/admin/charts';
 import NotificationsPanel from '@/components/admin/NotificationsPanel';
 
-// Inline SVG icons for KPI cards (server component — no react-icons)
+// ── SVG Icons ──────────────────────────────────────────────────────────────────
 function IconProduction() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2M8 7V5a2 2 0 0 0-4 0v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>;
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="2" y="7" width="20" height="14" rx="2"/>
+      <path d="M16 7V5a2 2 0 0 0-4 0v2M8 7V5a2 2 0 0 0-4 0v2"/>
+      <line x1="12" y1="12" x2="12" y2="16"/>
+      <line x1="10" y1="14" x2="14" y2="14"/>
+    </svg>
+  );
 }
 function IconReject() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>;
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/>
+      <line x1="12" y1="9" x2="12" y2="13"/>
+      <line x1="12" y1="17" x2="12.01" y2="17"/>
+    </svg>
+  );
 }
 function IconCost() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>;
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="10"/>
+      <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/>
+      <line x1="12" y1="6" x2="12" y2="8"/>
+      <line x1="12" y1="16" x2="12" y2="18"/>
+    </svg>
+  );
 }
 function IconQuality() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></svg>;
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/>
+      <path d="m9 12 2 2 4-4"/>
+    </svg>
+  );
 }
 function IconRevenue() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>;
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <line x1="12" y1="1" x2="12" y2="23"/>
+      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+    </svg>
+  );
 }
 function IconOrders() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>;
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+      <line x1="3" y1="6" x2="21" y2="6"/>
+      <path d="M16 10a4 4 0 0 1-8 0"/>
+    </svg>
+  );
 }
 function IconStock() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><line x1="12" y1="22" x2="12" y2="12"/></svg>;
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/>
+      <path d="m3.3 7 8.7 5 8.7-5"/>
+      <line x1="12" y1="22" x2="12" y2="12"/>
+    </svg>
+  );
 }
 function IconPartners() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+      <circle cx="9" cy="7" r="4"/>
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+  );
 }
 
 type PageProps = { searchParams: Promise<{ refus?: string }> };
@@ -41,10 +90,13 @@ export default async function AdminDashboardPage({ searchParams }: PageProps) {
   const data = await getDashboardData();
   const kpis = data.kpis;
 
+  const firstName = session.name.split(' ')[0];
+
   return (
-    <div className="max-w-[1200px]">
+    <div className="max-w-[1280px]">
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
       <PageHeader
-        title={`Bonjour, ${session.name.split(' ')[0]} 👋`}
+        title={`Bonjour, ${firstName} 👋`}
         description="Vue d'ensemble de la production, de la qualité, des stocks et des commandes RiceWare CI."
         actions={
           <>
@@ -55,12 +107,12 @@ export default async function AdminDashboardPage({ searchParams }: PageProps) {
       />
 
       {refus ? (
-        <div className="mb-5 rounded-control border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger" role="alert">
+        <AlertBanner tone="danger">
           Votre rôle ne permet pas d'accéder à cette page.
-        </div>
+        </AlertBanner>
       ) : null}
 
-      {/* ── KPI Groupe 1 : Production ─────────────────────────────────────── */}
+      {/* ── KPI Groupe 1 : Production ──────────────────────────────────────── */}
       <KpiGroupLabel>Production</KpiGroupLabel>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
@@ -89,13 +141,19 @@ export default async function AdminDashboardPage({ searchParams }: PageProps) {
           label="Réussite qualité"
           value={formatPercent(kpis.testPassRate)}
           hint={`${kpis.testsPassed} succès · ${kpis.testsFailed} échec(s)`}
-          tone={kpis.testsPassed + kpis.testsFailed ? (kpis.testPassRate >= 90 ? 'paddy' : 'warning') : 'default'}
+          tone={
+            kpis.testsPassed + kpis.testsFailed
+              ? kpis.testPassRate >= 90
+                ? 'paddy'
+                : 'warning'
+              : 'default'
+          }
           icon={<IconQuality />}
           href="/admin/qualite"
         />
       </div>
 
-      {/* ── KPI Groupe 2 : Commerce ───────────────────────────────────────── */}
+      {/* ── KPI Groupe 2 : Commerce ────────────────────────────────────────── */}
       <KpiGroupLabel>Commerce</KpiGroupLabel>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
@@ -131,47 +189,59 @@ export default async function AdminDashboardPage({ searchParams }: PageProps) {
         />
       </div>
 
-      {/* ── Graphiques principaux ─────────────────────────────────────────── */}
-      <div className="mt-6 grid gap-5 xl:grid-cols-[1.6fr_1fr]">
-        <Section title="Production par semaine" description="Pièces produites au cours des 8 dernières semaines.">
+      {/* ── Graphiques principaux ──────────────────────────────────────────── */}
+      <div className="mt-6 grid gap-5 xl:grid-cols-[1.65fr_1fr]">
+        <Section
+          title="Production par semaine"
+          description="Pièces produites au cours des 8 dernières semaines."
+          actions={<LinkButton href="/admin/production">Voir la production</LinkButton>}
+        >
           <LineChart
             data={data.weekly.map((w) => ({ label: w.label, value: w.pieces, detail: `${w.rejects} rebuts` }))}
             unit="pièces"
           />
         </Section>
 
-        <Section title="Objectif Greenpreneur" description={data.activeGoal?.label ?? 'Cible de production cumulée.'}>
-          <div className="space-y-4">
-            <div>
-              <div className="flex items-end justify-between gap-3">
-                <p className="font-display text-3xl font-bold text-ink">{formatNumber(kpis.totalPiecesForGoal)}</p>
-                <p className="text-sm text-ink-muted">/ {formatNumber(kpis.greenpreneurTarget)} pièces</p>
-              </div>
-              <div className="mt-3">
-                <ProgressBar value={kpis.greenpreneurProgress} label="Avancement" />
-              </div>
-            </div>
-            <p className="text-sm text-ink-muted">
-              {data.activeGoal?.description ?? 'Aucun objectif personnalisé actif — cible par défaut utilisée.'}
-              {data.activeGoal?.endDate ? ` Échéance : ${formatDate(data.activeGoal.endDate)}.` : ''}
-            </p>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="rounded-control border border-line bg-ground/60 p-3">
+        <Section
+          title="Objectif Greenpreneur"
+          description={data.activeGoal?.label ?? 'Cible de production cumulée.'}
+          actions={<LinkButton href="/admin/rapports">Objectifs</LinkButton>}
+        >
+          <div className="flex flex-col items-center gap-5 py-2">
+            <RadialProgress
+              value={kpis.totalPiecesForGoal}
+              max={kpis.greenpreneurTarget}
+              label={`${formatNumber(kpis.totalPiecesForGoal)} / ${formatNumber(kpis.greenpreneurTarget)}`}
+              sublabel="pièces suivies"
+            />
+            <ProgressBar value={kpis.greenpreneurProgress} label="Avancement" size="md" />
+            <div className="grid grid-cols-2 gap-3 w-full text-sm">
+              <div className="rounded-xl border border-line bg-ground/60 p-3">
                 <p className="text-xs text-ink-muted">Lots suivis</p>
-                <p className="mt-1 font-semibold text-ink">{kpis.totalLots}</p>
+                <p className="mt-1 font-semibold text-ink text-lg">{kpis.totalLots}</p>
               </div>
-              <div className="rounded-control border border-line bg-ground/60 p-3">
+              <div className="rounded-xl border border-line bg-ground/60 p-3">
                 <p className="text-xs text-ink-muted">Coques reçues</p>
-                <p className="mt-1 font-semibold text-ink">{formatNumber(kpis.totalLotsWeight, 'kg')}</p>
+                <p className="mt-1 font-semibold text-ink text-lg">{formatNumber(kpis.totalLotsWeight, 'kg')}</p>
               </div>
             </div>
+            {data.activeGoal?.description && (
+              <p className="text-xs text-ink-muted text-center">
+                {data.activeGoal.description}
+                {data.activeGoal.endDate ? ` Échéance : ${formatDate(data.activeGoal.endDate)}.` : ''}
+              </p>
+            )}
           </div>
         </Section>
       </div>
 
-      {/* ── Graphiques secondaires ────────────────────────────────────────── */}
+      {/* ── Graphiques secondaires ─────────────────────────────────────────── */}
       <div className="mt-5 grid gap-5 xl:grid-cols-2">
-        <Section title="Répartition des rebuts" description="Causes déclarées sur les 8 dernières semaines.">
+        <Section
+          title="Répartition des rebuts"
+          description="Causes déclarées sur les 8 dernières semaines."
+          actions={<LinkButton href="/admin/qualite">Qualité</LinkButton>}
+        >
           <DonutChart
             data={data.rejectCauses.map((c) => ({ label: c.label, value: c.quantity }))}
             centerLabel="rebuts"
@@ -179,7 +249,11 @@ export default async function AdminDashboardPage({ searchParams }: PageProps) {
           />
         </Section>
 
-        <Section title="Évolution du coût de revient" description="Coût moyen par pièce valide — 6 derniers mois.">
+        <Section
+          title="Évolution du coût de revient"
+          description="Coût moyen par pièce valide — 6 derniers mois."
+          actions={<LinkButton href="/admin/analytics">Analyses</LinkButton>}
+        >
           <BarChart
             data={data.monthly.map((m) => ({ label: m.label, value: Math.round(m.costPerUnit) }))}
             unit="FCFA"
@@ -188,7 +262,7 @@ export default async function AdminDashboardPage({ searchParams }: PageProps) {
         </Section>
       </div>
 
-      {/* ── Alertes + Stocks ──────────────────────────────────────────────── */}
+      {/* ── Alertes + Stocks ───────────────────────────────────────────────── */}
       <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_1.2fr]">
         <Section
           title="Alertes"
@@ -201,28 +275,49 @@ export default async function AdminDashboardPage({ searchParams }: PageProps) {
         <Section
           title="Stocks sous seuil"
           description="Références à réapprovisionner en priorité."
-          actions={<LinkButton href="/api/admin/exports/stocks" target="_blank">Inventaire PDF</LinkButton>}
+          actions={
+            <LinkButton href="/api/admin/exports/stocks" target="_blank">Inventaire PDF</LinkButton>
+          }
         >
           {data.lowStocks.length === 0 ? (
-            <EmptyState title="Aucune alerte" description="Tous les stocks sont au-dessus de leur seuil minimum." />
+            <EmptyState
+              title="Aucune alerte"
+              description="Tous les stocks sont au-dessus de leur seuil minimum."
+            />
           ) : (
             <ul className="divide-y divide-line">
-              {data.lowStocks.map((stock) => (
-                <li key={stock.id} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
-                  <div>
-                    <p className="text-sm font-semibold text-ink">{stock.label}</p>
-                    <p className="text-xs text-ink-muted">Seuil min. : {formatNumber(stock.minThreshold, stock.unit)}</p>
-                  </div>
-                  <Badge tone="warning">{formatNumber(stock.quantity, stock.unit)}</Badge>
-                </li>
-              ))}
+              {data.lowStocks.map((stock) => {
+                const pct = stock.minThreshold > 0
+                  ? Math.min(100, (stock.quantity / stock.minThreshold) * 100)
+                  : 100;
+                return (
+                  <li key={stock.id} className="py-3 first:pt-0 last:pb-0">
+                    <div className="flex items-center justify-between gap-3 mb-1.5">
+                      <div>
+                        <p className="text-sm font-semibold text-ink">{stock.label}</p>
+                        <p className="text-xs text-ink-muted">
+                          Seuil min. : {formatNumber(stock.minThreshold, stock.unit)}
+                        </p>
+                      </div>
+                      <Badge tone="warning">{formatNumber(stock.quantity, stock.unit)}</Badge>
+                    </div>
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-grain/70">
+                      <div
+                        className="h-full rounded-full bg-husk-deep transition-all"
+                        style={{ width: `${Math.max(2, pct)}%` }}
+                      />
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </Section>
       </div>
 
-      {/* ── Dernières activités ───────────────────────────────────────────── */}
+      {/* ── Dernières activités ────────────────────────────────────────────── */}
       <div className="mt-5 grid gap-5 xl:grid-cols-2">
+        {/* Derniers batches */}
         <Section
           title="Derniers batches"
           description="Production récente et rendement."
@@ -239,30 +334,37 @@ export default async function AdminDashboardPage({ searchParams }: PageProps) {
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-line text-[11px] uppercase tracking-wide text-ink-muted">
-                    <th className="pb-2 pr-3 font-semibold">Batch</th>
-                    <th className="pb-2 pr-3 font-semibold">Date</th>
-                    <th className="pb-2 pr-3 font-semibold">Pièces</th>
-                    <th className="pb-2 pr-3 font-semibold">Rendement</th>
-                    <th className="pb-2 font-semibold">Coût / pièce</th>
+                    <th className="pb-2.5 pr-3 font-semibold">Batch</th>
+                    <th className="pb-2.5 pr-3 font-semibold">Date</th>
+                    <th className="pb-2.5 pr-3 font-semibold">Pièces</th>
+                    <th className="pb-2.5 pr-3 font-semibold">Rendement</th>
+                    <th className="pb-2.5 font-semibold">Coût / pièce</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.recentBatches.slice(0, 5).map((batch) => (
-                    <tr key={batch.id} className="border-b border-line/60 last:border-0">
+                    <tr key={batch.id} className="border-b border-line/50 last:border-0 hover:bg-ground/40 transition-colors">
                       <td className="py-2.5 pr-3">
-                        <Link href={`/admin/production/${batch.id}`} className="font-mono-brand text-xs font-semibold text-paddy hover:underline">
+                        <Link
+                          href={`/admin/production/${batch.id}`}
+                          className="font-mono-brand text-xs font-semibold text-paddy hover:text-paddy-deep hover:underline"
+                        >
                           {batch.code}
                         </Link>
                         <p className="text-[11px] text-ink-muted">{batch.lot?.code ?? 'sans lot'}</p>
                       </td>
-                      <td className="py-2.5 pr-3 text-ink-muted">{formatDate(batch.startedAt)}</td>
+                      <td className="py-2.5 pr-3 text-ink-muted text-xs">{formatDate(batch.startedAt)}</td>
                       <td className="py-2.5 pr-3 font-medium">{batch.piecesProduced}</td>
                       <td className="py-2.5 pr-3">
-                        <Badge tone={computeRejectRate(batch.piecesProduced, batch.rejects) > 10 ? 'danger' : 'success'}>
+                        <Badge
+                          tone={computeRejectRate(batch.piecesProduced, batch.rejects) > 10 ? 'danger' : 'success'}
+                        >
                           {formatPercent(computeYield(batch.piecesProduced, batch.rejects))}
                         </Badge>
                       </td>
-                      <td className="py-2.5 text-ink-muted">{formatCurrency(computeCostPerUnit(batch))}</td>
+                      <td className="py-2.5 text-ink-muted text-xs">
+                        {formatCurrency(computeCostPerUnit(batch))}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -271,6 +373,7 @@ export default async function AdminDashboardPage({ searchParams }: PageProps) {
           )}
         </Section>
 
+        {/* Derniers lots */}
         <Section
           title="Derniers lots reçus"
           description="Traçabilité des coques à la réception."
@@ -285,16 +388,24 @@ export default async function AdminDashboardPage({ searchParams }: PageProps) {
           ) : (
             <ul className="divide-y divide-line">
               {data.recentLots.slice(0, 5).map((lot) => (
-                <li key={lot.id} className="flex flex-wrap items-center justify-between gap-2 py-3 first:pt-0 last:pb-0">
+                <li
+                  key={lot.id}
+                  className="flex flex-wrap items-center justify-between gap-2 py-3 first:pt-0 last:pb-0"
+                >
                   <div>
-                    <Link href={`/admin/lots/${lot.id}`} className="font-mono-brand text-xs font-semibold text-paddy hover:underline">
+                    <Link
+                      href={`/admin/lots/${lot.id}`}
+                      className="font-mono-brand text-xs font-semibold text-paddy hover:underline"
+                    >
                       {lot.code}
                     </Link>
                     <p className="text-xs text-ink-muted">{formatDateTime(lot.receivedAt)}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">{formatNumber(lot.netWeightKg, 'kg')}</span>
-                    <Badge tone={lot.status === 'accepted' ? 'success' : 'danger'}>{labelOf(LOT_STATUSES, lot.status)}</Badge>
+                    <span className="text-sm font-medium text-ink">{formatNumber(lot.netWeightKg, 'kg')}</span>
+                    <Badge tone={lot.status === 'accepted' ? 'success' : 'danger'}>
+                      {labelOf(LOT_STATUSES, lot.status)}
+                    </Badge>
                   </div>
                 </li>
               ))}

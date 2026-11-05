@@ -16,6 +16,7 @@ export default async function UsersPage() {
       <PageHeader
         title="Utilisateurs et rôles"
         description="Comptes nominatifs du back-office. Les permissions sont appliquées côté page et côté API pour chaque rôle."
+        breadcrumb={[{ label: 'Tableau de bord', href: '/admin' }, { label: 'Utilisateurs' }]}
       />
 
       <div className="mb-5 grid gap-3 sm:grid-cols-3">

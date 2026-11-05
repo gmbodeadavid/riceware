@@ -4,7 +4,7 @@ import { requireAdminPage } from '@/lib/admin-guard';
 import { can } from '@/lib/rbac';
 import { getOrderWithAllocations } from '@/lib/production/queries';
 import { formatCurrency, formatDateTime } from '@/lib/format';
-import { PageHeader, Badge, EmptyState, Section } from '@/components/admin/ui';
+import { PageHeader, Badge, EmptyState, Section, LinkButton } from '@/components/admin/ui';
 import { ORDER_STATUSES, PAYMENT_STATUSES, PACK_LOT_STATUSES } from '@/lib/enums';
 import AllocationBlock from '@/components/admin/AllocationBlock';
 
@@ -41,8 +41,13 @@ export default async function OrderDetailPage({ params }: PageProps) {
       <PageHeader
         title={order.orderNumber}
         description={`${order.customer.fullName} · ${labelOf(ORDER_STATUSES, order.status)} · ${formatDateTime(order.createdAt)}`}
+        breadcrumb={[
+          { label: 'Tableau de bord', href: '/admin' },
+          { label: 'Commandes', href: '/admin/commandes' },
+          { label: order.orderNumber },
+        ]}
         actions={
-          <Link href="/admin/commandes" className="text-sm text-paddy hover:underline">← Retour aux commandes</Link>
+          <LinkButton href="/admin/commandes">← Retour aux commandes</LinkButton>
         }
       />
 

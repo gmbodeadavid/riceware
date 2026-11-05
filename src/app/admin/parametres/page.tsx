@@ -14,6 +14,7 @@ export default async function SettingsPage() {
       <PageHeader
         title="Paramètres"
         description="Valeurs par défaut de production, seuils d’alerte, objectif Greenpreneur et canal de notification."
+        breadcrumb={[{ label: 'Tableau de bord', href: '/admin' }, { label: 'Paramètres' }]}
       />
 
       <div className="mb-5 grid gap-3 sm:grid-cols-3">
