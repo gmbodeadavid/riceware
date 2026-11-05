@@ -127,7 +127,7 @@ export default function AdminSidebar({
       </div>
 
       {/* ── Nav ──────────────────────────────────────── */}
-      <nav className="flex-1 overflow-y-auto py-4 px-3" aria-label="Navigation administration">
+      <nav className="flex-1 overflow-y-auto py-4 px-3 scrollbar-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Navigation administration">
         {NAV_GROUPS.map((group) => {
           const visibleItems = group.items.filter(
             (item) => !session || session.permissions.includes(item.permission),
