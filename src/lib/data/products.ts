@@ -251,21 +251,30 @@ export async function updateProduct(id: string, data: UpdateProductInput): Promi
     });
 
     if (data.packs !== undefined) {
-      await tx.productPack.deleteMany({ where: { productId: id } });
-      if (data.packs.length > 0) {
-        await tx.productPack.createMany({
-          data: data.packs.map((pack) => ({
-            id: `${id}-pack-${pack.packKey}`,
-            productId: id,
-            packKey: pack.packKey,
-            label: pack.label,
-            quantity: pack.quantity,
-            priceValue: pack.priceValue ?? 0,
-            price: pack.priceValue && pack.priceValue > 0
-              ? formatCurrency(pack.priceValue)
-              : pack.price,
-            note: pack.note,
-          })),
+      // Upsert différentiel : ne supprime que les packs sans PackLot actif
+      // pour respecter la contrainte FK PackLot → ProductPack sous PostgreSQL.
+      const incomingKeys = new Set(data.packs.map((p) => p.packKey));
+
+      const existing = await tx.productPack.findMany({
+        where: { productId: id },
+        include: { packLots: { where: { deletedAt: null }, take: 1 } },
+      });
+      const toDelete = existing
+        .filter((p) => !incomingKeys.has(p.packKey) && p.packLots.length === 0)
+        .map((p) => p.id);
+      if (toDelete.length > 0) {
+        await tx.productPack.deleteMany({ where: { id: { in: toDelete } } });
+      }
+
+      for (const pack of data.packs) {
+        const packId = `${id}-pack-${pack.packKey}`;
+        const price = pack.priceValue && pack.priceValue > 0
+          ? formatCurrency(pack.priceValue)
+          : pack.price;
+        await tx.productPack.upsert({
+          where: { id: packId },
+          update: { label: pack.label, quantity: pack.quantity, priceValue: pack.priceValue ?? 0, price, note: pack.note },
+          create: { id: packId, productId: id, packKey: pack.packKey, label: pack.label, quantity: pack.quantity, priceValue: pack.priceValue ?? 0, price, note: pack.note },
         });
       }
     }
