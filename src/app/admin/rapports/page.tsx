@@ -2,7 +2,8 @@ import { requireAdminPage } from '@/lib/admin-guard';
 import { can } from '@/lib/rbac';
 import { getDashboardData, listAuditLogs } from '@/lib/production/queries';
 import { formatCurrency, formatDate, formatDateTime, formatNumber, formatPercent } from '@/lib/format';
-import { PageHeader, StatCard, Badge, EmptyState, LinkButton, Section, ProgressBar, AlertBanner } from '@/components/admin/ui';
+import { PageHeader, StatCard, Badge, EmptyState, LinkButton, Section, ProgressBar } from '@/components/admin/ui';
+import { ExpandableRow } from '@/components/admin/ExpandableRow';
 import GoalForm from '@/components/admin/GoalForm';
 import DeleteButton from '@/components/admin/DeleteButton';
 import { LuDownload, LuFileText } from 'react-icons/lu';
@@ -253,45 +254,93 @@ export default async function ReportsPage() {
 
       {/* Goal edit forms (admin only) */}
       {canManage ? (
-        <div className="mt-6 space-y-3">
-          {data.goals.map((goal) => (
-            <article key={goal.id} className="rounded-panel border border-line bg-surface">
-              <div className="grid gap-6 p-4 sm:p-5 lg:grid-cols-[1.4fr_1fr]">
-                {/* ── Résumé de l'objectif ── */}
-                <div>
-                  <p className="font-display text-base font-semibold text-ink">{goal.label}</p>
-                  {goal.description ? <p className="mt-1 text-sm text-ink-muted">{goal.description}</p> : null}
-                  <dl className="mt-3 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
-                    <div><dt className="inline text-ink-muted">Cible : </dt><dd className="inline font-medium">{formatNumber(goal.target, goal.unit)}</dd></div>
-                    <div><dt className="inline text-ink-muted">Métrique : </dt><dd className="inline">{goal.metric}</dd></div>
-                    {goal.startDate ? <div><dt className="inline text-ink-muted">Début : </dt><dd className="inline">{formatDate(goal.startDate)}</dd></div> : null}
-                    {goal.endDate ? <div><dt className="inline text-ink-muted">Échéance : </dt><dd className="inline">{formatDate(goal.endDate)}</dd></div> : null}
-                  </dl>
-                </div>
-                {/* ── Formulaire d'édition toujours visible ── */}
-                <div className="border-t border-line pt-4 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6">
-                  <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-muted">Modifier l'objectif</p>
-                  <GoalForm
-                    initial={{
-                      id: goal.id,
-                      label: goal.label,
-                      description: goal.description,
-                      metric: goal.metric,
-                      target: goal.target,
-                      unit: goal.unit,
-                      startDate: goal.startDate,
-                      endDate: goal.endDate,
-                      status: goal.status,
-                    }}
-                  />
-                </div>
-              </div>
-            </article>
-          ))}
-          <div className="rounded-panel border border-line bg-surface p-4 sm:p-5">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-muted">Nouvel objectif</p>
-            <GoalForm />
-          </div>
+        <div className="mt-6">
+          <Section
+            title="Modifier les objectifs"
+            description="Cliquez sur Modifier pour éditer un objectif existant ou créez-en un nouveau ci-dessous."
+          >
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-line bg-ground/40 text-[11px] uppercase tracking-wide text-ink-muted">
+                    <th className="px-4 py-3 font-semibold">Objectif</th>
+                    <th className="px-4 py-3 font-semibold hidden sm:table-cell">Cible</th>
+                    <th className="px-4 py-3 font-semibold hidden md:table-cell">Métrique</th>
+                    <th className="px-4 py-3 font-semibold hidden lg:table-cell">Période</th>
+                    <th className="px-4 py-3 font-semibold">Statut</th>
+                    <th className="px-4 py-3 font-semibold">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line/50">
+                  {data.goals.map((goal) => (
+                    <ExpandableRow
+                      key={goal.id}
+                      colSpan={6}
+                      editLabel="Modifier"
+                      cells={
+                        <>
+                          <td className="px-4 py-3 align-middle">
+                            <p className="font-semibold text-ink">{goal.label}</p>
+                            {goal.description ? <p className="text-xs text-ink-muted line-clamp-1">{goal.description}</p> : null}
+                          </td>
+                          <td className="px-4 py-3 align-middle text-xs text-ink-muted hidden sm:table-cell whitespace-nowrap">
+                            {formatNumber(goal.target, goal.unit)}
+                          </td>
+                          <td className="px-4 py-3 align-middle text-xs text-ink-muted hidden md:table-cell">
+                            {goal.metric}
+                          </td>
+                          <td className="px-4 py-3 align-middle text-xs text-ink-muted hidden lg:table-cell whitespace-nowrap">
+                            {formatDate(goal.startDate)}
+                            {goal.endDate ? ` → ${formatDate(goal.endDate)}` : ''}
+                          </td>
+                          <td className="px-4 py-3 align-middle">
+                            <Badge
+                              tone={
+                                goal.status === 'active' ? 'success'
+                                : goal.status === 'achieved' ? 'info'
+                                : 'neutral'
+                              }
+                            >
+                              {goal.status === 'active' ? 'Actif' : goal.status === 'achieved' ? 'Atteint' : 'Archivé'}
+                            </Badge>
+                          </td>
+                        </>
+                      }
+                      form={
+                        <div>
+                          <GoalForm
+                            initial={{
+                              id: goal.id,
+                              label: goal.label,
+                              description: goal.description,
+                              metric: goal.metric,
+                              target: goal.target,
+                              unit: goal.unit,
+                              startDate: goal.startDate,
+                              endDate: goal.endDate,
+                              status: goal.status,
+                            }}
+                          />
+                          <div className="mt-3 pt-3 border-t border-line/60">
+                            <DeleteButton
+                              endpoint={`/api/admin/objectifs/${goal.id}`}
+                              confirmation={`Supprimer l'objectif ${goal.label} ?`}
+                              label="Supprimer cet objectif"
+                              compact={false}
+                            />
+                          </div>
+                        </div>
+                      }
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-4 border-t border-line pt-4">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-muted">Nouvel objectif</p>
+              <GoalForm />
+            </div>
+          </Section>
         </div>
       ) : null}
 

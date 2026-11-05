@@ -3,7 +3,8 @@ import { can } from '@/lib/rbac';
 import { listPartners } from '@/lib/production/queries';
 import { labelOf, PARTNER_TYPES } from '@/lib/production/types';
 import { formatDate } from '@/lib/format';
-import { PageHeader, Badge, EmptyState, LinkButton, StatCard } from '@/components/admin/ui';
+import { PageHeader, Badge, EmptyState, StatCard } from '@/components/admin/ui';
+import { ExpandableRow } from '@/components/admin/ExpandableRow';
 import PartnerForm from '@/components/admin/PartnerForm';
 import DeleteButton from '@/components/admin/DeleteButton';
 
@@ -20,7 +21,6 @@ export default async function PartnersPage() {
         title="Partenaires"
         description="Laboratoires, clients pilotes, fournisseurs et institutions. Les documents associés sont disponibles dans le module Documents."
         breadcrumb={[{ label: 'Tableau de bord', href: '/admin' }, { label: 'Partenaires' }]}
-        actions={<LinkButton href="/admin/documents">Documents</LinkButton>}
       />
 
       <div className="mb-5 grid gap-3 sm:grid-cols-3">
@@ -29,59 +29,119 @@ export default async function PartnersPage() {
         <StatCard label="Laboratoires" value={partners.filter((partner) => partner.type === 'laboratoire').length} hint="Analyses & conformité" />
       </div>
 
-      {canWrite ? <div className="mb-5"><PartnerForm /></div> : null}
+      {canWrite ? (
+        <div className="mb-5 rounded-panel border border-line bg-surface p-4 sm:p-5">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-muted">Nouveau partenaire</p>
+          <PartnerForm />
+        </div>
+      ) : null}
 
       {partners.length === 0 ? (
         <EmptyState title="Aucun partenaire" description="Ajoutez un laboratoire, un client pilote ou une institution." />
       ) : (
-        <div className="space-y-3">
-          {partners.map((partner) => (
-            <article key={partner.id} className="rounded-panel border border-line bg-surface">
-              <div className={`grid gap-6 p-4 sm:p-5 ${canWrite ? 'lg:grid-cols-[1.4fr_1fr]' : ''}`}>
-                {/* ── Infos ── */}
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="font-display text-lg font-semibold">{partner.name}</h2>
-                    <Badge tone={partner.active ? 'success' : 'neutral'}>{partner.active ? 'Actif' : 'Inactif'}</Badge>
-                    <Badge tone="info">{labelOf(PARTNER_TYPES, partner.type)}</Badge>
-                  </div>
-                  <dl className="mt-3 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
-                    <div><dt className="inline text-ink-muted">Contact : </dt><dd className="inline">{partner.contactName ?? '—'}</dd></div>
-                    <div><dt className="inline text-ink-muted">Téléphone : </dt><dd className="inline">{partner.phone ?? '—'}</dd></div>
-                    <div><dt className="inline text-ink-muted">Email : </dt><dd className="inline">{partner.email ?? '—'}</dd></div>
-                    <div><dt className="inline text-ink-muted">Localisation : </dt><dd className="inline">{partner.location ?? '—'}</dd></div>
-                    <div><dt className="inline text-ink-muted">Accord : </dt><dd className="inline">{partner.contractType ?? '—'}</dd></div>
-                    <div><dt className="inline text-ink-muted">Depuis : </dt><dd className="inline">{formatDate(partner.createdAt)}</dd></div>
-                  </dl>
-                  {partner.notes ? <p className="mt-3 text-sm text-ink-muted">{partner.notes}</p> : null}
-                </div>
-
-                {/* ── Formulaire d'édition toujours visible ── */}
-                {canWrite ? (
-                  <div className="border-t border-line pt-4 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-muted">Modifier la fiche</p>
-                    <PartnerForm
-                      initial={{
-                        id: partner.id,
-                        name: partner.name,
-                        type: partner.type,
-                        contactName: partner.contactName,
-                        phone: partner.phone,
-                        email: partner.email,
-                        location: partner.location,
-                        contractType: partner.contractType,
-                        notes: partner.notes,
-                        active: partner.active,
-                      }}
-                    />
-                    <div className="mt-3 pt-3 border-t border-line/60">
-                      <DeleteButton endpoint={`/api/admin/partenaires/${partner.id}`} confirmation={`Supprimer le partenaire ${partner.name} ?`} label="Supprimer ce partenaire" compact={false} />
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            </article>
-          ))}
+        <div className="overflow-x-auto rounded-panel border border-line bg-surface">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-line bg-ground/40 text-[11px] uppercase tracking-wide text-ink-muted">
+                <th className="px-4 py-3 font-semibold">Nom</th>
+                <th className="px-4 py-3 font-semibold hidden sm:table-cell">Type</th>
+                <th className="px-4 py-3 font-semibold hidden md:table-cell">Contact</th>
+                <th className="px-4 py-3 font-semibold hidden lg:table-cell">Localisation</th>
+                <th className="px-4 py-3 font-semibold hidden lg:table-cell">Accord</th>
+                <th className="px-4 py-3 font-semibold">Statut</th>
+                {canWrite ? <th className="px-4 py-3 font-semibold">Actions</th> : null}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line/50">
+              {partners.map((partner) =>
+                canWrite ? (
+                  <ExpandableRow
+                    key={partner.id}
+                    colSpan={7}
+                    editLabel="Modifier"
+                    cells={
+                      <>
+                        <td className="px-4 py-3 align-middle">
+                          <p className="font-semibold text-ink">{partner.name}</p>
+                          {partner.notes ? <p className="text-xs text-ink-muted line-clamp-1">{partner.notes}</p> : null}
+                        </td>
+                        <td className="px-4 py-3 align-middle hidden sm:table-cell">
+                          <Badge tone="info">{labelOf(PARTNER_TYPES, partner.type)}</Badge>
+                        </td>
+                        <td className="px-4 py-3 align-middle text-xs text-ink-muted hidden md:table-cell">
+                          <p>{partner.contactName ?? '—'}</p>
+                          <p>{partner.phone ?? ''}</p>
+                        </td>
+                        <td className="px-4 py-3 align-middle text-xs text-ink-muted hidden lg:table-cell">
+                          {partner.location ?? '—'}
+                        </td>
+                        <td className="px-4 py-3 align-middle text-xs text-ink-muted hidden lg:table-cell">
+                          {partner.contractType ?? '—'}
+                          {partner.createdAt ? <p className="text-ink-muted/70">{formatDate(partner.createdAt)}</p> : null}
+                        </td>
+                        <td className="px-4 py-3 align-middle">
+                          <Badge tone={partner.active ? 'success' : 'neutral'}>
+                            {partner.active ? 'Actif' : 'Inactif'}
+                          </Badge>
+                        </td>
+                      </>
+                    }
+                    form={
+                      <div>
+                        <PartnerForm
+                          initial={{
+                            id: partner.id,
+                            name: partner.name,
+                            type: partner.type,
+                            contactName: partner.contactName,
+                            phone: partner.phone,
+                            email: partner.email,
+                            location: partner.location,
+                            contractType: partner.contractType,
+                            notes: partner.notes,
+                            active: partner.active,
+                          }}
+                        />
+                        <div className="mt-3 pt-3 border-t border-line/60">
+                          <DeleteButton
+                            endpoint={`/api/admin/partenaires/${partner.id}`}
+                            confirmation={`Supprimer le partenaire ${partner.name} ?`}
+                            label="Supprimer ce partenaire"
+                            compact={false}
+                          />
+                        </div>
+                      </div>
+                    }
+                  />
+                ) : (
+                  <tr key={partner.id} className="hover:bg-paddy/[0.03] transition-colors">
+                    <td className="px-4 py-3 align-middle">
+                      <p className="font-semibold text-ink">{partner.name}</p>
+                      {partner.notes ? <p className="text-xs text-ink-muted line-clamp-1">{partner.notes}</p> : null}
+                    </td>
+                    <td className="px-4 py-3 align-middle hidden sm:table-cell">
+                      <Badge tone="info">{labelOf(PARTNER_TYPES, partner.type)}</Badge>
+                    </td>
+                    <td className="px-4 py-3 align-middle text-xs text-ink-muted hidden md:table-cell">
+                      <p>{partner.contactName ?? '—'}</p>
+                      <p>{partner.phone ?? ''}</p>
+                    </td>
+                    <td className="px-4 py-3 align-middle text-xs text-ink-muted hidden lg:table-cell">
+                      {partner.location ?? '—'}
+                    </td>
+                    <td className="px-4 py-3 align-middle text-xs text-ink-muted hidden lg:table-cell">
+                      {partner.contractType ?? '—'}
+                    </td>
+                    <td className="px-4 py-3 align-middle">
+                      <Badge tone={partner.active ? 'success' : 'neutral'}>
+                        {partner.active ? 'Actif' : 'Inactif'}
+                      </Badge>
+                    </td>
+                  </tr>
+                )
+              )}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
