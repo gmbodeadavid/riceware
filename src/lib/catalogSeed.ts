@@ -20,11 +20,7 @@ export const CATALOG_PRODUCTS: Product[] = [
     status: 'Prototype',
     currentPrice: 'À confirmer',
     oldPrice: 'Prix standard à venir',
-    packs: [
-      { id: '10', label: 'Pack de 10 éléments', quantity: 10, price: 'À confirmer', priceValue: 0, note: 'Pour service individuel' },
-      { id: '20', label: 'Pack de 20 éléments', quantity: 20, price: 'À confirmer', priceValue: 0, note: 'Pour service court' },
-      { id: '30', label: 'Pack de 30 éléments', quantity: 30, price: 'À confirmer', priceValue: 0, note: 'Pour distribution de masse' },
-    ],
+    packs: [],
     accent: 'paddy',
   },
   {
@@ -46,11 +42,7 @@ export const CATALOG_PRODUCTS: Product[] = [
     status: 'Validé',
     currentPrice: 'À confirmer',
     oldPrice: 'Prix standard à venir',
-    packs: [
-      { id: '10', label: 'Pack de 10 éléments', quantity: 10, price: 'À confirmer', priceValue: 0, note: 'Pour événements' },
-      { id: '20', label: 'Pack de 20 éléments', quantity: 20, price: 'À confirmer', priceValue: 0, note: 'Pour petits lots' },
-      { id: '30', label: 'Pack de 30 éléments', quantity: 30, price: 'À confirmer', priceValue: 0, note: 'Pour gros volumes' },
-    ],
+    packs: [],
     accent: 'husk',
   },
   {
@@ -72,11 +64,7 @@ export const CATALOG_PRODUCTS: Product[] = [
     status: 'Prototype',
     currentPrice: 'À confirmer',
     oldPrice: 'Prix standard à venir',
-    packs: [
-      { id: '10', label: 'Pack de 10 éléments', quantity: 10, price: 'À confirmer', priceValue: 0, note: 'Pour couverts de table' },
-      { id: '20', label: 'Pack de 20 éléments', quantity: 20, price: 'À confirmer', priceValue: 0, note: 'Pour commandes de masse' },
-      { id: '30', label: 'Pack de 30 éléments', quantity: 30, price: 'À confirmer', priceValue: 0, note: 'Pour volumes réguliers' },
-    ],
+    packs: [],
     accent: 'surface',
   },
   {
@@ -98,11 +86,7 @@ export const CATALOG_PRODUCTS: Product[] = [
     status: 'Validé',
     currentPrice: 'À confirmer',
     oldPrice: 'Prix standard à venir',
-    packs: [
-      { id: '10', label: 'Pack de 10 éléments', quantity: 10, price: 'À confirmer', priceValue: 0, note: 'Pour service quotidien' },
-      { id: '20', label: 'Pack de 20 éléments', quantity: 20, price: 'À confirmer', priceValue: 0, note: 'Pour petits clients' },
-      { id: '30', label: 'Pack de 30 éléments', quantity: 30, price: 'À confirmer', priceValue: 0, note: 'Pour lots reproductibles' },
-    ],
+    packs: [],
     accent: 'paddy',
   },
   {
@@ -124,11 +108,7 @@ export const CATALOG_PRODUCTS: Product[] = [
     status: 'À venir',
     currentPrice: 'À confirmer',
     oldPrice: 'Prix standard à venir',
-    packs: [
-      { id: '10', label: 'Pack de 10 éléments', quantity: 10, price: 'À confirmer', priceValue: 0, note: 'Pour usage ponctuel' },
-      { id: '20', label: 'Pack de 20 éléments', quantity: 20, price: 'À confirmer', priceValue: 0, note: 'Pour service régulier' },
-      { id: '30', label: 'Pack de 30 éléments', quantity: 30, price: 'À confirmer', priceValue: 0, note: 'Pour clients institutionnels' },
-    ],
+    packs: [],
     accent: 'husk',
   },
 ];
