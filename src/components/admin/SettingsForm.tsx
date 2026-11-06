@@ -65,30 +65,31 @@ export default function SettingsForm({ settings }: { settings: AppSettings }) {
   };
 
   return (
-    <form onSubmit={submit} className="space-y-6">
+    <form onSubmit={submit} className="space-y-4">
+      {/* ── Entreprise ── */}
       <section className="rounded-panel border border-line bg-surface p-5 sm:p-6">
-        <h2 className="font-display text-lg font-semibold">Entreprise</h2>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <h2 className="mb-4 font-display text-base font-semibold text-ink">Entreprise</h2>
+        <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Nom affiché" htmlFor="settings-company">
             <input id="settings-company" value={values.companyName} onChange={(event) => update('companyName', event.target.value)} className={inputClassName} />
           </Field>
-          <Field label="Numéro WhatsApp d’alerte" htmlFor="settings-whatsapp" hint="Format international, sans +. Ex. 225XXXXXXXXXX.">
-            <input id="settings-whatsapp" value={values.whatsappNumber} onChange={(event) => update('whatsappNumber', event.target.value)} className={inputClassName} />
+          <Field label="Numéro WhatsApp d'alerte" htmlFor="settings-whatsapp">
+            <input id="settings-whatsapp" value={values.whatsappNumber} onChange={(event) => update('whatsappNumber', event.target.value)} placeholder="225XXXXXXXXXX" className={inputClassName} />
           </Field>
         </div>
       </section>
 
+      {/* ── Coûts de production ── */}
       <section className="rounded-panel border border-line bg-surface p-5 sm:p-6">
-        <h2 className="font-display text-lg font-semibold">Coûts de production</h2>
-        <p className="mt-1 text-sm text-ink-muted">Valeurs proposées par défaut dans le formulaire de batch.</p>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <h2 className="mb-4 font-display text-base font-semibold text-ink">Coûts de production</h2>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="Poudre (FCFA/kg)" htmlFor="settings-powder">
             <input id="settings-powder" type="number" min="0" step="1" value={values.powderCostPerKg} onChange={(event) => update('powderCostPerKg', event.target.value)} className={inputClassName} />
           </Field>
           <Field label="Liant (FCFA/kg)" htmlFor="settings-binder">
             <input id="settings-binder" type="number" min="0" step="1" value={values.binderCostPerKg} onChange={(event) => update('binderCostPerKg', event.target.value)} className={inputClassName} />
           </Field>
-          <Field label="Main-d’œuvre / batch" htmlFor="settings-labor">
+          <Field label="Main-d'œuvre / batch" htmlFor="settings-labor">
             <input id="settings-labor" type="number" min="0" step="1" value={values.laborCostPerBatch} onChange={(event) => update('laborCostPerBatch', event.target.value)} className={inputClassName} />
           </Field>
           <Field label="Énergie / batch" htmlFor="settings-energy">
@@ -97,42 +98,50 @@ export default function SettingsForm({ settings }: { settings: AppSettings }) {
         </div>
       </section>
 
+      {/* ── Seuils et alertes ── */}
       <section className="rounded-panel border border-line bg-surface p-5 sm:p-6">
-        <h2 className="font-display text-lg font-semibold">Seuils et alertes</h2>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Field label="Alerte rebut (%)" htmlFor="settings-reject">
+        <h2 className="mb-4 font-display text-base font-semibold text-ink">Seuils d'alerte stock</h2>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Field label="Rebut max (%)" htmlFor="settings-reject">
             <input id="settings-reject" type="number" min="0" max="100" step="0.1" value={values.rejectAlertPct} onChange={(event) => update('rejectAlertPct', event.target.value)} className={inputClassName} />
           </Field>
-          <Field label="Seuil coques (kg)" htmlFor="settings-coques">
+          <Field label="Coques min (kg)" htmlFor="settings-coques">
             <input id="settings-coques" type="number" min="0" step="1" value={values.stockCoquesMinKg} onChange={(event) => update('stockCoquesMinKg', event.target.value)} className={inputClassName} />
           </Field>
-          <Field label="Seuil poudre (kg)" htmlFor="settings-powder-min">
+          <Field label="Poudre min (kg)" htmlFor="settings-powder-min">
             <input id="settings-powder-min" type="number" min="0" step="1" value={values.stockPoudreMinKg} onChange={(event) => update('stockPoudreMinKg', event.target.value)} className={inputClassName} />
           </Field>
-          <Field label="Seuil liant (kg)" htmlFor="settings-binder-min">
+          <Field label="Liant min (kg)" htmlFor="settings-binder-min">
             <input id="settings-binder-min" type="number" min="0" step="1" value={values.stockLiantMinKg} onChange={(event) => update('stockLiantMinKg', event.target.value)} className={inputClassName} />
           </Field>
         </div>
       </section>
 
+      {/* ── Objectif Greenpreneur ── */}
       <section className="rounded-panel border border-line bg-surface p-5 sm:p-6">
-        <h2 className="font-display text-lg font-semibold">Objectif Greenpreneur</h2>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <Field label="Cible de production cumulée (pièces)" htmlFor="settings-target" hint="Utilisée si aucun objectif actif n’est défini.">
-            <input id="settings-target" type="number" min="1" step="1" value={values.greenpreneurTargetPieces} onChange={(event) => update('greenpreneurTargetPieces', event.target.value)} className={inputClassName} />
-          </Field>
-          <div className="flex items-end">
-            <button type="button" onClick={() => void sendTest()} disabled={testing} className={buttonClassName('secondary')}>
-              {testing ? 'Envoi…' : 'Tester le canal d’alerte'}
-            </button>
+        <h2 className="mb-4 font-display text-base font-semibold text-ink">Objectif Greenpreneur</h2>
+        <div className="flex items-center gap-4">
+          <div className="w-56 shrink-0">
+            <Field label="Cible cumulée (pièces)" htmlFor="settings-target" hint="Utilisée si aucun objectif actif n'est défini.">
+              <input id="settings-target" type="number" min="1" step="1" value={values.greenpreneurTargetPieces} onChange={(event) => update('greenpreneurTargetPieces', event.target.value)} className={inputClassName} />
+            </Field>
           </div>
+          <button
+            type="button"
+            onClick={() => void sendTest()}
+            disabled={testing}
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-control bg-husk px-4 py-2 text-sm font-semibold text-husk-text transition-colors hover:bg-husk-deep hover:text-husk-text disabled:opacity-60 shrink-0"
+          >
+            {testing ? 'Envoi…' : 'Tester le canal d\'alerte'}
+          </button>
         </div>
       </section>
 
+      {/* ── Feedback + actions ── */}
       {error ? <FormFeedback type="error" message={error} /> : null}
       {success ? <FormFeedback type="success" message={success} /> : null}
 
-      <div className="flex justify-end">
+      <div>
         <button type="submit" disabled={loading} className={buttonClassName('primary')}>
           {loading ? 'Enregistrement…' : 'Enregistrer les paramètres'}
         </button>

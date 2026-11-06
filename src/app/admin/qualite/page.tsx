@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { requireAdminPage } from '@/lib/admin-guard';
 import { can } from '@/lib/rbac';
-import { getQualityOverview, listBatches, listTests } from '@/lib/production/queries';
+import { getQualityOverview, listTests } from '@/lib/production/queries';
 import {
   labelOf,
   PRODUCT_TYPES,
@@ -10,9 +10,7 @@ import {
 } from '@/lib/production/types';
 import { formatDateTime, formatNumber, formatPercent } from '@/lib/format';
 import { PageHeader, StatCard, Badge, EmptyState, LinkButton, Section } from '@/components/admin/ui';
-import { buttonClassName, inputClassName } from '@/components/admin/fields';
-import TestForm from '@/components/admin/TestForm';
-import ProductForm from '@/components/admin/ProductForm';
+import { buttonClassName } from '@/components/admin/fields';
 import DeleteButton from '@/components/admin/DeleteButton';
 
 type PageProps = { searchParams: Promise<{ type?: string; result?: string }> };
@@ -20,10 +18,9 @@ type PageProps = { searchParams: Promise<{ type?: string; result?: string }> };
 export default async function QualityPage({ searchParams }: PageProps) {
   const session = await requireAdminPage('quality:view');
   const filters = await searchParams;
-  const [overview, tests, batches] = await Promise.all([
+  const [overview, tests] = await Promise.all([
     getQualityOverview(),
     listTests({ typeTest: filters.type, result: filters.result }),
-    listBatches({ limit: 100 }),
   ]);
 
   const canWrite = can(session.role, 'quality:write');
@@ -36,10 +33,25 @@ export default async function QualityPage({ searchParams }: PageProps) {
     <div>
       <PageHeader
         title="Contrôle qualité"
-        description="Tests de charge, d’étanchéité et visuels. Chaque échec crée une alerte et rejette le produit concerné."
         breadcrumb={[{ label: 'Tableau de bord', href: '/admin' }, { label: 'Qualité' }]}
         actions={
           <>
+            {canWrite ? (
+              <>
+                <Link
+                  href="/admin/qualite/test"
+                  className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-control bg-husk px-4 py-2 text-sm font-semibold text-on-husk transition-colors hover:bg-husk-deep"
+                >
+                  + Saisir un test
+                </Link>
+                <Link
+                  href="/admin/qualite/produit"
+                  className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-control bg-paddy px-4 py-2 text-sm font-semibold text-on-paddy transition-colors hover:bg-paddy-deep"
+                >
+                  + Enregistrer un produit
+                </Link>
+              </>
+            ) : null}
             <LinkButton href={`${exportBase}&format=csv`} target="_blank">CSV</LinkButton>
             <LinkButton href={`${exportBase}&format=xls`} target="_blank">Excel</LinkButton>
           </>
@@ -48,50 +60,37 @@ export default async function QualityPage({ searchParams }: PageProps) {
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Taux de réussite" value={formatPercent(overview.passRate)} hint={`${overview.passed} succès · ${overview.failed} échec(s)`} tone={overview.passRate >= 90 || overview.passed + overview.failed === 0 ? 'paddy' : 'warning'} />
-        <StatCard label="Produits enregistrés" value={overview.products.length} hint={`${overview.pendingProducts.length} sans test qualité`} />
-        <StatCard label="Tests réalisés" value={overview.passed + overview.failed} hint="Tous types confondus" />
-        <StatCard label="Produits rejetés" value={overview.products.filter((product) => product.status === 'rejete').length} tone={overview.products.some((product) => product.status === 'rejete') ? 'danger' : 'default'} hint="Statut mis à jour après un test en échec" />
+        <StatCard label="Produits" value={overview.products.length} hint={`${overview.pendingProducts.length} sans test`} />
+        <StatCard label="Tests réalisés" value={overview.passed + overview.failed} />
+        <StatCard label="Rejetés" value={overview.products.filter((product) => product.status === 'rejete').length} tone={overview.products.some((product) => product.status === 'rejete') ? 'danger' : 'default'} />
       </div>
 
-      <form method="get" className="mb-5 mt-5 grid gap-3 rounded-panel border border-line bg-surface p-4 sm:grid-cols-2 lg:grid-cols-4">
+      <form method="get" className="mb-5 mt-4 flex flex-wrap items-end gap-3 rounded-panel border border-line bg-surface px-4 py-3">
         <div>
-          <label className="mb-1 block text-xs font-medium text-ink-muted" htmlFor="quality-type">Type de test</label>
-          <select id="quality-type" name="type" defaultValue={filters.type ?? ''} className={inputClassName}>
+          <label className="mb-1 block text-xs font-medium text-ink-muted" htmlFor="quality-type">Type</label>
+          <select id="quality-type" name="type" defaultValue={filters.type ?? ''} className="rounded-control border border-line bg-ground px-3 py-2 text-sm">
             <option value="">Tous</option>
             {TEST_TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
           </select>
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-ink-muted" htmlFor="quality-result">Résultat</label>
-          <select id="quality-result" name="result" defaultValue={filters.result ?? ''} className={inputClassName}>
+          <select id="quality-result" name="result" defaultValue={filters.result ?? ''} className="rounded-control border border-line bg-ground px-3 py-2 text-sm">
             <option value="">Tous</option>
             {TEST_RESULTS.map((result) => <option key={result.value} value={result.value}>{result.label}</option>)}
           </select>
         </div>
-        <div className="flex items-end gap-2 sm:col-span-2">
+        <div className="flex items-center gap-2">
           <button type="submit" className={buttonClassName('primary')}>Filtrer</button>
           <Link href="/admin/qualite" className={buttonClassName('secondary')}>Réinitialiser</Link>
-          <span className="ml-auto self-center text-xs text-ink-muted">{tests.length} test(s)</span>
         </div>
+        <span className="ml-auto self-center text-xs text-ink-muted">{tests.length} {tests.length === 1 ? 'test' : 'tests'}</span>
       </form>
 
-      {canWrite ? (
-        <div className="mb-5 space-y-5">
-          <TestForm
-            products={overview.products.map((product) => ({
-              id: product.id,
-              label: `${labelOf(PRODUCT_TYPES, product.type)} — ${formatNumber(product.weightG, 'g')} (${product.batch.code})`,
-            }))}
-            batches={batches.map((batch) => ({ id: batch.id, code: batch.code }))}
-          />
-          <ProductForm batches={batches.map((batch) => ({ id: batch.id, code: batch.code }))} />
-        </div>
-      ) : null}
-
-      <div className="grid gap-6 xl:grid-cols-[1.5fr_1fr]">
-        <Section title="Derniers tests" description="Résultats détaillés et défauts observés.">
+      <div className="grid gap-5 xl:grid-cols-2">
+        <Section title="Derniers tests">
           {tests.length === 0 ? (
-            <EmptyState title="Aucun test" description="Aucun test ne correspond aux filtres sélectionnés." />
+            <EmptyState title="Aucun test" />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[760px] text-left text-sm">
@@ -142,9 +141,9 @@ export default async function QualityPage({ searchParams }: PageProps) {
           )}
         </Section>
 
-        <Section title="Produits à contrôler" description="Produits sans aucun test ou dernière mesure.">
+        <Section title="Produits à contrôler">
           {overview.products.length === 0 ? (
-            <EmptyState title="Aucun produit fini" description="Enregistrez un produit depuis un batch de production." />
+            <EmptyState title="Aucun produit fini" />
           ) : (
             <ul className="divide-y divide-line">
               {overview.products.slice(0, 12).map((product) => (
@@ -153,7 +152,7 @@ export default async function QualityPage({ searchParams }: PageProps) {
                     <p className="text-sm font-semibold">{labelOf(PRODUCT_TYPES, product.type)} · {formatNumber(product.weightG, 'g')}</p>
                     <p className="text-xs text-ink-muted">
                       <Link href={`/admin/production/${product.batchId}`} className="text-paddy hover:underline">{product.batch.code}</Link>
-                      {' '}· {formatNumber(product.thicknessMm, 'mm')} · {product._count.tests} test(s)
+                      {' '}· {formatNumber(product.thicknessMm, 'mm')} · {product._count.tests} {product._count.tests === 1 ? 'test' : 'tests'}
                     </p>
                   </div>
                   <Badge tone={product.status === 'valide' ? (product._count.tests === 0 ? 'warning' : 'success') : 'danger'}>

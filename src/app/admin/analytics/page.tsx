@@ -88,7 +88,6 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
     <div>
       <PageHeader
         title="Analyses & performance"
-        description={`Du ${formatDate(data.from)} au ${formatDate(data.to)}. Production, coûts, qualité, matière première, stocks et commandes sur la période sélectionnée.`}
         breadcrumb={[
           { label: 'Tableau de bord', href: '/admin' },
           { label: 'Analyses' },
@@ -103,7 +102,7 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
         }
       />
 
-      {/* Period selector */}
+      {/* Sélecteur de période */}
       <div className="mb-5 flex flex-wrap items-center gap-2 rounded-panel border border-line bg-surface p-3 shadow-sm">
         <span className="px-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">Période</span>
         {ANALYTICS_RANGES.map((range) => (
@@ -117,7 +116,7 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
           </Link>
         ))}
         <span className="ml-auto px-1 text-xs text-ink-muted">
-          {formatNumber(kpis.batches)} batch(es) · {formatNumber(kpis.testsPassed + kpis.testsFailed)} test(s)
+          Du {formatDate(data.from)} au {formatDate(data.to)} — {formatNumber(kpis.batches)} {kpis.batches === 1 ? 'batch' : 'batches'} · {formatNumber(kpis.testsPassed + kpis.testsFailed)} test{kpis.testsPassed + kpis.testsFailed > 1 ? 's' : ''}
         </span>
       </div>
 
@@ -129,7 +128,7 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
         </AlertBanner>
       ) : null}
 
-      {/* KPIs — grille unifiée 8 cartes, hauteur égale par rangée (h-full sur StatCard) */}
+      {/* KPIs — grille 8 cartes */}
       <div className="grid gap-3 grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Pièces produites"
@@ -170,7 +169,7 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
           value={formatPercent(kpis.passRate)}
           hint={
             <>
-              {kpis.testsPassed} succès · {kpis.testsFailed} échec(s)
+              {kpis.testsPassed} succès · {kpis.testsFailed} échec{kpis.testsFailed > 1 ? 's' : ''}
               <br />
               <Comparison value={data.comparison.passRate} unit="pts" />
             </>
@@ -178,11 +177,11 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
           tone={kpis.testsPassed + kpis.testsFailed > 0 && kpis.passRate < 90 ? 'warning' : 'default'}
         />
         <StatCard
-          label="Chiffre d'affaires encaissé"
+          label="Chiffre d'affaires"
           value={formatCurrency(kpis.revenue)}
           hint={
             <>
-              {kpis.paidOrders} commande(s) payée(s) sur {kpis.totalOrders}
+              {kpis.paidOrders} commande{kpis.paidOrders > 1 ? 's' : ''} payée{kpis.paidOrders > 1 ? 's' : ''} sur {kpis.totalOrders}
               <br />
               <Comparison value={data.comparison.revenue} />
             </>
@@ -193,7 +192,7 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
           value={formatNumber(kpis.totalLotsWeight, 'kg')}
           hint={
             <>
-              {kpis.lots} lot(s) accepté(s) · {kpis.refusedLots} refusé(s)
+              {kpis.lots} lot{kpis.lots > 1 ? 's' : ''} accepté{kpis.lots > 1 ? 's' : ''} · {kpis.refusedLots} refusé{kpis.refusedLots > 1 ? 's' : ''}
               <br />
               <Comparison value={data.comparison.lotsWeight} />
             </>
@@ -202,25 +201,24 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
         <StatCard
           label="Stocks à surveiller"
           value={kpis.lowStockCount}
-          hint={`${kpis.activeRizeries} rizerie(s) active(s) · ${kpis.activePartners} partenaire(s)`}
+          hint={`${kpis.activeRizeries} rizerie${kpis.activeRizeries > 1 ? 's' : ''} active${kpis.activeRizeries > 1 ? 's' : ''} · ${kpis.activePartners} partenaire${kpis.activePartners > 1 ? 's' : ''}`}
           tone={kpis.lowStockCount ? 'warning' : 'default'}
         />
         <StatCard
           label="Commandes reçues"
           value={formatNumber(kpis.totalOrders)}
-          hint={`${kpis.paidOrders} payée(s) · ${formatCurrency(kpis.revenue)} encaissés`}
+          hint={`${kpis.paidOrders} payée${kpis.paidOrders > 1 ? 's' : ''} · ${formatCurrency(kpis.revenue)}`}
         />
       </div>
 
-      {/* Charts: production trend + cost */}
+      {/* Graphiques : tendance production + coût */}
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
         <Section
           title="Production sur la période"
-          description={days <= 90 ? 'Pièces produites par semaine.' : 'Pièces produites par mois.'}
           actions={<LinkButton href="/admin/production">Détail production</LinkButton>}
         >
           {kpis.batches === 0 ? (
-            <EmptyState title="Aucune production" description="Aucun batch n'a été enregistré sur cette période." />
+            <EmptyState title="Aucune production" description="Aucun batch enregistré sur cette période." />
           ) : (
             <LineChart
               data={data.trend.map((point) => ({
@@ -235,7 +233,6 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
 
         <Section
           title="Coût de revient"
-          description="Coût moyen par pièce valide sur la période."
           actions={<LinkButton href="/admin/rapports">Rapports</LinkButton>}
         >
           {kpis.batches === 0 ? (
@@ -253,12 +250,9 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
         </Section>
       </div>
 
-      {/* Product mix + reject causes */}
+      {/* Mix produits + causes de rebut */}
       <div className="mt-6 grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-        <Section
-          title="Mix produits"
-          description="Répartition des volumes et performance par type de produit."
-        >
+        <Section title="Mix produits">
           {data.productMix.length === 0 ? (
             <EmptyState title="Aucun produit fabriqué" description="Aucun batch sur la période." />
           ) : (
@@ -266,27 +260,27 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-line bg-ground/40 text-[11px] uppercase tracking-wide text-ink-muted">
-                    <th className="px-4 py-3 font-semibold">Produit</th>
-                    <th className="px-4 py-3 font-semibold hidden sm:table-cell">Batches</th>
-                    <th className="px-4 py-3 font-semibold">Pièces</th>
-                    <th className="px-4 py-3 font-semibold">Rendement</th>
-                    <th className="px-4 py-3 font-semibold hidden md:table-cell">Coût / pce</th>
-                    <th className="px-4 py-3 font-semibold hidden lg:table-cell">Volume</th>
+                    <th className="px-3 py-2 font-semibold">Produit</th>
+                    <th className="px-3 py-2 font-semibold hidden sm:table-cell">Batches</th>
+                    <th className="px-3 py-2 font-semibold">Pièces</th>
+                    <th className="px-3 py-2 font-semibold">Rendement</th>
+                    <th className="px-3 py-2 font-semibold hidden md:table-cell">Coût / pce</th>
+                    <th className="px-3 py-2 font-semibold hidden lg:table-cell">Volume</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line/50">
                   {data.productMix.map((product) => (
                     <tr key={product.type} className="group transition-colors hover:bg-paddy/[0.03]">
-                      <td className="px-4 py-3 align-middle font-medium">{product.label}</td>
-                      <td className="px-4 py-3 align-middle text-ink-muted hidden sm:table-cell">{product.batches}</td>
-                      <td className="px-4 py-3 align-middle">{formatNumber(product.pieces)}</td>
-                      <td className="px-4 py-3 align-middle">
+                      <td className="px-3 py-2 align-middle font-medium">{product.label}</td>
+                      <td className="px-3 py-2 align-middle text-ink-muted hidden sm:table-cell">{product.batches}</td>
+                      <td className="px-3 py-2 align-middle">{formatNumber(product.pieces)}</td>
+                      <td className="px-3 py-2 align-middle">
                         <Badge tone={product.yieldRate >= 90 ? 'success' : 'warning'}>
                           {formatPercent(product.yieldRate)}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3 align-middle text-ink-muted hidden md:table-cell">{formatCurrency(product.costPerUnit)}</td>
-                      <td className="px-4 py-3 align-middle hidden lg:table-cell w-28">
+                      <td className="px-3 py-2 align-middle text-ink-muted hidden md:table-cell">{formatCurrency(product.costPerUnit)}</td>
+                      <td className="px-3 py-2 align-middle hidden lg:table-cell w-28">
                         <div className="h-1.5 w-full overflow-hidden rounded-full bg-grain/70">
                           <div
                             className="h-full rounded-full bg-paddy transition-all"
@@ -304,7 +298,6 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
 
         <Section
           title="Causes de rebut"
-          description="Volume de rebuts déclaré sur la période."
           actions={<LinkButton href="/admin/qualite">Qualité</LinkButton>}
         >
           <DonutChart
@@ -315,15 +308,14 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
         </Section>
       </div>
 
-      {/* Quality + orders pipeline */}
+      {/* Qualité + pipeline commandes */}
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
         <Section
           title="Qualité par type de test"
-          description="Taux de réussite et volume de contrôles."
           actions={<LinkButton href="/admin/qualite">Qualité</LinkButton>}
         >
           {kpis.testsPassed + kpis.testsFailed === 0 ? (
-            <EmptyState title="Aucun test qualité" description="Aucun contrôle n'a été enregistré sur la période." />
+            <EmptyState title="Aucun test qualité" description="Aucun contrôle enregistré sur la période." />
           ) : (
             <ul className="space-y-4">
               {data.qualityByType.map((test) => (
@@ -331,7 +323,7 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
                   <div className="mb-1.5 flex items-center justify-between gap-3 text-sm">
                     <span className="font-medium">{test.label}</span>
                     <span className="text-xs text-ink-muted">
-                      {test.passed} succès · {test.failed} échec(s) · {test.total} test(s)
+                      {test.passed} succès · {test.failed} échec{test.failed > 1 ? 's' : ''} · {test.total} test{test.total > 1 ? 's' : ''}
                     </span>
                   </div>
                   <ProgressBar value={test.passRate} label={`Réussite ${formatPercent(test.passRate)}`} />
@@ -343,31 +335,30 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
 
         <Section
           title="Commandes par statut"
-          description="Volume et montant des demandes reçues sur la période."
           actions={<LinkButton href="/admin/commandes">Commandes</LinkButton>}
         >
           {data.orderPipeline.length === 0 ? (
-            <EmptyState title="Aucune commande" description="Aucune demande n'a été reçue sur la période." />
+            <EmptyState title="Aucune commande" description="Aucune demande reçue sur la période." />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-line bg-ground/40 text-[11px] uppercase tracking-wide text-ink-muted">
-                    <th className="px-4 py-3 font-semibold">Statut</th>
-                    <th className="px-4 py-3 font-semibold">Commandes</th>
-                    <th className="px-4 py-3 font-semibold">Montant</th>
+                    <th className="px-3 py-2 font-semibold">Statut</th>
+                    <th className="px-3 py-2 font-semibold">Commandes</th>
+                    <th className="px-3 py-2 font-semibold">Montant</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line/50">
                   {data.orderPipeline.map((row) => (
                     <tr key={row.status} className="group transition-colors hover:bg-paddy/[0.03]">
-                      <td className="px-4 py-3 align-middle">
+                      <td className="px-3 py-2 align-middle">
                         <Badge tone={orderTone(row.status)}>
                           {ORDER_STATUS_LABELS[row.status] ?? row.status}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3 align-middle font-medium">{row.count}</td>
-                      <td className="px-4 py-3 align-middle text-ink-muted">{formatCurrency(row.amount)}</td>
+                      <td className="px-3 py-2 align-middle font-medium">{row.count}</td>
+                      <td className="px-3 py-2 align-middle text-ink-muted">{formatCurrency(row.amount)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -377,11 +368,10 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
         </Section>
       </div>
 
-      {/* Rizeries performance + stock health */}
+      {/* Performance rizeries + état stocks */}
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
         <Section
           title="Performance des rizeries"
-          description="Volume de coques accepté et régularité des réceptions."
           actions={<LinkButton href="/admin/rizieries">Rizeries</LinkButton>}
         >
           {data.rizeriePerformance.length === 0 ? (
@@ -391,27 +381,27 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-line bg-ground/40 text-[11px] uppercase tracking-wide text-ink-muted">
-                    <th className="px-4 py-3 font-semibold">Rizerie</th>
-                    <th className="px-4 py-3 font-semibold hidden sm:table-cell">Lots</th>
-                    <th className="px-4 py-3 font-semibold">Poids accepté</th>
-                    <th className="px-4 py-3 font-semibold hidden md:table-cell">Dernière réception</th>
+                    <th className="px-3 py-2 font-semibold">Rizerie</th>
+                    <th className="px-3 py-2 font-semibold hidden sm:table-cell">Lots</th>
+                    <th className="px-3 py-2 font-semibold">Poids accepté</th>
+                    <th className="px-3 py-2 font-semibold hidden md:table-cell">Dernière réception</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line/50">
                   {data.rizeriePerformance.slice(0, 8).map((rizerie) => (
                     <tr key={rizerie.id} className="group transition-colors hover:bg-paddy/[0.03]">
-                      <td className="px-4 py-3 align-middle">
+                      <td className="px-3 py-2 align-middle">
                         <p className="font-medium">{rizerie.name}</p>
                         <p className="text-xs text-ink-muted">{rizerie.location}</p>
                       </td>
-                      <td className="px-4 py-3 align-middle hidden sm:table-cell">
+                      <td className="px-3 py-2 align-middle hidden sm:table-cell">
                         {rizerie.lots}
                         {rizerie.refused > 0 ? (
-                          <span className="ml-1 text-xs text-danger">({rizerie.refused} refusé(s))</span>
+                          <span className="ml-1 text-xs text-danger">({rizerie.refused} refusé{rizerie.refused > 1 ? 's' : ''})</span>
                         ) : null}
                       </td>
-                      <td className="px-4 py-3 align-middle font-medium whitespace-nowrap">{formatNumber(rizerie.weightKg, 'kg')}</td>
-                      <td className="px-4 py-3 align-middle text-ink-muted text-xs hidden md:table-cell whitespace-nowrap">{formatDate(rizerie.lastReceivedAt)}</td>
+                      <td className="px-3 py-2 align-middle font-medium whitespace-nowrap">{formatNumber(rizerie.weightKg, 'kg')}</td>
+                      <td className="px-3 py-2 align-middle text-ink-muted text-xs hidden md:table-cell whitespace-nowrap">{formatDate(rizerie.lastReceivedAt)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -422,7 +412,6 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
 
         <Section
           title="État des stocks"
-          description="Références triées par criticité."
           actions={<LinkButton href="/admin/stocks">Stocks</LinkButton>}
         >
           {data.stockHealth.length === 0 ? (
@@ -432,10 +421,10 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-line bg-ground/40 text-[11px] uppercase tracking-wide text-ink-muted">
-                    <th className="px-4 py-3 font-semibold">Référence</th>
-                    <th className="px-4 py-3 font-semibold">Quantité</th>
-                    <th className="px-4 py-3 font-semibold hidden sm:table-cell">Seuil</th>
-                    <th className="px-4 py-3 font-semibold">État</th>
+                    <th className="px-3 py-2 font-semibold">Référence</th>
+                    <th className="px-3 py-2 font-semibold">Quantité</th>
+                    <th className="px-3 py-2 font-semibold hidden sm:table-cell">Seuil</th>
+                    <th className="px-3 py-2 font-semibold">État</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line/50">
@@ -443,15 +432,15 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
                     const status = STOCK_STATUS[stock.status];
                     return (
                       <tr key={stock.id} className="group transition-colors hover:bg-paddy/[0.03]">
-                        <td className="px-4 py-3 align-middle">
+                        <td className="px-3 py-2 align-middle">
                           <p className="font-medium">{stock.label}</p>
                           <p className="text-xs text-ink-muted">{stock.location ?? '—'}</p>
                         </td>
-                        <td className="px-4 py-3 align-middle font-medium whitespace-nowrap">{formatNumber(stock.quantity, stock.unit)}</td>
-                        <td className="px-4 py-3 align-middle text-ink-muted hidden sm:table-cell whitespace-nowrap">
+                        <td className="px-3 py-2 align-middle font-medium whitespace-nowrap">{formatNumber(stock.quantity, stock.unit)}</td>
+                        <td className="px-3 py-2 align-middle text-ink-muted hidden sm:table-cell whitespace-nowrap">
                           {stock.minThreshold > 0 ? formatNumber(stock.minThreshold, stock.unit) : '—'}
                         </td>
-                        <td className="px-4 py-3 align-middle">
+                        <td className="px-3 py-2 align-middle">
                           <Badge tone={status.tone}>{status.label}</Badge>
                         </td>
                       </tr>
@@ -464,11 +453,10 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
         </Section>
       </div>
 
-      {/* Top cost batches */}
+      {/* Batches les plus coûteux */}
       <div className="mt-6">
         <Section
           title="Batches les plus coûteux"
-          description="Coût de revient par pièce valide sur la période."
           actions={<LinkButton href="/admin/production">Production</LinkButton>}
         >
           {data.topCostBatches.length === 0 ? (
@@ -478,19 +466,19 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-line bg-ground/40 text-[11px] uppercase tracking-wide text-ink-muted">
-                    <th className="px-4 py-3 font-semibold">Batch</th>
-                    <th className="px-4 py-3 font-semibold hidden sm:table-cell">Date</th>
-                    <th className="px-4 py-3 font-semibold hidden sm:table-cell">Produit</th>
-                    <th className="px-4 py-3 font-semibold hidden md:table-cell">Pièces</th>
-                    <th className="px-4 py-3 font-semibold">Rebut</th>
-                    <th className="px-4 py-3 font-semibold">Coût / pièce</th>
-                    <th className="px-4 py-3 font-semibold hidden lg:table-cell">Niveau</th>
+                    <th className="px-3 py-2 font-semibold">Batch</th>
+                    <th className="px-3 py-2 font-semibold hidden sm:table-cell">Date</th>
+                    <th className="px-3 py-2 font-semibold hidden sm:table-cell">Produit</th>
+                    <th className="px-3 py-2 font-semibold hidden md:table-cell">Pièces</th>
+                    <th className="px-3 py-2 font-semibold">Rebut</th>
+                    <th className="px-3 py-2 font-semibold">Coût / pièce</th>
+                    <th className="px-3 py-2 font-semibold hidden lg:table-cell">Niveau</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line/50">
                   {data.topCostBatches.map((batch) => (
                     <tr key={batch.id} className="group transition-colors hover:bg-paddy/[0.03]">
-                      <td className="px-4 py-3 align-middle">
+                      <td className="px-3 py-2 align-middle">
                         <Link
                           href={`/admin/production/${batch.id}`}
                           className="font-mono-brand text-xs font-semibold text-paddy hover:text-paddy-deep hover:underline"
@@ -498,16 +486,16 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
                           {batch.code}
                         </Link>
                       </td>
-                      <td className="px-4 py-3 align-middle text-ink-muted text-xs hidden sm:table-cell whitespace-nowrap">{formatDate(batch.startedAt)}</td>
-                      <td className="px-4 py-3 align-middle hidden sm:table-cell">{batch.productLabel}</td>
-                      <td className="px-4 py-3 align-middle hidden md:table-cell">{formatNumber(batch.piecesProduced)}</td>
-                      <td className="px-4 py-3 align-middle">
+                      <td className="px-3 py-2 align-middle text-ink-muted text-xs hidden sm:table-cell whitespace-nowrap">{formatDate(batch.startedAt)}</td>
+                      <td className="px-3 py-2 align-middle hidden sm:table-cell">{batch.productLabel}</td>
+                      <td className="px-3 py-2 align-middle hidden md:table-cell">{formatNumber(batch.piecesProduced)}</td>
+                      <td className="px-3 py-2 align-middle">
                         <Badge tone={batch.rejectRate > 10 ? 'danger' : 'neutral'}>
                           {formatPercent(batch.rejectRate)}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3 align-middle font-medium whitespace-nowrap">{formatCurrency(batch.costPerUnit)}</td>
-                      <td className="px-4 py-3 align-middle hidden lg:table-cell w-28">
+                      <td className="px-3 py-2 align-middle font-medium whitespace-nowrap">{formatCurrency(batch.costPerUnit)}</td>
+                      <td className="px-3 py-2 align-middle hidden lg:table-cell w-28">
                         <div className="h-1.5 w-full overflow-hidden rounded-full bg-grain/70">
                           <div
                             className="h-full rounded-full bg-bran transition-all"
@@ -525,8 +513,7 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
       </div>
 
       <p className="mt-5 text-xs text-ink-muted">
-        Les montants sont exprimés en FCFA. Les comparaisons portent sur la période précédente de même durée.
-        Données générées le {formatDate(data.generatedAt)}.
+        Montants en FCFA. Comparaisons sur la période précédente de même durée. Données générées le {formatDate(data.generatedAt)}.
       </p>
     </div>
   );

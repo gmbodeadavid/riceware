@@ -382,6 +382,13 @@ export async function listUsers() {
   });
 }
 
+export async function getUserById(id: string) {
+  return prisma.user.findUnique({
+    where: { id },
+    select: { id: true, name: true, email: true, role: true, active: true },
+  });
+}
+
 export async function listGoals() {
   return prisma.goal.findMany({ orderBy: [{ status: 'asc' }, { endDate: 'asc' }, { createdAt: 'desc' }] });
 }

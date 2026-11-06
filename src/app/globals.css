@@ -59,6 +59,14 @@
     }
   }
 
+  /* Prevent the browser from ever showing a second scrollbar alongside
+     the admin layout's own overflow-y-auto column. */
+  html:has(.admin-shell),
+  body:has(.admin-shell) {
+    overflow: hidden;
+    height: 100%;
+  }
+
   body {
     font-family: var(--font-body);
     background-color: var(--color-ground);

@@ -33,7 +33,6 @@ export default async function PacksPage({ searchParams }: PageProps) {
     <div>
       <PageHeader
         title="Lots de packs"
-        description="Lots de conditionnement créés depuis les batches de production."
         breadcrumb={[{ label: 'Tableau de bord', href: '/admin' }, { label: 'Lots de packs' }]}
       />
 
@@ -71,9 +70,9 @@ export default async function PacksPage({ searchParams }: PageProps) {
         </div>
       </form>
 
-      <Section title={`${packLots.length} lot(s) de packs`} description="Stock restant = quantité − allocations actives.">
+      <Section title={`${packLots.length} ${packLots.length === 1 ? 'lot' : 'lots'}`}>
         {packLots.length === 0 ? (
-          <EmptyState title="Aucun lot de packs" description="Créez des lots de packs depuis la fiche d'un batch de production." />
+          <EmptyState title="Aucun lot de packs" />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">

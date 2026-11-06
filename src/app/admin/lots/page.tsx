@@ -5,8 +5,7 @@ import { listLots, listRizeries } from '@/lib/production/queries';
 import { labelOf, LOT_STATUSES, LOT_VISUAL_QUALITIES } from '@/lib/production/types';
 import { formatDateTime, formatNumber, formatPercent } from '@/lib/format';
 import { PageHeader, Badge, EmptyState, LinkButton } from '@/components/admin/ui';
-import { buttonClassName, inputClassName } from '@/components/admin/fields';
-import LotForm from '@/components/admin/LotForm';
+import { buttonClassName } from '@/components/admin/fields';
 import DeleteButton from '@/components/admin/DeleteButton';
 
 type PageProps = {
@@ -38,57 +37,61 @@ export default async function LotsPage({ searchParams }: PageProps) {
     <div>
       <PageHeader
         title="Lots de coques"
-        description="Traçabilité des matières premières : origine, poids, humidité, qualité visuelle et ID unique."
         breadcrumb={[{ label: 'Tableau de bord', href: '/admin' }, { label: 'Lots de coques' }]}
         actions={
           <>
+            {canWrite ? (
+              <Link
+                href="/admin/lots/nouveau"
+                className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-control bg-paddy px-4 py-2 text-sm font-semibold text-on-paddy transition-colors hover:bg-paddy-deep"
+              >
+                + Saisir un lot
+              </Link>
+            ) : null}
             <LinkButton href={`${exportBase}&format=csv`} target="_blank">CSV</LinkButton>
             <LinkButton href={`${exportBase}&format=xls`} target="_blank">Excel</LinkButton>
           </>
         }
       />
 
-      <form method="get" className="mb-5 grid gap-3 rounded-panel border border-line bg-surface p-4 sm:grid-cols-2 lg:grid-cols-6">
-        <div className="lg:col-span-2">
+      <form method="get" className="mb-5 flex flex-wrap items-end gap-3 rounded-panel border border-line bg-surface px-4 py-3">
+        <div>
           <label className="mb-1 block text-xs font-medium text-ink-muted" htmlFor="filter-q">Recherche</label>
-          <input id="filter-q" name="q" defaultValue={filters.q ?? ''} placeholder="ID, rizerie, note…" className={inputClassName} />
+          <input id="filter-q" name="q" defaultValue={filters.q ?? ''} placeholder="ID, rizerie, note…" className="rounded-control border border-line bg-ground px-3 py-2 text-sm w-44" />
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-ink-muted" htmlFor="filter-rizerie">Rizerie</label>
-          <select id="filter-rizerie" name="rizerieId" defaultValue={filters.rizerieId ?? ''} className={inputClassName}>
+          <select id="filter-rizerie" name="rizerieId" defaultValue={filters.rizerieId ?? ''} className="rounded-control border border-line bg-ground px-3 py-2 text-sm">
             <option value="">Toutes</option>
             {rizeries.map((rizerie) => <option key={rizerie.id} value={rizerie.id}>{rizerie.name}</option>)}
           </select>
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-ink-muted" htmlFor="filter-status">Statut</label>
-          <select id="filter-status" name="status" defaultValue={filters.status ?? ''} className={inputClassName}>
+          <select id="filter-status" name="status" defaultValue={filters.status ?? ''} className="rounded-control border border-line bg-ground px-3 py-2 text-sm">
             <option value="">Tous</option>
             {LOT_STATUSES.map((status) => <option key={status.value} value={status.value}>{status.label}</option>)}
           </select>
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-ink-muted" htmlFor="filter-from">Du</label>
-          <input id="filter-from" name="from" type="date" defaultValue={filters.from ?? ''} className={inputClassName} />
+          <input id="filter-from" name="from" type="date" defaultValue={filters.from ?? ''} className="rounded-control border border-line bg-ground px-3 py-2 text-sm" />
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-ink-muted" htmlFor="filter-to">Au</label>
-          <input id="filter-to" name="to" type="date" defaultValue={filters.to ?? ''} className={inputClassName} />
+          <input id="filter-to" name="to" type="date" defaultValue={filters.to ?? ''} className="rounded-control border border-line bg-ground px-3 py-2 text-sm" />
         </div>
-        <div className="flex items-end gap-2 sm:col-span-2 lg:col-span-6">
+        <div className="flex items-center gap-2">
           <button type="submit" className={buttonClassName('primary')}>Filtrer</button>
           <Link href="/admin/lots" className={buttonClassName('secondary')}>Réinitialiser</Link>
-          <span className="ml-auto self-center text-xs text-ink-muted">{lots.length} lot(s)</span>
         </div>
+        <span className="ml-auto self-center text-xs text-ink-muted">{lots.length} {lots.length === 1 ? 'lot' : 'lots'}</span>
       </form>
-
-      {canWrite ? <div className="mb-5"><LotForm rizeries={rizeries.map((rizerie) => ({ id: rizerie.id, name: rizerie.name }))} /></div> : null}
 
       {lots.length === 0 ? (
         <EmptyState
           title="Aucun lot trouvé"
-          description={rizeries.length ? 'Ajustez les filtres ou enregistrez un premier lot de coques.' : 'Créez d’abord une rizerie, puis enregistrez un lot de coques.'}
-          action={<LinkButton href="/admin/rizieries" variant="primary">Gérer les rizeries</LinkButton>}
+          action={rizeries.length === 0 ? <LinkButton href="/admin/rizieries" variant="primary">Gérer les rizeries</LinkButton> : undefined}
         />
       ) : (
         <div className="overflow-x-auto rounded-panel border border-line bg-surface">

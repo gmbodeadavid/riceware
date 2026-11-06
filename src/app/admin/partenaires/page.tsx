@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { requireAdminPage } from '@/lib/admin-guard';
 import { can } from '@/lib/rbac';
 import { listPartners } from '@/lib/production/queries';
@@ -19,8 +20,17 @@ export default async function PartnersPage() {
     <div>
       <PageHeader
         title="Partenaires"
-        description="Laboratoires, clients pilotes, fournisseurs et institutions. Les documents associés sont disponibles dans le module Documents."
         breadcrumb={[{ label: 'Tableau de bord', href: '/admin' }, { label: 'Partenaires' }]}
+        actions={
+          canWrite ? (
+            <Link
+              href="/admin/partenaires/nouveau"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-control bg-paddy px-4 py-2 text-sm font-semibold text-on-paddy transition-colors hover:bg-paddy-deep"
+            >
+              + Ajouter un partenaire
+            </Link>
+          ) : null
+        }
       />
 
       <div className="mb-5 grid gap-3 sm:grid-cols-3">
@@ -28,13 +38,6 @@ export default async function PartnersPage() {
         <StatCard label="Actifs" value={active} tone="paddy" hint={`${Math.round((active / (partners.length || 1)) * 100)}% d'activité`} />
         <StatCard label="Laboratoires" value={partners.filter((partner) => partner.type === 'laboratoire').length} hint="Analyses & conformité" />
       </div>
-
-      {canWrite ? (
-        <div className="mb-5 rounded-panel border border-line bg-surface p-4 sm:p-5">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-muted">Nouveau partenaire</p>
-          <PartnerForm />
-        </div>
-      ) : null}
 
       {partners.length === 0 ? (
         <EmptyState title="Aucun partenaire" description="Ajoutez un laboratoire, un client pilote ou une institution." />

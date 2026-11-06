@@ -14,8 +14,7 @@ import {
 import { getSettings, settingNumber } from '@/lib/production/settings';
 import { formatCurrency, formatDateTime, formatPercent } from '@/lib/format';
 import { PageHeader, Badge, EmptyState, LinkButton } from '@/components/admin/ui';
-import { buttonClassName, inputClassName } from '@/components/admin/fields';
-import BatchForm from '@/components/admin/BatchForm';
+import { buttonClassName } from '@/components/admin/fields';
 import DeleteButton from '@/components/admin/DeleteButton';
 
 type PageProps = {
@@ -43,60 +42,52 @@ export default async function ProductionPage({ searchParams }: PageProps) {
     <div>
       <PageHeader
         title="Suivi de production"
-        description="Batches de poudre, liant, pressage et séchage : rendement, rebuts, coûts et traçabilité."
         breadcrumb={[{ label: 'Tableau de bord', href: '/admin' }, { label: 'Production' }]}
         actions={
           <>
+            {canWrite ? (
+              <Link
+                href="/admin/production/nouveau"
+                className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-control bg-paddy px-4 py-2 text-sm font-semibold text-on-paddy transition-colors hover:bg-paddy-deep"
+              >
+                + Saisir un batch
+              </Link>
+            ) : null}
             <LinkButton href={`${exportBase}&format=csv`} target="_blank">CSV</LinkButton>
             <LinkButton href={`${exportBase}&format=xls`} target="_blank">Excel</LinkButton>
           </>
         }
       />
 
-      <form method="get" className="mb-5 grid gap-3 rounded-panel border border-line bg-surface p-4 sm:grid-cols-2 lg:grid-cols-5">
-        <div className="lg:col-span-2">
+      <form method="get" className="mb-5 flex flex-wrap items-end gap-3 rounded-panel border border-line bg-surface px-4 py-3">
+        <div>
           <label className="mb-1 block text-xs font-medium text-ink-muted" htmlFor="prod-q">Recherche</label>
-          <input id="prod-q" name="q" defaultValue={filters.q ?? ''} placeholder="Code batch, lot, observation…" className={inputClassName} />
+          <input id="prod-q" name="q" defaultValue={filters.q ?? ''} placeholder="Code, lot, observation…" className="rounded-control border border-line bg-ground px-3 py-2 text-sm w-52" />
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-ink-muted" htmlFor="prod-lot">Lot</label>
-          <select id="prod-lot" name="lotId" defaultValue={filters.lotId ?? ''} className={inputClassName}>
+          <select id="prod-lot" name="lotId" defaultValue={filters.lotId ?? ''} className="rounded-control border border-line bg-ground px-3 py-2 text-sm">
             <option value="">Tous</option>
             {lots.map((lot) => <option key={lot.id} value={lot.id}>{lot.code}</option>)}
           </select>
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-ink-muted" htmlFor="prod-from">Du</label>
-          <input id="prod-from" name="from" type="date" defaultValue={filters.from ?? ''} className={inputClassName} />
+          <input id="prod-from" name="from" type="date" defaultValue={filters.from ?? ''} className="rounded-control border border-line bg-ground px-3 py-2 text-sm" />
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-ink-muted" htmlFor="prod-to">Au</label>
-          <input id="prod-to" name="to" type="date" defaultValue={filters.to ?? ''} className={inputClassName} />
+          <input id="prod-to" name="to" type="date" defaultValue={filters.to ?? ''} className="rounded-control border border-line bg-ground px-3 py-2 text-sm" />
         </div>
-        <div className="flex items-end gap-2 sm:col-span-2 lg:col-span-5">
+        <div className="flex items-center gap-2">
           <button type="submit" className={buttonClassName('primary')}>Filtrer</button>
           <Link href="/admin/production" className={buttonClassName('secondary')}>Réinitialiser</Link>
-          <span className="ml-auto self-center text-xs text-ink-muted">{batches.length} batch(es)</span>
         </div>
+        <span className="ml-auto self-center text-xs text-ink-muted">{batches.length} {batches.length === 1 ? 'batch' : 'batches'}</span>
       </form>
 
-      {canWrite ? (
-        <div className="mb-5">
-          <BatchForm
-            lots={lots.map((lot) => ({ id: lot.id, code: lot.code }))}
-            defaults={{
-              powderCostPerKg: settingNumber(settings, 'powderCostPerKg', 50),
-              binderCostPerKg: settingNumber(settings, 'binderCostPerKg', 1500),
-              laborCostPerBatch: settingNumber(settings, 'laborCostPerBatch', 5000),
-              energyCostPerBatch: settingNumber(settings, 'energyCostPerBatch', 2500),
-              rejectAlertPct,
-            }}
-          />
-        </div>
-      ) : null}
-
       {batches.length === 0 ? (
-        <EmptyState title="Aucun batch" description="Enregistrez un batch pour suivre le rendement, les rebuts et le coût de revient." />
+        <EmptyState title="Aucun batch" />
       ) : (
         <div className="overflow-x-auto rounded-panel border border-line bg-surface">
           <table className="w-full text-left text-sm">

@@ -15,7 +15,6 @@ export type UserInitial = {
 
 export default function UserForm({ initial }: { initial?: UserInitial }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
   const [name, setName] = useState(initial?.name ?? '');
   const [email, setEmail] = useState(initial?.email ?? '');
   const [password, setPassword] = useState('');
@@ -43,16 +42,13 @@ export default function UserForm({ initial }: { initial?: UserInitial }) {
       }
       if (!response.ok) throw new Error(data.error || 'Enregistrement impossible.');
       setSuccess(initial ? 'Compte mis à jour.' : 'Compte créé.');
-      router.refresh();
-      if (!initial) {
-        setName('');
-        setEmail('');
+      if (initial) {
         setPassword('');
-        setRole('reader');
-        setActive(true);
-        setOpen(false);
+        router.refresh();
       } else {
-        setPassword('');
+        // Après création, retour à la liste
+        router.push('/admin/utilisateurs');
+        router.refresh();
       }
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'Enregistrement impossible.');
@@ -62,45 +58,34 @@ export default function UserForm({ initial }: { initial?: UserInitial }) {
   };
 
   return (
-    <section className={initial ? '' : 'rounded-panel border border-line bg-surface'}>
-      {!initial ? (
-        <button type="button" onClick={() => setOpen((value) => !value)} className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left" aria-expanded={open}>
-          <span className="font-display text-lg font-semibold text-ink">Créer un compte</span>
-          <span className="text-sm font-semibold text-paddy">{open ? 'Réduire' : 'Ouvrir'}</span>
+    <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
+      <Field label="Nom complet" htmlFor={`user-name-${initial?.id ?? 'new'}`}>
+        <input id={`user-name-${initial?.id ?? 'new'}`} value={name} onChange={(event) => setName(event.target.value)} required className={inputClassName} />
+      </Field>
+      <Field label="Email" htmlFor={`user-email-${initial?.id ?? 'new'}`}>
+        <input id={`user-email-${initial?.id ?? 'new'}`} type="email" value={email} onChange={(event) => setEmail(event.target.value)} required className={inputClassName} />
+      </Field>
+      <Field label={initial ? 'Nouveau mot de passe (optionnel)' : 'Mot de passe'} htmlFor={`user-password-${initial?.id ?? 'new'}`} hint="8 caractères minimum.">
+        <input id={`user-password-${initial?.id ?? 'new'}`} type="password" value={password} onChange={(event) => setPassword(event.target.value)} required={!initial} minLength={8} className={inputClassName} />
+      </Field>
+      <Field label="Rôle" htmlFor={`user-role-${initial?.id ?? 'new'}`} hint={ROLE_OPTIONS.find((option) => option.value === role)?.description}>
+        <select id={`user-role-${initial?.id ?? 'new'}`} value={role} onChange={(event) => setRole(event.target.value)} className={selectClassName} style={selectStyle}>
+          {ROLE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+        </select>
+      </Field>
+      <label className="flex items-center gap-2 self-end pb-3 text-sm">
+        <input type="checkbox" checked={active} onChange={(event) => setActive(event.target.checked)} className="size-4 accent-paddy" />
+        Compte actif
+      </label>
+
+      {error ? <div className="sm:col-span-2"><FormFeedback type="error" message={error} /></div> : null}
+      {success ? <div className="sm:col-span-2"><FormFeedback type="success" message={success} /></div> : null}
+
+      <div className="sm:col-span-2">
+        <button type="submit" disabled={loading} className={buttonClassName('primary')}>
+          {loading ? 'Enregistrement…' : initial ? 'Enregistrer' : 'Créer le compte'}
         </button>
-      ) : null}
-
-      {(open || initial) ? (
-        <form onSubmit={submit} className={`grid gap-4 sm:grid-cols-2 ${initial ? '' : 'border-t border-line px-5 py-5'}`}>
-          <Field label="Nom complet" htmlFor={`user-name-${initial?.id ?? 'new'}`}>
-            <input id={`user-name-${initial?.id ?? 'new'}`} value={name} onChange={(event) => setName(event.target.value)} required className={inputClassName} />
-          </Field>
-          <Field label="Email" htmlFor={`user-email-${initial?.id ?? 'new'}`}>
-            <input id={`user-email-${initial?.id ?? 'new'}`} type="email" value={email} onChange={(event) => setEmail(event.target.value)} required className={inputClassName} />
-          </Field>
-          <Field label={initial ? 'Nouveau mot de passe (optionnel)' : 'Mot de passe'} htmlFor={`user-password-${initial?.id ?? 'new'}`} hint="8 caractères minimum.">
-            <input id={`user-password-${initial?.id ?? 'new'}`} type="password" value={password} onChange={(event) => setPassword(event.target.value)} required={!initial} minLength={8} className={inputClassName} />
-          </Field>
-          <Field label="Rôle" htmlFor={`user-role-${initial?.id ?? 'new'}`} hint={ROLE_OPTIONS.find((option) => option.value === role)?.description}>
-            <select id={`user-role-${initial?.id ?? 'new'}`} value={role} onChange={(event) => setRole(event.target.value)} className={selectClassName} style={selectStyle}>
-              {ROLE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
-          </Field>
-          <label className="flex items-center gap-2 self-end pb-3 text-sm">
-            <input type="checkbox" checked={active} onChange={(event) => setActive(event.target.checked)} className="size-4 accent-paddy" />
-            Compte actif
-          </label>
-
-          {error ? <div className="sm:col-span-2"><FormFeedback type="error" message={error} /></div> : null}
-          {success ? <div className="sm:col-span-2"><FormFeedback type="success" message={success} /></div> : null}
-
-          <div className="sm:col-span-2">
-            <button type="submit" disabled={loading} className={buttonClassName('primary')}>
-              {loading ? 'Enregistrement…' : initial ? 'Enregistrer' : 'Créer le compte'}
-            </button>
-          </div>
-        </form>
-      ) : null}
-    </section>
+      </div>
+    </form>
   );
 }

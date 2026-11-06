@@ -59,7 +59,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-ground font-body text-ink">
+    <div className="admin-shell flex h-screen overflow-hidden bg-ground font-body text-ink">
       {/* Sidebar */}
       <AdminSidebar
         session={session}
@@ -68,7 +68,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       />
 
       {/* Main area */}
-      <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
+      <div className="flex flex-1 flex-col min-w-0 overflow-y-auto">
         {/* Topbar */}
         <AdminTopbar
           session={session}
@@ -77,19 +77,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         />
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <main className="px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
           {children}
         </main>
 
-        {/* Footer */}
-        <footer className="shrink-0 border-t border-line/70 bg-surface/60 px-6 py-2.5 flex items-center justify-between gap-4">
-          <span className="text-xs text-ink-muted">
-            RiceWare CI — back-office interne
-          </span>
-          <span className="text-xs text-ink-muted opacity-60">
-            données de production confidentielles
-          </span>
-        </footer>
       </div>
     </div>
   );

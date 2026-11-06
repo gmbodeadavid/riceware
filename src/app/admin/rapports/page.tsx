@@ -1,24 +1,23 @@
+import Link from 'next/link';
 import { requireAdminPage } from '@/lib/admin-guard';
 import { can } from '@/lib/rbac';
 import { getDashboardData, listAuditLogs } from '@/lib/production/queries';
 import { formatCurrency, formatDate, formatDateTime, formatNumber, formatPercent } from '@/lib/format';
 import { PageHeader, StatCard, Badge, EmptyState, LinkButton, Section, ProgressBar } from '@/components/admin/ui';
-import { ExpandableRow } from '@/components/admin/ExpandableRow';
-import GoalForm from '@/components/admin/GoalForm';
 import DeleteButton from '@/components/admin/DeleteButton';
 import { LuDownload, LuFileText } from 'react-icons/lu';
 
 const REPORT_LINKS = [
   {
     title: 'Tableau de bord',
-    description: 'Synthèse PDF des KPI de production, qualité, stocks et objectif Greenpreneur.',
+    description: 'KPI production, qualité, stocks et Greenpreneur.',
     href: '/api/admin/exports/dashboard',
     format: 'PDF',
     color: '#b3401f',
   },
   {
     title: 'Lots de coques',
-    description: 'Traçabilité complète des réceptions, rizeries, poids, humidité et statuts.',
+    description: 'Réceptions, rizeries, poids et statuts.',
     href: '/api/admin/exports/lots?format=csv',
     format: 'CSV',
     secondaryHref: '/api/admin/exports/lots?format=xls',
@@ -27,7 +26,7 @@ const REPORT_LINKS = [
   },
   {
     title: 'Batches de production',
-    description: 'Paramètres machine, rendement, rebuts, coûts et opérateurs.',
+    description: 'Rendement, rebuts, coûts et opérateurs.',
     href: '/api/admin/exports/batches?format=csv',
     format: 'CSV',
     secondaryHref: '/api/admin/exports/batches?format=xls',
@@ -36,7 +35,7 @@ const REPORT_LINKS = [
   },
   {
     title: 'Inventaire des stocks',
-    description: 'État des stocks, seuils, emplacements et derniers mouvements.',
+    description: 'Niveaux, seuils et derniers mouvements.',
     href: '/api/admin/exports/stocks?format=pdf',
     format: 'PDF',
     secondaryHref: '/api/admin/exports/stocks?format=csv',
@@ -45,7 +44,7 @@ const REPORT_LINKS = [
   },
   {
     title: 'Tests qualité',
-    description: 'Résultats de charge, étanchéité et contrôle visuel avec défauts observés.',
+    description: 'Charge, étanchéité et contrôle visuel.',
     href: '/api/admin/exports/tests?format=csv',
     format: 'CSV',
     secondaryHref: '/api/admin/exports/tests?format=xls',
@@ -54,7 +53,7 @@ const REPORT_LINKS = [
   },
   {
     title: 'Commandes',
-    description: 'Demandes clients, canaux, statuts de paiement et montants.',
+    description: 'Statuts, paiements et montants clients.',
     href: '/api/admin/exports/orders?format=csv',
     format: 'CSV',
     secondaryHref: '/api/admin/exports/orders?format=xls',
@@ -79,12 +78,21 @@ export default async function ReportsPage() {
     <div>
       <PageHeader
         title="Rapports et objectifs"
-        description="Exports opérationnels, suivi des objectifs et journal d'audit. Les documents PDF et Excel sont générés à la demande depuis la base."
         breadcrumb={[{ label: 'Tableau de bord', href: '/admin' }, { label: 'Rapports' }]}
         actions={
-          <LinkButton href="/api/admin/exports/dashboard" target="_blank">
-            Rapport PDF global
-          </LinkButton>
+          <>
+            {canManage && (
+              <Link
+                href="/admin/rapports/objectifs"
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-control bg-husk px-4 py-2 text-sm font-semibold text-husk-text transition-colors hover:bg-husk-deep disabled:opacity-60"
+              >
+                + Ajouter un objectif
+              </Link>
+            )}
+            <LinkButton href="/api/admin/exports/dashboard" target="_blank">
+              Rapport PDF global
+            </LinkButton>
+          </>
         }
       />
 
@@ -117,10 +125,7 @@ export default async function ReportsPage() {
 
       {/* Exports */}
       <div className="mt-6">
-        <Section
-          title="Exports disponibles"
-          description="Chaque export reprend les filtres standards du module correspondant."
-        >
+        <Section title="Exports">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {REPORT_LINKS.map((report) => {
               const badgeTone = FORMAT_BADGE[report.format]?.tone ?? 'neutral';
@@ -170,22 +175,19 @@ export default async function ReportsPage() {
       </div>
 
       {/* Greenpreneur objective + goals list */}
-      <div className="mt-6 grid gap-6 xl:grid-cols-[1.2fr_1fr]">
-        <Section
-          title="Objectif Greenpreneur"
-          description={data.activeGoal?.label ?? 'Cible de production cumulée.'}
-        >
+      <div className="mt-6 grid gap-6 xl:grid-cols-2">
+        <Section title="Objectif Greenpreneur">
           <div className="space-y-4">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
                 <p className="font-display text-3xl font-bold text-ink">{formatNumber(kpis.totalPiecesForGoal)}</p>
-                <p className="text-sm text-ink-muted">pièces suivies sur une cible de {formatNumber(kpis.greenpreneurTarget)}</p>
+                <p className="text-sm text-ink-muted">pièces · cible {formatNumber(kpis.greenpreneurTarget)}</p>
               </div>
               <Badge tone={kpis.greenpreneurProgress >= 100 ? 'success' : 'info'}>
                 {formatPercent(kpis.greenpreneurProgress)}
               </Badge>
             </div>
-            <ProgressBar value={kpis.greenpreneurProgress} label="Avancement" size="lg" />
+            <ProgressBar value={kpis.greenpreneurProgress} size="lg" />
             {data.activeGoal ? (
               <div className="rounded-xl border border-paddy/20 bg-paddy/5 p-4 text-sm">
                 <p className="font-semibold text-paddy-deep">{data.activeGoal.label}</p>
@@ -198,17 +200,12 @@ export default async function ReportsPage() {
                 ) : null}
               </div>
             ) : (
-              <p className="text-sm text-ink-muted">
-                Aucun objectif personnalisé actif. La cible par défaut des paramètres est utilisée.
-              </p>
+              <p className="text-xs text-ink-muted">Cible par défaut des paramètres utilisée.</p>
             )}
           </div>
         </Section>
 
-        <Section
-          title="Cibles et objectifs"
-          description="Un seul objectif actif est mis en avant sur le tableau de bord."
-        >
+        <Section title="Cibles et objectifs">
           {data.goals.length === 0 ? (
             <EmptyState
               title="Aucun objectif"
@@ -252,104 +249,9 @@ export default async function ReportsPage() {
         </Section>
       </div>
 
-      {/* Goal edit forms (admin only) */}
-      {canManage ? (
-        <div className="mt-6">
-          <Section
-            title="Modifier les objectifs"
-            description="Cliquez sur Modifier pour éditer un objectif existant ou créez-en un nouveau ci-dessous."
-          >
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-line bg-ground/40 text-[11px] uppercase tracking-wide text-ink-muted">
-                    <th className="px-4 py-3 font-semibold">Objectif</th>
-                    <th className="px-4 py-3 font-semibold hidden sm:table-cell">Cible</th>
-                    <th className="px-4 py-3 font-semibold hidden md:table-cell">Métrique</th>
-                    <th className="px-4 py-3 font-semibold hidden lg:table-cell">Période</th>
-                    <th className="px-4 py-3 font-semibold">Statut</th>
-                    <th className="px-4 py-3 font-semibold">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-line/50">
-                  {data.goals.map((goal) => (
-                    <ExpandableRow
-                      key={goal.id}
-                      colSpan={6}
-                      editLabel="Modifier"
-                      cells={
-                        <>
-                          <td className="px-4 py-3 align-middle">
-                            <p className="font-semibold text-ink">{goal.label}</p>
-                            {goal.description ? <p className="text-xs text-ink-muted line-clamp-1">{goal.description}</p> : null}
-                          </td>
-                          <td className="px-4 py-3 align-middle text-xs text-ink-muted hidden sm:table-cell whitespace-nowrap">
-                            {formatNumber(goal.target, goal.unit)}
-                          </td>
-                          <td className="px-4 py-3 align-middle text-xs text-ink-muted hidden md:table-cell">
-                            {goal.metric}
-                          </td>
-                          <td className="px-4 py-3 align-middle text-xs text-ink-muted hidden lg:table-cell whitespace-nowrap">
-                            {formatDate(goal.startDate)}
-                            {goal.endDate ? ` → ${formatDate(goal.endDate)}` : ''}
-                          </td>
-                          <td className="px-4 py-3 align-middle">
-                            <Badge
-                              tone={
-                                goal.status === 'active' ? 'success'
-                                : goal.status === 'achieved' ? 'info'
-                                : 'neutral'
-                              }
-                            >
-                              {goal.status === 'active' ? 'Actif' : goal.status === 'achieved' ? 'Atteint' : 'Archivé'}
-                            </Badge>
-                          </td>
-                        </>
-                      }
-                      form={
-                        <div>
-                          <GoalForm
-                            initial={{
-                              id: goal.id,
-                              label: goal.label,
-                              description: goal.description,
-                              metric: goal.metric,
-                              target: goal.target,
-                              unit: goal.unit,
-                              startDate: goal.startDate,
-                              endDate: goal.endDate,
-                              status: goal.status,
-                            }}
-                          />
-                          <div className="mt-3 pt-3 border-t border-line/60">
-                            <DeleteButton
-                              endpoint={`/api/admin/objectifs/${goal.id}`}
-                              confirmation={`Supprimer l'objectif ${goal.label} ?`}
-                              label="Supprimer cet objectif"
-                              compact={false}
-                            />
-                          </div>
-                        </div>
-                      }
-                    />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="mt-4 border-t border-line pt-4">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-muted">Nouvel objectif</p>
-              <GoalForm />
-            </div>
-          </Section>
-        </div>
-      ) : null}
-
       {/* Audit log */}
       <div className="mt-6">
-        <Section
-          title="Journal d'audit"
-          description="Dernières modifications sensibles enregistrées par le back-office."
-        >
+        <Section title="Journal d'audit">
           {audits.length === 0 ? (
             <EmptyState
               title="Aucun évènement"

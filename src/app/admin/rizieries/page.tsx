@@ -5,8 +5,6 @@ import { listRizeries } from '@/lib/production/queries';
 import { CONTRACT_TYPES, labelOf } from '@/lib/production/types';
 import { formatDate, formatNumber } from '@/lib/format';
 import { PageHeader, Badge, EmptyState } from '@/components/admin/ui';
-import RizerieForm from '@/components/admin/RizerieForm';
-import DeleteButton from '@/components/admin/DeleteButton';
 
 export default async function RizeriesPage() {
   const session = await requireAdminPage('lots:view');
@@ -17,70 +15,74 @@ export default async function RizeriesPage() {
     <div>
       <PageHeader
         title="Rizeries partenaires"
-        description="Origine des coques de riz : contacts, contrats, volumes et conditions qualité."
         breadcrumb={[{ label: 'Tableau de bord', href: '/admin' }, { label: 'Rizeries' }]}
+        actions={
+          canWrite ? (
+            <Link
+              href="/admin/rizieries/nouveau"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-control bg-paddy px-4 py-2 text-sm font-semibold text-on-paddy transition-colors hover:bg-paddy-deep"
+            >
+              + Ajouter une rizerie
+            </Link>
+          ) : null
+        }
       />
-
-      {canWrite ? <div className="mb-5"><RizerieForm /></div> : null}
 
       {rizeries.length === 0 ? (
         <EmptyState title="Aucune rizerie" description="Ajoutez la première rizerie pour pouvoir enregistrer des lots de coques." />
       ) : (
-        <div className="space-y-3">
-          {rizeries.map((rizerie) => (
-            <article key={rizerie.id} className="rounded-panel border border-line bg-surface">
-              <div className={`grid gap-6 p-4 sm:p-5 ${canWrite ? 'lg:grid-cols-[1.4fr_1fr]' : ''}`}>
-                {/* ── Infos ── */}
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="font-display text-lg font-semibold text-ink">{rizerie.name}</h2>
-                    <Badge tone={rizerie.active ? 'success' : 'neutral'}>{rizerie.active ? 'Active' : 'Inactive'}</Badge>
+        <div className="overflow-x-auto rounded-panel border border-line bg-surface">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-line bg-ground/40 text-[11px] uppercase tracking-wide text-ink-muted">
+                <th className="px-4 py-3 font-semibold">Rizerie</th>
+                <th className="px-4 py-3 font-semibold hidden sm:table-cell">Contrat</th>
+                <th className="px-4 py-3 font-semibold hidden md:table-cell">Contact</th>
+                <th className="px-4 py-3 font-semibold hidden lg:table-cell">Volume / mois</th>
+                <th className="px-4 py-3 font-semibold hidden lg:table-cell">Dernier lot</th>
+                <th className="px-4 py-3 font-semibold">Statut</th>
+                <th className="px-4 py-3 font-semibold">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line/50">
+              {rizeries.map((rizerie) => (
+                <tr key={rizerie.id} className="group transition-colors hover:bg-paddy/[0.03]">
+                  <td className="px-4 py-3 align-middle">
+                    <p className="font-semibold text-ink">{rizerie.name}</p>
+                    <p className="text-xs text-ink-muted">{rizerie.location}</p>
+                  </td>
+                  <td className="px-4 py-3 align-middle hidden sm:table-cell">
                     <Badge tone="info">{labelOf(CONTRACT_TYPES, rizerie.contractType)}</Badge>
-                  </div>
-                  <p className="mt-1 text-sm text-ink-muted">{rizerie.location}</p>
-                  <dl className="mt-3 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2 lg:grid-cols-4">
-                    <div><dt className="inline text-ink-muted">Contact : </dt><dd className="inline">{rizerie.contactName ?? '—'}</dd></div>
-                    <div><dt className="inline text-ink-muted">Téléphone : </dt><dd className="inline">{rizerie.contactPhone ?? '—'}</dd></div>
-                    <div><dt className="inline text-ink-muted">Lots reçus : </dt><dd className="inline">{rizerie._count.lots}</dd></div>
-                    <div><dt className="inline text-ink-muted">Volume mensuel : </dt><dd className="inline">{rizerie.monthlyVolumeKg ? formatNumber(rizerie.monthlyVolumeKg, 'kg') : '—'}</dd></div>
-                    <div><dt className="inline text-ink-muted">Dernier lot : </dt><dd className="inline">{rizerie.lots[0] ? `${formatDate(rizerie.lots[0].receivedAt)} (${formatNumber(rizerie.lots[0].netWeightKg, 'kg')})` : '—'}</dd></div>
-                    <div><dt className="inline text-ink-muted">Email : </dt><dd className="inline">{rizerie.contactEmail ?? '—'}</dd></div>
-                  </dl>
-                  {rizerie.qualityNotes ? <p className="mt-3 text-sm text-ink-muted">Qualité : {rizerie.qualityNotes}</p> : null}
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <Link href={`/admin/lots?rizerieId=${rizerie.id}`} className="rounded-control border border-line px-3 py-1.5 text-xs font-semibold hover:border-paddy hover:text-paddy transition-colors">
-                      Voir les lots
+                  </td>
+                  <td className="px-4 py-3 align-middle text-xs text-ink-muted hidden md:table-cell">
+                    <p>{rizerie.contactName ?? '—'}</p>
+                    <p>{rizerie.contactPhone ?? ''}</p>
+                  </td>
+                  <td className="px-4 py-3 align-middle text-xs text-ink-muted hidden lg:table-cell">
+                    {rizerie.monthlyVolumeKg ? formatNumber(rizerie.monthlyVolumeKg, 'kg') : '—'}
+                  </td>
+                  <td className="px-4 py-3 align-middle text-xs text-ink-muted hidden lg:table-cell whitespace-nowrap">
+                    {rizerie.lots[0]
+                      ? `${formatDate(rizerie.lots[0].receivedAt)} · ${formatNumber(rizerie.lots[0].netWeightKg, 'kg')}`
+                      : '—'}
+                  </td>
+                  <td className="px-4 py-3 align-middle">
+                    <Badge tone={rizerie.active ? 'success' : 'neutral'}>
+                      {rizerie.active ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-3 align-middle">
+                    <Link
+                      href={`/admin/rizieries/${rizerie.id}`}
+                      className="inline-flex items-center gap-1 rounded-control border border-line px-2.5 py-1 text-xs font-semibold text-ink transition-colors hover:border-paddy hover:text-paddy"
+                    >
+                      ✎ Modifier
                     </Link>
-                  </div>
-                </div>
-
-                {/* ── Formulaire d'édition toujours visible ── */}
-                {canWrite ? (
-                  <div className="border-t border-line pt-4 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-muted">Modifier la fiche</p>
-                    <RizerieForm
-                      initial={{
-                        id: rizerie.id,
-                        name: rizerie.name,
-                        location: rizerie.location,
-                        contactName: rizerie.contactName,
-                        contactPhone: rizerie.contactPhone,
-                        contactEmail: rizerie.contactEmail,
-                        contractType: rizerie.contractType,
-                        monthlyVolumeKg: rizerie.monthlyVolumeKg,
-                        qualityNotes: rizerie.qualityNotes,
-                        notes: rizerie.notes,
-                        active: rizerie.active,
-                      }}
-                    />
-                    <div className="mt-3 pt-3 border-t border-line/60">
-                      <DeleteButton endpoint={`/api/admin/rizieries/${rizerie.id}`} confirmation={`Supprimer la rizerie ${rizerie.name} ?`} label="Supprimer cette rizerie" compact={false} />
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            </article>
-          ))}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

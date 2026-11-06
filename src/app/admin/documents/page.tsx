@@ -1,10 +1,10 @@
+import Link from 'next/link';
 import { requireAdminPage } from '@/lib/admin-guard';
 import { can } from '@/lib/rbac';
 import { listDocuments, listLots, listPartners, listRizeries } from '@/lib/production/queries';
 import { DOCUMENT_CATEGORIES, labelOf } from '@/lib/production/types';
 import { formatDateTime, formatNumber } from '@/lib/format';
 import { PageHeader, Badge, EmptyState } from '@/components/admin/ui';
-import DocumentForm from '@/components/admin/DocumentForm';
 import DeleteButton from '@/components/admin/DeleteButton';
 
 export default async function DocumentsPage() {
@@ -22,21 +22,22 @@ export default async function DocumentsPage() {
   partners.forEach((partner) => entityLabels.set(`partner:${partner.id}`, `Partenaire ${partner.name}`));
   rizeries.forEach((rizerie) => entityLabels.set(`rizerie:${rizerie.id}`, `Rizerie ${rizerie.name}`));
 
-  const entityOptions = [
-    ...lots.map((lot) => ({ value: `lot:${lot.id}`, label: `Lot ${lot.code}` })),
-    ...partners.map((partner) => ({ value: `partner:${partner.id}`, label: `Partenaire ${partner.name}` })),
-    ...rizeries.map((rizerie) => ({ value: `rizerie:${rizerie.id}`, label: `Rizerie ${rizerie.name}` })),
-  ];
-
   return (
     <div>
       <PageHeader
-        title="Documents et justificatifs"
-        description="Certificats, contrats, rapports et photos. Les fichiers sont stockés hors du dossier public et servis uniquement aux utilisateurs connectés."
+        title="Documents"
         breadcrumb={[{ label: 'Tableau de bord', href: '/admin' }, { label: 'Documents' }]}
+        actions={
+          canWrite ? (
+            <Link
+              href="/admin/documents/nouveau"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-control bg-paddy px-4 py-2 text-sm font-semibold text-on-paddy transition-colors hover:bg-paddy-deep"
+            >
+              + Importer un document
+            </Link>
+          ) : null
+        }
       />
-
-      {canWrite ? <div className="mb-5"><DocumentForm entityOptions={entityOptions} /></div> : null}
 
       {documents.length === 0 ? (
         <EmptyState title="Aucun document" description="Importez un certificat, un contrat ou une photo de lot." />

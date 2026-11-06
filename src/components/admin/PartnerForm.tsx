@@ -20,7 +20,6 @@ export type PartnerInitial = {
 
 export default function PartnerForm({ initial }: { initial?: PartnerInitial }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
   const [name, setName] = useState(initial?.name ?? '');
   const [type, setType] = useState(initial?.type ?? 'laboratoire');
   const [contactName, setContactName] = useState(initial?.contactName ?? '');
@@ -52,16 +51,11 @@ export default function PartnerForm({ initial }: { initial?: PartnerInitial }) {
       }
       if (!response.ok) throw new Error(data.error || 'Enregistrement impossible.');
       setSuccess(initial ? 'Partenaire mis à jour.' : 'Partenaire créé.');
-      router.refresh();
-      if (!initial) {
-        setName('');
-        setContactName('');
-        setPhone('');
-        setEmail('');
-        setLocation('');
-        setContractType('');
-        setNotes('');
-        setOpen(false);
+      if (initial) {
+        router.refresh();
+      } else {
+        router.push('/admin/partenaires');
+        router.refresh();
       }
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'Enregistrement impossible.');
@@ -71,16 +65,7 @@ export default function PartnerForm({ initial }: { initial?: PartnerInitial }) {
   };
 
   return (
-    <section className={initial ? '' : 'rounded-panel border border-line bg-surface'}>
-      {!initial ? (
-        <button type="button" onClick={() => setOpen((value) => !value)} className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left" aria-expanded={open}>
-          <span className="font-display text-lg font-semibold text-ink">Ajouter un partenaire</span>
-          <span className="text-sm font-semibold text-paddy">{open ? 'Réduire' : 'Ouvrir'}</span>
-        </button>
-      ) : null}
-
-      {(open || initial) ? (
-        <form onSubmit={submit} className={`grid gap-4 sm:grid-cols-2 ${initial ? '' : 'border-t border-line px-5 py-5'}`}>
+    <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
           <Field label="Nom" htmlFor={`partner-name-${initial?.id ?? 'new'}`}>
             <input id={`partner-name-${initial?.id ?? 'new'}`} value={name} onChange={(event) => setName(event.target.value)} required className={inputClassName} />
           </Field>
@@ -122,8 +107,6 @@ export default function PartnerForm({ initial }: { initial?: PartnerInitial }) {
               {loading ? 'Enregistrement…' : initial ? 'Enregistrer' : 'Créer le partenaire'}
             </button>
           </div>
-        </form>
-      ) : null}
-    </section>
+    </form>
   );
 }
