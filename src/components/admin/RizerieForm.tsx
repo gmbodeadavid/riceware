@@ -21,7 +21,6 @@ export type RizerieInitial = {
 
 export default function RizerieForm({ initial }: { initial?: RizerieInitial }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
   const [name, setName] = useState(initial?.name ?? '');
   const [location, setLocation] = useState(initial?.location ?? '');
   const [contactName, setContactName] = useState(initial?.contactName ?? '');
@@ -65,18 +64,8 @@ export default function RizerieForm({ initial }: { initial?: RizerieInitial }) {
       }
       if (!response.ok) throw new Error(data.error || 'Enregistrement impossible.');
       setSuccess(initial ? 'Rizerie mise à jour.' : 'Rizerie créée.');
+      router.push('/admin/rizieries');
       router.refresh();
-      if (!initial) {
-        setName('');
-        setLocation('');
-        setContactName('');
-        setContactPhone('');
-        setContactEmail('');
-        setMonthlyVolume('');
-        setQualityNotes('');
-        setNotes('');
-        setOpen(false);
-      }
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'Enregistrement impossible.');
     } finally {
@@ -85,16 +74,7 @@ export default function RizerieForm({ initial }: { initial?: RizerieInitial }) {
   };
 
   return (
-    <section className={initial ? '' : 'rounded-panel border border-line bg-surface'}>
-      {!initial ? (
-        <button type="button" onClick={() => setOpen((value) => !value)} className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left" aria-expanded={open}>
-          <span className="font-display text-lg font-semibold text-ink">Ajouter une rizerie</span>
-          <span className="text-sm font-semibold text-paddy">{open ? 'Réduire' : 'Ouvrir'}</span>
-        </button>
-      ) : null}
-
-      {(open || initial) ? (
-        <form onSubmit={submit} className={`grid gap-4 sm:grid-cols-2 ${initial ? '' : 'border-t border-line px-5 py-5'}`}>
+    <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
           <Field label="Nom de la rizerie" htmlFor={`rizerie-name-${initial?.id ?? 'new'}`}>
             <input id={`rizerie-name-${initial?.id ?? 'new'}`} value={name} onChange={(event) => setName(event.target.value)} required className={inputClassName} />
           </Field>
@@ -136,14 +116,11 @@ export default function RizerieForm({ initial }: { initial?: RizerieInitial }) {
           {error ? <div className="sm:col-span-2"><FormFeedback type="error" message={error} /></div> : null}
           {success ? <div className="sm:col-span-2"><FormFeedback type="success" message={success} /></div> : null}
 
-          <div className="flex gap-2 sm:col-span-2">
-            <button type="submit" disabled={loading} className={buttonClassName('primary')}>
-              {loading ? 'Enregistrement…' : initial ? 'Enregistrer' : 'Créer la rizerie'}
-            </button>
-            {initial ? <button type="button" onClick={() => setOpen(false)} className={buttonClassName('secondary')}>Annuler</button> : null}
-          </div>
-        </form>
-      ) : null}
-    </section>
+      <div className="flex gap-2 sm:col-span-2">
+        <button type="submit" disabled={loading} className={buttonClassName('primary')}>
+          {loading ? 'Enregistrement…' : initial ? 'Enregistrer' : 'Créer la rizerie'}
+        </button>
+      </div>
+    </form>
   );
 }

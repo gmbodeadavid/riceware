@@ -27,7 +27,6 @@ export default function LotForm({
   initial?: LotFormInitial;
 }) {
   const router = useRouter();
-  const [open, setOpen] = useState(!initial);
   const [rizerieId, setRizerieId] = useState(initial?.rizerieId ?? rizeries[0]?.id ?? '');
   const [receivedAt, setReceivedAt] = useState(toDateTimeInputValue(initial?.receivedAt ?? new Date()));
   const [gross, setGross] = useState(String(initial?.grossWeightKg ?? ''));
@@ -92,18 +91,10 @@ export default function LotForm({
       if (!response.ok) throw new Error(data.error || 'Enregistrement impossible.');
 
       setSuccess(initial ? 'Lot mis à jour.' : `Lot ${data.code} enregistré.`);
-      router.refresh();
       if (!initial) {
-        setGross('');
-        setTare('0');
-        setHumidity('');
-        setNotes('');
-        setPhotoUrl('');
-        setVisualQuality('conforme');
-        setStatus('accepted');
-        setReceivedAt(toDateTimeInputValue(new Date()));
-        setOpen(false);
+        router.push('/admin/lots');
       }
+      router.refresh();
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'Enregistrement impossible.');
     } finally {
@@ -112,28 +103,16 @@ export default function LotForm({
   };
 
   return (
-    <section className="rounded-panel border border-line bg-surface">
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left"
-        aria-expanded={open}
-      >
-        <span>
-          <span className="font-display text-lg font-semibold text-ink">{initial ? 'Modifier le lot' : 'Saisir un lot de coques'}</span>
-          <span className="ml-2 text-xs text-ink-muted">{initial ? initial.id : 'Traçabilité à la réception'}</span>
-        </span>
-        <span className="text-sm font-semibold text-paddy">{open ? 'Réduire' : 'Ouvrir'}</span>
-      </button>
+    <form onSubmit={submit} className="space-y-8">
 
-      {open ? (
-        <form onSubmit={submit} className="grid gap-4 border-t border-line px-5 py-5 sm:grid-cols-2">
-          {rizeries.length === 0 ? (
-            <div className="sm:col-span-2">
-              <FormFeedback type="error" message="Créez d’abord une rizerie dans le module Rizeries." />
-            </div>
-          ) : null}
+      {rizeries.length === 0 ? (
+        <FormFeedback type="error" message="Créez d'abord une rizerie dans le module Rizeries." />
+      ) : null}
 
+      {/* ── Provenance ───────────────────────────────────── */}
+      <div>
+        <p className="mb-4 text-[11px] font-bold uppercase tracking-widest text-ink-muted">Provenance</p>
+        <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Rizerie" htmlFor="lot-rizerie">
             <select id="lot-rizerie" value={rizerieId} onChange={(event) => setRizerieId(event.target.value)} required className={selectClassName} style={selectStyle}>
               {rizeries.map((rizerie) => (
@@ -141,27 +120,41 @@ export default function LotForm({
               ))}
             </select>
           </Field>
-
-          <Field label="Date et heure de réception" htmlFor="lot-date">
+          <Field label="Date de réception" htmlFor="lot-date">
             <input id="lot-date" type="datetime-local" value={receivedAt} onChange={(event) => setReceivedAt(event.target.value)} required className={inputClassName} />
           </Field>
+        </div>
+      </div>
 
+      {/* ── Pesée ────────────────────────────────────────── */}
+      <div>
+        <p className="mb-4 text-[11px] font-bold uppercase tracking-widest text-ink-muted">Pesée</p>
+        <div className="grid gap-4 sm:grid-cols-3 sm:items-start">
           <Field label="Poids brut (kg)" htmlFor="lot-gross">
             <input id="lot-gross" type="number" min="0.01" step="0.01" value={gross} onChange={(event) => setGross(event.target.value)} required className={inputClassName} />
           </Field>
-
-          <Field label="Tare (kg)" htmlFor="lot-tare" hint="Le poids net est calculé automatiquement.">
+          <Field label="Tare (kg)" htmlFor="lot-tare">
             <input id="lot-tare" type="number" min="0" step="0.01" value={tare} onChange={(event) => setTare(event.target.value)} className={inputClassName} />
           </Field>
+          {/* Poids net live */}
+          <div className="grid gap-1.5">
+            <label className="text-sm font-medium text-ink">Poids net</label>
+            <div className="flex w-full items-center gap-2 rounded-control border border-paddy/30 bg-paddy/5 px-3 py-2.5 text-base sm:text-sm">
+              <span className="font-mono-brand font-bold text-paddy-deep">{net.toFixed(2)}</span>
+              <span className="text-ink-muted">kg</span>
+            </div>
+            <p className="text-xs text-ink-muted">Calculé automatiquement</p>
+          </div>
+        </div>
+      </div>
 
-          <Field label="Poids net calculé (kg)" htmlFor="lot-net">
-            <input id="lot-net" value={net.toFixed(2)} readOnly className={`${inputClassName} font-mono-brand`} />
-          </Field>
-
-          <Field label="Humidité mesurée (%)" htmlFor="lot-humidity">
+      {/* ── Qualité ──────────────────────────────────────── */}
+      <div>
+        <p className="mb-4 text-[11px] font-bold uppercase tracking-widest text-ink-muted">Qualité</p>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Field label="Humidité (%)" htmlFor="lot-humidity">
             <input id="lot-humidity" type="number" min="0" max="100" step="0.1" value={humidity} onChange={(event) => setHumidity(event.target.value)} required className={inputClassName} />
           </Field>
-
           <Field label="État visuel" htmlFor="lot-visual">
             <select id="lot-visual" value={visualQuality} onChange={(event) => {
               setVisualQuality(event.target.value);
@@ -172,51 +165,61 @@ export default function LotForm({
               ))}
             </select>
           </Field>
-
-          <Field label="Statut du lot" htmlFor="lot-status">
+          <Field label="Statut" htmlFor="lot-status">
             <select id="lot-status" value={status} onChange={(event) => setStatus(event.target.value)} className={selectClassName} style={selectStyle}>
               {LOT_STATUSES.map((option) => (
                 <option key={option.value} value={option.value}>{option.label}</option>
               ))}
             </select>
           </Field>
+        </div>
+      </div>
 
-          <Field label="Photo du lot (optionnel)" htmlFor="lot-photo" hint="JPEG, PNG, WebP ou GIF — 10 Mo maximum.">
-            <input
-              id="lot-photo"
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) void uploadPhoto(file);
-              }}
-              className="block w-full text-sm text-ink-muted file:mr-3 file:rounded-control file:border-0 file:bg-paddy file:px-3 file:py-2 file:text-sm file:font-semibold file:text-on-paddy"
-            />
-            {uploading ? <p className="mt-1 text-xs text-ink-muted">Import en cours…</p> : null}
-            {photoUrl ? <p className="mt-1 break-all text-xs text-paddy">Photo prête : {photoUrl}</p> : null}
-          </Field>
-
-          <div className="sm:col-span-2">
-            <Field label="Observations" htmlFor="lot-notes">
-              <textarea id="lot-notes" rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} className={inputClassName} />
-            </Field>
-          </div>
-
-          {error ? <div className="sm:col-span-2"><FormFeedback type="error" message={error} /></div> : null}
-          {success ? <div className="sm:col-span-2"><FormFeedback type="success" message={success} /></div> : null}
-
-          <div className="flex flex-wrap gap-2 sm:col-span-2">
-            <button type="submit" disabled={loading || uploading || rizeries.length === 0} className={buttonClassName('primary')}>
-              {loading ? 'Enregistrement…' : initial ? 'Enregistrer les modifications' : 'Enregistrer le lot'}
-            </button>
-            {initial ? (
-              <button type="button" onClick={() => setOpen(false)} className={buttonClassName('secondary')}>
-                Fermer
-              </button>
+      {/* ── Photo & observations ─────────────────────────── */}
+      <div>
+        <p className="mb-4 text-[11px] font-bold uppercase tracking-widest text-ink-muted">Photo &amp; observations</p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-1.5">
+            <label className="text-sm font-medium text-ink">Photo du lot (optionnel)</label>
+            <label
+              htmlFor="lot-photo"
+              className="flex cursor-pointer items-center gap-3 rounded-control border border-dashed border-line bg-ground/60 px-4 py-3 text-sm text-ink-muted transition-colors hover:border-paddy/50 hover:text-paddy"
+            >
+              <span className="text-base">📎</span>
+              <span>{uploading ? 'Import en cours…' : photoUrl ? '✓ Photo jointe' : 'Choisir une image…'}</span>
+              <input
+                id="lot-photo"
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="sr-only"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) void uploadPhoto(file);
+                }}
+              />
+            </label>
+            <p className="text-xs text-ink-muted">JPEG, PNG, WebP · 10 Mo max</p>
+            {photoUrl ? (
+              <div className="flex items-center justify-between gap-2 rounded-control border border-paddy/20 bg-paddy/5 px-3 py-2 text-xs text-paddy-deep">
+                <span className="truncate">{photoUrl.split('/').pop()}</span>
+                <button type="button" onClick={() => setPhotoUrl('')} className="shrink-0 text-ink-muted hover:text-danger">✕</button>
+              </div>
             ) : null}
           </div>
-        </form>
-      ) : null}
-    </section>
+          <Field label="Observations" htmlFor="lot-notes">
+            <textarea id="lot-notes" rows={4} value={notes} onChange={(event) => setNotes(event.target.value)} className={inputClassName} placeholder="Anomalies, conditions de transport, remarques…" />
+          </Field>
+        </div>
+      </div>
+
+      {error ? <FormFeedback type="error" message={error} /> : null}
+      {success ? <FormFeedback type="success" message={success} /> : null}
+
+      <div>
+        <button type="submit" disabled={loading || uploading || rizeries.length === 0} className={buttonClassName('primary')}>
+          {loading ? 'Enregistrement…' : initial ? 'Enregistrer les modifications' : 'Enregistrer le lot'}
+        </button>
+      </div>
+    </form>
   );
 }

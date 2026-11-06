@@ -33,7 +33,7 @@ export default async function PacksPage({ searchParams }: PageProps) {
     <div>
       <PageHeader
         title="Lots de packs"
-        description="Lots de conditionnement créés depuis les batches de production."
+        breadcrumb={[{ label: 'Tableau de bord', href: '/admin' }, { label: 'Lots de packs' }]}
       />
 
       <form method="get" className="mb-5 grid gap-3 rounded-panel border border-line bg-surface p-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -70,55 +70,56 @@ export default async function PacksPage({ searchParams }: PageProps) {
         </div>
       </form>
 
-      <Section title={`${packLots.length} lot(s) de packs`} description="Stock restant = quantité − allocations actives.">
+      <Section title={`${packLots.length} ${packLots.length === 1 ? 'lot' : 'lots'}`}>
         {packLots.length === 0 ? (
-          <EmptyState title="Aucun lot de packs" description="Créez des lots de packs depuis la fiche d'un batch de production." />
+          <EmptyState title="Aucun lot de packs" />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] text-left text-sm">
+            <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
-                  <th className="pb-2 pr-3">Code</th>
-                  <th className="pb-2 pr-3">Pack</th>
-                  <th className="pb-2 pr-3">Batch</th>
-                  <th className="pb-2 pr-3">Rizerie(s)</th>
-                  <th className="pb-2 pr-3">Qté</th>
-                  <th className="pb-2 pr-3">Restant</th>
-                  <th className="pb-2 pr-3">Statut</th>
-                  <th className="pb-2">Packagé le</th>
+                <tr className="border-b border-line bg-ground/40 text-[11px] uppercase tracking-wide text-ink-muted">
+                  <th className="px-4 py-3 font-semibold">Code</th>
+                  <th className="px-4 py-3 font-semibold">Pack</th>
+                  <th className="px-4 py-3 font-semibold hidden md:table-cell">Batch</th>
+                  <th className="px-4 py-3 font-semibold hidden lg:table-cell">Rizerie(s)</th>
+                  <th className="px-4 py-3 font-semibold hidden sm:table-cell">Qté</th>
+                  <th className="px-4 py-3 font-semibold">Restant</th>
+                  <th className="px-4 py-3 font-semibold">Statut</th>
+                  <th className="px-4 py-3 font-semibold hidden md:table-cell">Packagé le</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-line/50">
                 {packLots.map((pl) => {
                   const statusEntry = PACK_LOT_STATUSES.find((s) => s.value === pl.status);
                   return (
-                    <tr key={pl.id} className="border-b border-line/60 last:border-0">
-                      <td className="py-2.5 pr-3">
-                        <Link href={`/admin/packs/${pl.id}`} className="font-mono-brand text-xs font-semibold text-paddy hover:underline">
+                    <tr key={pl.id} className="group transition-colors hover:bg-paddy/[0.03]">
+                      <td className="px-4 py-3 align-middle">
+                        <Link href={`/admin/packs/${pl.id}`} className="font-mono-brand text-xs font-semibold text-paddy hover:text-paddy-deep hover:underline">
                           {pl.code}
                         </Link>
                       </td>
-                      <td className="py-2.5 pr-3 text-xs">
-                        {pl.pack.product.name} · {pl.pack.label}
+                      <td className="px-4 py-3 align-middle text-xs">
+                        <span className="font-medium">{pl.pack.product.name}</span>
+                        <span className="text-ink-muted"> · {pl.pack.label}</span>
                       </td>
-                      <td className="py-2.5 pr-3">
-                        <Link href={`/admin/production/${pl.batch.id}`} className="font-mono-brand text-xs text-paddy hover:underline">
+                      <td className="px-4 py-3 align-middle hidden md:table-cell">
+                        <Link href={`/admin/production/${pl.batch.id}`} className="font-mono-brand text-xs text-paddy hover:text-paddy-deep hover:underline">
                           {pl.batch.code}
                         </Link>
                       </td>
-                      <td className="py-2.5 pr-3 text-xs text-ink-muted">
+                      <td className="px-4 py-3 align-middle text-xs text-ink-muted hidden lg:table-cell">
                         {pl.rizeries.length > 0 ? pl.rizeries.map((r) => r.name).join(', ') : '—'}
                       </td>
-                      <td className="py-2.5 pr-3">{formatNumber(pl.quantity)}</td>
-                      <td className={`py-2.5 pr-3 font-semibold ${pl.remaining === 0 ? 'text-ink-muted' : pl.remaining < 5 ? 'text-warning' : ''}`}>
+                      <td className="px-4 py-3 align-middle hidden sm:table-cell font-medium">{formatNumber(pl.quantity)}</td>
+                      <td className={`px-4 py-3 align-middle font-semibold ${pl.remaining === 0 ? 'text-ink-muted' : pl.remaining < 5 ? 'text-danger' : 'text-paddy-deep'}`}>
                         {formatNumber(pl.remaining)}
                       </td>
-                      <td className="py-2.5 pr-3">
+                      <td className="px-4 py-3 align-middle">
                         <Badge tone={(statusEntry?.badge === 'default' || !statusEntry?.badge ? 'neutral' : statusEntry.badge) as 'success' | 'warning' | 'danger' | 'info' | 'neutral'}>
                           {statusEntry?.label ?? pl.status}
                         </Badge>
                       </td>
-                      <td className="py-2.5 text-xs text-ink-muted">{formatDateTime(pl.packedAt)}</td>
+                      <td className="px-4 py-3 align-middle text-xs text-ink-muted hidden md:table-cell whitespace-nowrap">{formatDateTime(pl.packedAt)}</td>
                     </tr>
                   );
                 })}

@@ -17,7 +17,6 @@ import {
   LuChartBar,
   LuUserCog,
   LuSettings,
-  LuTrash2,
   LuX,
 } from 'react-icons/lu';
 
@@ -70,7 +69,6 @@ const NAV_GROUPS: Array<{ group: string; items: NavItem[] }> = [
     items: [
       { href: '/admin/utilisateurs', label: 'Utilisateurs', icon: LuUserCog, permission: 'users:manage' },
       { href: '/admin/parametres', label: 'Paramètres', icon: LuSettings, permission: 'settings:manage' },
-      { href: '/admin/administration/corbeille', label: 'Éléments supprimés', icon: LuTrash2, permission: 'trash:manage' },
     ],
   },
 ];
@@ -91,39 +89,54 @@ export default function AdminSidebar({
     : '?';
 
   const sidebarContent = (
-    <div className="flex h-full w-[240px] flex-col bg-ink text-white">
-      {/* Logo */}
-      <div className="flex items-center justify-between gap-2 border-b border-white/10 px-4 py-4">
-        <Link href="/admin" className="flex items-center gap-2.5" onClick={onClose}>
-          <div className="flex items-center justify-center size-9 bg-surface rounded-lg shrink-0">
+    <div className="flex h-full w-[248px] flex-col" style={{ background: 'linear-gradient(180deg, #1a2d1f 0%, #1c2a20 100%)' }}>
+      {/* ── Logo ─────────────────────────────────────── */}
+      <div
+        className="flex items-center justify-between gap-2 px-4 py-4"
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}
+      >
+        <Link href="/admin" className="flex items-center gap-3" onClick={onClose}>
+          <div
+            className="flex items-center justify-center size-9 rounded-xl shrink-0 shadow-sm"
+            style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(4px)' }}
+          >
             <BrandMark className="h-7 w-auto" />
           </div>
           <div className="leading-none">
             <p className="font-display font-bold text-[15px] text-white">RiceWare CI</p>
-            <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-paddy-soft mt-0.5">Back-office</p>
+            <p
+              className="text-[9px] font-semibold uppercase tracking-[0.12em] mt-0.5"
+              style={{ color: '#71a57d' }}
+            >
+              Back-office
+            </p>
           </div>
         </Link>
         {/* Close button — mobile only */}
         <button
           type="button"
           onClick={onClose}
-          className="lg:hidden flex size-8 items-center justify-center rounded-lg text-white/60 hover:bg-white/10 hover:text-white"
+          className="lg:hidden flex size-8 items-center justify-center rounded-lg transition-colors"
+          style={{ color: 'rgba(255,255,255,0.5)' }}
           aria-label="Fermer le menu"
         >
           <LuX size={18} />
         </button>
       </div>
 
-      {/* Nav groups */}
-      <nav className="flex-1 overflow-y-auto py-3 px-3" aria-label="Navigation administration">
+      {/* ── Nav ──────────────────────────────────────── */}
+      <nav className="flex-1 overflow-y-auto py-4 px-3 scrollbar-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Navigation administration">
         {NAV_GROUPS.map((group) => {
           const visibleItems = group.items.filter(
             (item) => !session || session.permissions.includes(item.permission),
           );
           if (visibleItems.length === 0) return null;
           return (
-            <div key={group.group} className="mb-4">
-              <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/35">
+            <div key={group.group} className="mb-5">
+              <p
+                className="mb-1.5 px-2.5 text-[9px] font-bold uppercase tracking-[0.14em]"
+                style={{ color: 'rgba(255,255,255,0.3)' }}
+              >
                 {group.group}
               </p>
               <ul className="space-y-0.5">
@@ -136,13 +149,38 @@ export default function AdminSidebar({
                         href={item.href}
                         aria-current={active ? 'page' : undefined}
                         onClick={onClose}
-                        className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                        className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-all duration-150 ${
                           active
-                            ? 'bg-paddy text-on-paddy'
-                            : 'text-white/70 hover:bg-white/10 hover:text-white'
+                            ? 'text-white shadow-sm'
+                            : 'hover:text-white'
                         }`}
+                        style={
+                          active
+                            ? {
+                                background: 'linear-gradient(135deg, #2f6b43 0%, #245835 100%)',
+                                boxShadow: '0 2px 8px rgba(47,107,67,0.35)',
+                              }
+                            : { color: 'rgba(255,255,255,0.65)' }
+                        }
+                        onMouseEnter={(e) => {
+                          if (!active) {
+                            (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.08)';
+                            (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.9)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!active) {
+                            (e.currentTarget as HTMLElement).style.background = '';
+                            (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.65)';
+                          }
+                        }}
                       >
-                        <Icon size={16} aria-hidden="true" className="shrink-0" />
+                        <Icon
+                          size={15}
+                          aria-hidden="true"
+                          className="shrink-0"
+                          style={active ? { color: '#71a57d' } : {}}
+                        />
                         {item.label}
                       </Link>
                     </li>
@@ -154,16 +192,27 @@ export default function AdminSidebar({
         })}
       </nav>
 
-      {/* User footer */}
+      {/* ── User footer ──────────────────────────────── */}
       {session && (
-        <div className="border-t border-white/10 px-3 py-3">
-          <div className="flex items-center gap-3 rounded-lg px-2 py-2">
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-paddy text-[11px] font-bold text-on-paddy">
+        <div
+          className="shrink-0 px-3 py-3"
+          style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}
+        >
+          <div
+            className="flex items-center gap-3 rounded-xl px-3 py-2.5"
+            style={{ background: 'rgba(255,255,255,0.05)' }}
+          >
+            <div
+              className="flex size-8 shrink-0 items-center justify-center rounded-full text-[11px] font-bold"
+              style={{ background: 'linear-gradient(135deg, #2f6b43 0%, #245835 100%)', color: '#fffdf6' }}
+            >
               {initials}
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-[13px] font-semibold text-white">{session.name}</p>
-              <p className="truncate text-[11px] text-white/50">{session.roleLabel}</p>
+              <p className="truncate text-[11px]" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                {session.roleLabel}
+              </p>
             </div>
           </div>
         </div>
@@ -174,7 +223,7 @@ export default function AdminSidebar({
   return (
     <>
       {/* Desktop — always visible */}
-      <aside className="hidden lg:flex lg:flex-col lg:w-[240px] lg:shrink-0 lg:sticky lg:top-0 lg:h-screen">
+      <aside className="hidden lg:flex lg:flex-col lg:w-[248px] lg:shrink-0 shadow-xl">
         {sidebarContent}
       </aside>
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Field, FormFeedback, buttonClassName, inputClassName, selectClassName, selectStyle } from '@/components/admin/fields';
 import { DOCUMENT_CATEGORIES } from '@/lib/production/types';
@@ -11,9 +11,8 @@ export default function DocumentForm({
   entityOptions?: Array<{ value: string; label: string }>;
 }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
-  const [name, setName] = useState('');
   const [category, setCategory] = useState('certificat');
   const [entity, setEntity] = useState(entityOptions?.[0]?.value ?? '');
   const [notes, setNotes] = useState('');
@@ -47,7 +46,7 @@ export default function DocumentForm({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: name || file.name,
+          name: file.name,
           category,
           url: uploaded.url,
           mimeType: uploaded.mimeType,
@@ -62,12 +61,10 @@ export default function DocumentForm({
 
       setSuccess('Document enregistré.');
       router.refresh();
+      router.push('/admin/documents');
       setFile(null);
-      setName('');
       setNotes('');
-      setOpen(false);
-      const input = document.getElementById('document-file') as HTMLInputElement | null;
-      if (input) input.value = '';
+      if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'Import impossible.');
     } finally {
@@ -76,52 +73,79 @@ export default function DocumentForm({
   };
 
   return (
-    <section className="rounded-panel border border-line bg-surface">
-      <button type="button" onClick={() => setOpen((value) => !value)} className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left" aria-expanded={open}>
-        <span>
-          <span className="font-display text-lg font-semibold text-ink">Importer un document</span>
-          <span className="ml-2 text-xs text-ink-muted">Certificat, contrat, rapport ou photo</span>
-        </span>
-        <span className="text-sm font-semibold text-paddy">{open ? 'Réduire' : 'Ouvrir'}</span>
-      </button>
-
-      {open ? (
-        <form onSubmit={submit} className="grid gap-4 border-t border-line px-5 py-5 sm:grid-cols-2">
-          <Field label="Fichier" htmlFor="document-file" hint="JPEG, PNG, WebP, GIF ou PDF — 10 Mo maximum.">
-            <input id="document-file" type="file" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" onChange={(event) => setFile(event.target.files?.[0] ?? null)} required className="block w-full text-sm text-ink-muted file:mr-3 file:rounded-control file:border-0 file:bg-paddy file:px-3 file:py-2 file:text-sm file:font-semibold file:text-on-paddy" />
-          </Field>
-          <Field label="Nom du document" htmlFor="document-name" hint="Laissez vide pour reprendre le nom du fichier.">
-            <input id="document-name" value={name} onChange={(event) => setName(event.target.value)} className={inputClassName} />
-          </Field>
-          <Field label="Catégorie" htmlFor="document-category">
-            <select id="document-category" value={category} onChange={(event) => setCategory(event.target.value)} className={selectClassName} style={selectStyle}>
-              {DOCUMENT_CATEGORIES.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
-          </Field>
-          {entityOptions?.length ? (
-            <Field label="Rattacher à" htmlFor="document-entity">
-              <select id="document-entity" value={entity} onChange={(event) => setEntity(event.target.value)} className={selectClassName} style={selectStyle}>
-                <option value="">Aucun rattachement</option>
-                {entityOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-              </select>
-            </Field>
-          ) : null}
-          <div className="sm:col-span-2">
-            <Field label="Notes" htmlFor="document-notes">
-              <textarea id="document-notes" rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} className={inputClassName} />
-            </Field>
-          </div>
-
-          {error ? <div className="sm:col-span-2"><FormFeedback type="error" message={error} /></div> : null}
-          {success ? <div className="sm:col-span-2"><FormFeedback type="success" message={success} /></div> : null}
-
-          <div className="sm:col-span-2">
-            <button type="submit" disabled={loading} className={buttonClassName('primary')}>
-              {loading ? 'Import…' : 'Importer le document'}
+    <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
+      {/* Ligne 1 : fichier */}
+      <div className="sm:col-span-2">
+        <Field label="Fichier" htmlFor="document-file">
+          <div className="flex items-center gap-3">
+            <input
+              ref={fileInputRef}
+              id="document-file"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif,application/pdf"
+              onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+              required
+              className="sr-only"
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="inline-flex items-center rounded-control border border-line bg-surface px-3 py-2 text-sm font-semibold text-ink transition-colors hover:border-paddy hover:text-paddy shrink-0"
+            >
+              Choisir un fichier
             </button>
+            {file ? (
+              <div className="flex min-w-0 flex-1 items-center gap-2 rounded-control border border-line bg-ground/50 px-3 py-2">
+                <span className="truncate text-sm text-ink">{file.name}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFile(null);
+                    if (fileInputRef.current) fileInputRef.current.value = '';
+                  }}
+                  aria-label="Retirer le fichier"
+                  className="ml-auto shrink-0 text-ink-muted transition-colors hover:text-danger"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                </button>
+              </div>
+            ) : (
+              <span className="text-sm text-ink-muted">Aucun fichier sélectionné</span>
+            )}
           </div>
-        </form>
+        </Field>
+      </div>
+
+      {/* Ligne 2 : catégorie + rattachement */}
+      <Field label="Catégorie" htmlFor="document-category">
+        <select id="document-category" value={category} onChange={(event) => setCategory(event.target.value)} className={selectClassName} style={selectStyle}>
+          {DOCUMENT_CATEGORIES.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+        </select>
+      </Field>
+      {entityOptions?.length ? (
+        <Field label="Rattacher à" htmlFor="document-entity">
+          <select id="document-entity" value={entity} onChange={(event) => setEntity(event.target.value)} className={selectClassName} style={selectStyle}>
+            <option value="">Aucun rattachement</option>
+            {entityOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
+        </Field>
       ) : null}
-    </section>
+
+      {/* Notes pleine largeur */}
+      <div className="sm:col-span-2">
+        <Field label="Notes" htmlFor="document-notes">
+          <textarea id="document-notes" rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} className={inputClassName} />
+        </Field>
+      </div>
+
+      {error ? <div className="sm:col-span-2"><FormFeedback type="error" message={error} /></div> : null}
+      {success ? <div className="sm:col-span-2"><FormFeedback type="success" message={success} /></div> : null}
+
+      <div className="sm:col-span-2">
+        <button type="submit" disabled={loading} className={buttonClassName('primary')}>
+          {loading ? 'Import en cours…' : 'Importer le document'}
+        </button>
+      </div>
+    </form>
   );
 }

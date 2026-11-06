@@ -2,7 +2,10 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { selectClassName, selectStyle } from '@/components/admin/fields';
+import { selectStyle } from '@/components/admin/fields';
+
+const compactSelect =
+  'rounded border border-line bg-ground px-2 py-1 text-xs text-ink appearance-none cursor-pointer focus:border-paddy focus:outline-none focus:ring-1 focus:ring-paddy/20 disabled:opacity-60 pr-6';
 
 const ORDER_STATUS_LABELS: Record<string, string> = {
   draft: 'Brouillon',
@@ -24,71 +27,48 @@ const PAYMENT_STATUS_LABELS: Record<string, string> = {
 
 export default function OrderStatusSelect({
   orderId,
-  status,
-  paymentStatus,
+  field,
+  value: initialValue,
 }: {
   orderId: string;
-  status: string;
-  paymentStatus: string;
+  field: 'status' | 'paymentStatus';
+  value: string;
 }) {
   const router = useRouter();
-  const [currentStatus, setCurrentStatus] = useState(status);
-  const [currentPayment, setCurrentPayment] = useState(paymentStatus);
+  const [current, setCurrent] = useState(initialValue);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
 
-  const update = async (field: 'status' | 'paymentStatus', value: string) => {
+  const update = async (newValue: string) => {
     setBusy(true);
-    setError('');
     try {
       const response = await fetch(`/api/admin/orders/${orderId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ [field]: value }),
+        body: JSON.stringify({ [field]: newValue }),
       });
-      const data = await response.json();
-      if (response.status === 401) {
-        router.push('/admin/login');
-        return;
-      }
-      if (!response.ok) throw new Error(data.error || 'Mise à jour impossible.');
-      if (field === 'status') setCurrentStatus(value);
-      else setCurrentPayment(value);
+      if (response.status === 401) { router.push('/admin/login'); return; }
+      if (!response.ok) return;
+      setCurrent(newValue);
       router.refresh();
-    } catch (updateError) {
-      setError(updateError instanceof Error ? updateError.message : 'Mise à jour impossible.');
     } finally {
       setBusy(false);
     }
   };
 
+  const options = field === 'status' ? ORDER_STATUS_LABELS : PAYMENT_STATUS_LABELS;
+
   return (
-    <div className="flex flex-col gap-1">
-      <select
-        aria-label="Statut de la commande"
-        value={currentStatus}
-        disabled={busy}
-        onChange={(event) => void update('status', event.target.value)}
-        className={selectClassName}
-        style={selectStyle}
-      >
-        {Object.entries(ORDER_STATUS_LABELS).map(([value, label]) => (
-          <option key={value} value={value}>{label}</option>
-        ))}
-      </select>
-      <select
-        aria-label="Statut du paiement"
-        value={currentPayment}
-        disabled={busy}
-        onChange={(event) => void update('paymentStatus', event.target.value)}
-        className={selectClassName}
-        style={selectStyle}
-      >
-        {Object.entries(PAYMENT_STATUS_LABELS).map(([value, label]) => (
-          <option key={value} value={value}>{label}</option>
-        ))}
-      </select>
-      {error ? <span className="max-w-40 text-[11px] text-danger">{error}</span> : null}
-    </div>
+    <select
+      aria-label={field === 'status' ? 'Statut de la commande' : 'Statut du paiement'}
+      value={current}
+      disabled={busy}
+      onChange={(event) => void update(event.target.value)}
+      className={compactSelect}
+      style={selectStyle}
+    >
+      {Object.entries(options).map(([val, label]) => (
+        <option key={val} value={val}>{label}</option>
+      ))}
+    </select>
   );
 }

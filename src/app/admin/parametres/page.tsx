@@ -13,39 +13,30 @@ export default async function SettingsPage() {
     <div>
       <PageHeader
         title="Paramètres"
-        description="Valeurs par défaut de production, seuils d’alerte, objectif Greenpreneur et canal de notification."
+        breadcrumb={[{ label: 'Tableau de bord', href: '/admin' }, { label: 'Paramètres' }]}
       />
 
       <div className="mb-5 grid gap-3 sm:grid-cols-3">
-        <div className="rounded-panel border border-line bg-surface p-4">
-          <p className="text-xs uppercase text-ink-muted">Canal WhatsApp</p>
-          <div className="mt-2">
-            <Badge tone={whatsappConfigured && recipientConfigured ? 'success' : 'warning'}>
-              {whatsappConfigured && recipientConfigured ? 'Configuré' : 'Stockage local uniquement'}
-            </Badge>
-          </div>
-          <p className="mt-2 text-xs text-ink-muted">
-            {whatsappConfigured
-              ? 'Les alertes critiques sont envoyées à l’API WhatsApp configurée.'
-              : 'Renseignez WHATSAPP_API_URL et WHATSAPP_API_TOKEN pour activer l’envoi externe.'}
-          </p>
+        <div className="rounded-panel border border-line bg-surface p-4 flex items-center justify-between gap-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Canal WhatsApp</p>
+          <Badge tone={whatsappConfigured && recipientConfigured ? 'success' : 'warning'}>
+            {whatsappConfigured && recipientConfigured ? 'Configuré' : 'Non configuré'}
+          </Badge>
         </div>
-        <div className="rounded-panel border border-line bg-surface p-4">
-          <p className="text-xs uppercase text-ink-muted">Destinataire</p>
-          <p className="mt-2 font-mono-brand text-sm font-semibold">{process.env.WHATSAPP_RECIPIENT || settings.whatsappNumber || 'Non renseigné'}</p>
-          <p className="mt-2 text-xs text-ink-muted">Le numéro des paramètres sert de secours si la variable d’environnement est absente.</p>
+        <div className="rounded-panel border border-line bg-surface p-4 flex items-center justify-between gap-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Destinataire</p>
+          <p className="font-mono-brand text-xs font-semibold text-ink truncate">{process.env.WHATSAPP_RECIPIENT || settings.whatsappNumber || '—'}</p>
         </div>
-        <div className="rounded-panel border border-line bg-surface p-4">
-          <p className="text-xs uppercase text-ink-muted">Stockage des pièces jointes</p>
-          <p className="mt-2 font-mono-brand text-sm font-semibold">{process.env.PRODUCTION_UPLOAD_DIR || 'storage/uploads/production'}</p>
-          <p className="mt-2 text-xs text-ink-muted">Les fichiers ne sont pas exposés dans le dossier public.</p>
+        <div className="rounded-panel border border-line bg-surface p-4 flex items-center justify-between gap-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Stockage</p>
+          <p className="font-mono-brand text-xs font-semibold text-ink truncate">{process.env.PRODUCTION_UPLOAD_DIR || 'storage/uploads/production'}</p>
         </div>
       </div>
 
       <SettingsForm settings={settings} />
 
       <div className="mt-6">
-        <Section title="Variables d’environnement liées" description="À définir sur le serveur, puis redémarrer l’application.">
+        <Section title="Variables d'environnement liées">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[620px] text-left text-sm">
               <thead>

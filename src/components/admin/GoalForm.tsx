@@ -19,7 +19,6 @@ export type GoalInitial = {
 
 export default function GoalForm({ initial }: { initial?: GoalInitial }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
   const [label, setLabel] = useState(initial?.label ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
   const [metric, setMetric] = useState(initial?.metric ?? 'pieces');
@@ -64,7 +63,6 @@ export default function GoalForm({ initial }: { initial?: GoalInitial }) {
         setLabel('');
         setDescription('');
         setTarget('');
-        setOpen(false);
       }
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'Enregistrement impossible.');
@@ -74,16 +72,7 @@ export default function GoalForm({ initial }: { initial?: GoalInitial }) {
   };
 
   return (
-    <section className={initial ? '' : 'rounded-panel border border-line bg-surface'}>
-      {!initial ? (
-        <button type="button" onClick={() => setOpen((value) => !value)} className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left" aria-expanded={open}>
-          <span className="font-display text-lg font-semibold text-ink">Ajouter un objectif</span>
-          <span className="text-sm font-semibold text-paddy">{open ? 'Réduire' : 'Ouvrir'}</span>
-        </button>
-      ) : null}
-
-      {(open || initial) ? (
-        <form onSubmit={submit} className={`grid gap-4 sm:grid-cols-2 ${initial ? '' : 'border-t border-line px-5 py-5'}`}>
+    <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
           <Field label="Libellé" htmlFor={`goal-label-${initial?.id ?? 'new'}`}>
             <input id={`goal-label-${initial?.id ?? 'new'}`} value={label} onChange={(event) => setLabel(event.target.value)} required className={inputClassName} />
           </Field>
@@ -128,8 +117,6 @@ export default function GoalForm({ initial }: { initial?: GoalInitial }) {
               {loading ? 'Enregistrement…' : initial ? 'Enregistrer' : 'Créer l’objectif'}
             </button>
           </div>
-        </form>
-      ) : null}
-    </section>
+    </form>
   );
 }
